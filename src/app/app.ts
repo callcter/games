@@ -2,7 +2,8 @@ const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
   { id: 'gomoku', title: '五子棋', symbol: '●○', ready: true },
   { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: true },
-  { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: true }
+  { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: true },
+  { id: 'freecell', title: '空当接龙', symbol: '♠♥', ready: true }
 ] as const
 
 export function renderApp(root: HTMLDivElement | null): void {
@@ -50,6 +51,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     })
     root.querySelector<HTMLButtonElement>('[data-game="merge-fruit"]')?.addEventListener('click', () => {
       window.location.hash = '/merge-fruit'
+    })
+    root.querySelector<HTMLButtonElement>('[data-game="freecell"]')?.addEventListener('click', () => {
+      window.location.hash = '/freecell'
     })
   }
 
@@ -113,11 +117,24 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showFreeCell = async (): Promise<void> => {
+    const currentNavigation = ++navigationId
+    activeGame?.destroy(); activeGame = null
+    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在洗牌…</p><div class="game-host"></div></main>'
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mountFreeCell } = await import('../games/freecell')
+    if (currentNavigation !== navigationId) return
+    activeGame = await mountFreeCell(host, () => { window.location.hash = '/' })
+    root.querySelector('.game-loading')?.remove()
+  }
+
   const route = (): void => {
     if (window.location.hash === '#/2048') void show2048()
     else if (window.location.hash === '#/gomoku') void showGomoku()
     else if (window.location.hash === '#/tetris') void showTetris()
     else if (window.location.hash === '#/merge-fruit') void showMergeFruit()
+    else if (window.location.hash === '#/freecell') void showFreeCell()
     else showHome()
   }
 
