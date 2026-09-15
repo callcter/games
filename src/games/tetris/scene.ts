@@ -33,6 +33,12 @@ interface BoardGeometry {
   cellSize: number
 }
 
+interface ControlButton {
+  text: string
+  action: () => void
+  repeat?: boolean
+}
+
 const PIECE_COLORS: Record<PieceType, number> = {
   I: 0x57c9d8,
   J: 0x5576c9,
@@ -50,6 +56,8 @@ export class TetrisScene extends Phaser.Scene {
   private paused = false
   private dropTimer: Phaser.Time.TimerEvent | null = null
   private lockTimer: Phaser.Time.TimerEvent | null = null
+  private repeatDelayTimer: Phaser.Time.TimerEvent | null = null
+  private repeatTimer: Phaser.Time.TimerEvent | null = null
   private lockResets = 0
   private bestScore = readBestScore()
   private lineFlash = 0
@@ -64,6 +72,8 @@ export class TetrisScene extends Phaser.Scene {
 
   create(): void {
     this.input.on('pointerdown', () => void this.audio.unlock())
+    this.input.on('pointerup', () => this.stopControlRepeat())
+    this.input.on('gameout', () => this.stopControlRepeat())
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       void this.audio.unlock()
       this.handleKey(event)
@@ -174,12 +184,14 @@ export class TetrisScene extends Phaser.Scene {
 
   private togglePause(): void {
     if (this.state.gameOver) return
+    this.stopControlRepeat()
     this.paused = !this.paused
     if (this.lockTimer) this.lockTimer.paused = this.paused
     this.draw()
   }
 
   private restart(): void {
+    this.stopControlRepeat()
     this.state = newGame()
     this.paused = false
     this.lineFlash = 0
@@ -247,7 +259,7 @@ export class TetrisScene extends Phaser.Scene {
       // 触屏环境不展示键盘快捷键，改为说明屏幕按钮
       const hint = hasPrecisePointer()
         ? '方向键移动 · ↑/Z 旋转 · C 暂存 · 空格直落 · P 暂停'
-        : '点下方按钮移动、旋转方块'
+        : '点按钮移动、旋转 · 按住方向可连续移动'
       this.add.text(width / 2, 76, hint, {
         color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px'
       }).setOrigin(0.5, 0)
@@ -342,15 +354,15 @@ export class TetrisScene extends Phaser.Scene {
   private drawControls(width: number, boardBottom: number, compact: boolean): void {
     const primary = [
       { text: '↺', action: () => this.apply(rotatePiece(this.state, -1), 'move') },
-      { text: '←', action: () => this.apply(moveHorizontal(this.state, -1), 'move') },
-      { text: '↓', action: () => this.apply(softDrop(this.state), 'soft') },
-      { text: '→', action: () => this.apply(moveHorizontal(this.state, 1), 'move') }
-    ]
+      { text: '←', action: () => this.apply(moveHorizontal(this.state, -1), 'move'), repeat: true },
+      { text: '↓', action: () => this.apply(softDrop(this.state), 'soft'), repeat: true },
+      { text: '→', action: () => this.apply(moveHorizontal(this.state, 1), 'move'), repeat: true }
+    ] satisfies ControlButton[]
     const secondary = [
       { text: '暂存', action: () => this.applyHold() },
       { text: '直落', action: () => this.apply(hardDrop(this.state), 'drop') },
       { text: this.paused ? '继续' : '暂停', action: () => this.togglePause() }
-    ]
+    ] satisfies ControlButton[]
     const gap = compact ? 8 : 10
     const buttonHeight = compact ? 56 : 58
     const rowGap = compact ? 8 : 9
@@ -361,7 +373,7 @@ export class TetrisScene extends Phaser.Scene {
   }
 
   private drawControlRow(
-    buttons: Array<{ text: string; action: () => void }>,
+    buttons: ControlButton[],
     availableWidth: number,
     y: number,
     maximumWidth: number,
@@ -388,10 +400,37 @@ export class TetrisScene extends Phaser.Scene {
       }).setOrigin(0.5)
       container.add([background, label])
       container.setSize(buttonWidth, buttonHeight).setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-          if (!this.paused || button.text === '继续' || button.text === '暂停') button.action()
-        })
+        .on('pointerdown', () => this.triggerControl(button))
     })
+  }
+
+  private triggerControl(button: ControlButton): void {
+    if (this.paused && button.text !== '继续' && button.text !== '暂停') return
+    this.stopControlRepeat()
+    button.action()
+    if (!button.repeat || this.paused || this.state.gameOver) return
+
+    this.repeatDelayTimer = this.time.delayedCall(230, () => {
+      this.repeatDelayTimer = null
+      this.repeatTimer = this.time.addEvent({
+        delay: 75,
+        loop: true,
+        callback: () => {
+          if (this.paused || this.state.gameOver) {
+            this.stopControlRepeat()
+            return
+          }
+          button.action()
+        }
+      })
+    })
+  }
+
+  private stopControlRepeat(): void {
+    this.repeatDelayTimer?.destroy()
+    this.repeatTimer?.destroy()
+    this.repeatDelayTimer = null
+    this.repeatTimer = null
   }
 
   private drawLineFlash(geometry: BoardGeometry): void {
