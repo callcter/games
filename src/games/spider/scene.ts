@@ -30,6 +30,8 @@ export class SpiderScene extends Phaser.Scene {
   private selection: Selection | null = null
   private hintMessage = ''
   private completedFlash = 0
+  private dealingColumns: readonly number[] = []
+  private dealing = false
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
@@ -129,24 +131,48 @@ export class SpiderScene extends Phaser.Scene {
     this.add.text(938, 66, '发牌', {
       color: '#d7e7df', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setOrigin(0.5)
+    this.add.text(938, 148, '每列一张', {
+      color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '13px'
+    }).setOrigin(0.5)
   }
 
   private drawTableau(): void {
     const longest = Math.max(...this.state.tableau.map((column) => column.length), 1)
     const overlap = Math.min(29, Math.max(15, (750 - TABLEAU_Y - CARD_HEIGHT) / Math.max(1, longest - 1)))
+    const dealtLast = this.dealingColumns.length > 0
     this.state.tableau.forEach((column, columnIndex) => {
       const x = COLUMN_X + columnIndex * (CARD_WIDTH + COLUMN_GAP)
       createCardSlot(this, x, TABLEAU_Y, CARD_WIDTH, CARD_HEIGHT, '', () => this.targetColumn(columnIndex))
       column.forEach((item, cardIndex) => {
         const y = TABLEAU_Y + cardIndex * overlap
         const selected = this.selection?.column === columnIndex && cardIndex >= this.selection.start
-        createCardView(this, x + (selected ? 5 : 0), y, CARD_WIDTH, CARD_HEIGHT, item.card, {
+        const view = createCardView(this, x + (selected ? 5 : 0), y, CARD_WIDTH, CARD_HEIGHT, item.card, {
           faceUp: item.faceUp,
           selected,
           onSelect: () => this.selectCard(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
+        // 本轮新发的牌从右上牌堆依次飞入，让孩子看清每列到了哪张
+        if (dealtLast && cardIndex === column.length - 1 && this.dealingColumns.includes(columnIndex)) {
+          const order = this.dealingColumns.indexOf(columnIndex)
+          view.setPosition(900, 88)
+          this.tweens.add({
+            targets: view,
+            x: x + (selected ? 5 : 0),
+            y,
+            duration: 300,
+            delay: order * 60,
+            ease: 'Cubic.Out'
+          })
+        }
       })
     })
+    if (dealtLast) {
+      const flightMs = 300 + this.dealingColumns.length * 60
+      this.time.delayedCall(flightMs, () => {
+        this.dealing = false
+        this.dealingColumns = []
+      })
+    }
   }
 
   private selectCard(column: number, start: number): void {
@@ -185,14 +211,28 @@ export class SpiderScene extends Phaser.Scene {
       this.draw()
       return
     }
-    this.finish(dealStock(this.state))
+    if (this.dealing) return
+    this.dealing = true
+    const lengthsBefore = this.state.tableau.map((column) => column.length)
+    const result = dealStock(this.state)
+    if (!result.moved) {
+      this.hintMessage = this.state.tableau.some((column) => column.length === 0)
+        ? '有空列时不能发牌，先把牌移过去'
+        : '牌堆已经发完了'
+      this.draw()
+      return
+    }
+    this.dealingColumns = result.state.tableau
+      .map((column, index) => column.length > (lengthsBefore[index] ?? 0) ? index : -1)
+      .filter((index) => index >= 0)
+    this.finish(result, `每列发一张，还剩 ${Math.floor(result.state.stock.length / 10)} 轮`)
   }
 
-  private finish(result: SpiderMoveResult): void {
+  private finish(result: SpiderMoveResult, hint = ''): void {
     if (result.moved) {
       this.history.push(this.state)
       this.state = result.state
-      this.hintMessage = ''
+      this.hintMessage = hint
       this.callbacks.onStateChange(this.state, this.initialDeal)
       this.audio.playPlace(2)
       if (result.completed > 0) {
