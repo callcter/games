@@ -293,19 +293,22 @@ export class TetrisScene extends Phaser.Scene {
 
   private drawSidePanel(x: number, y: number, width: number, compact: boolean): void {
     const fontSize = compact ? '15px' : '18px'
-    this.add.text(x, y, `得分\n${this.state.score}\n\n最高\n${this.bestScore}\n\n消行\n${this.state.lines}\n\n等级\n${this.state.level}`, {
+    const stats = compact
+      ? `得分 ${this.state.score}\n最高 ${this.bestScore}\n消行 ${this.state.lines}\n等级 ${this.state.level}`
+      : `得分\n${this.state.score}\n\n最高\n${this.bestScore}\n\n消行\n${this.state.lines}\n\n等级\n${this.state.level}`
+    this.add.text(x, y, stats, {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize, fontStyle: 'bold', lineSpacing: compact ? 3 : 6
     })
 
-    const holdY = y + (compact ? 205 : 270)
+    const holdY = y + (compact ? 88 : 270)
     this.add.text(x, holdY, '暂存', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
     })
-    const previewSize = Math.min(compact ? 20 : 23, width / 5)
+    const previewSize = Math.min(compact ? 18 : 23, width / 5)
     if (this.state.holdType) this.drawPreviewPiece(this.state.holdType, x, holdY + 25, previewSize)
 
-    const nextY = y + (compact ? 285 : 380)
+    const nextY = y + (compact ? 158 : 380)
     this.add.text(x, nextY, '接下来', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
     })
@@ -314,7 +317,7 @@ export class TetrisScene extends Phaser.Scene {
       this.drawPreviewPiece(type, x, nextY + 27 + index * 62, previewSize)
     })
 
-    this.add.text(x, y + (compact ? 370 : 720), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
+    this.add.text(compact ? x + width - 52 : x, y + (compact ? 220 : 720), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
