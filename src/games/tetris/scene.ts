@@ -197,7 +197,7 @@ export class TetrisScene extends Phaser.Scene {
     const compact = height < 650
     const margin = Math.max(12, Math.min(26, width * 0.03))
     const headerHeight = compact ? 74 : 112
-    const controlsHeight = compact ? 68 : 92
+    const controlsHeight = compact ? 126 : 150
     const maxBoardHeight = Math.min(780, height - headerHeight - controlsHeight - margin)
     const panelWidth = width >= 650 ? Math.min(190, width * 0.22) : 0
     const gap = panelWidth > 0 ? margin : 0
@@ -333,34 +333,55 @@ export class TetrisScene extends Phaser.Scene {
   }
 
   private drawControls(width: number, boardBottom: number, compact: boolean): void {
-    const labels = [
+    const primary = [
       { text: '↺', action: () => this.apply(rotatePiece(this.state, -1), 'move') },
       { text: '←', action: () => this.apply(moveHorizontal(this.state, -1), 'move') },
       { text: '↓', action: () => this.apply(softDrop(this.state), 'soft') },
-      { text: '→', action: () => this.apply(moveHorizontal(this.state, 1), 'move') },
-      { text: '存', action: () => this.applyHold() },
-      { text: '落', action: () => this.apply(hardDrop(this.state), 'drop') },
+      { text: '→', action: () => this.apply(moveHorizontal(this.state, 1), 'move') }
+    ]
+    const secondary = [
+      { text: '暂存', action: () => this.applyHold() },
+      { text: '直落', action: () => this.apply(hardDrop(this.state), 'drop') },
       { text: this.paused ? '继续' : '暂停', action: () => this.togglePause() }
     ]
-    const gap = compact ? 7 : 10
-    const buttonWidth = Math.min(compact ? 62 : 76, (width - gap * (labels.length + 1)) / labels.length)
-    const buttonHeight = compact ? 46 : 56
-    const totalWidth = labels.length * buttonWidth + (labels.length - 1) * gap
-    const startX = (width - totalWidth) / 2
-    const y = boardBottom + (compact ? 11 : 18)
+    const gap = compact ? 8 : 10
+    const buttonHeight = compact ? 50 : 58
+    const rowGap = compact ? 7 : 9
+    const startY = boardBottom + (compact ? 7 : 12)
 
-    labels.forEach((button, index) => {
-      const container = this.add.container(startX + index * (buttonWidth + gap), y)
+    this.drawControlRow(primary, width, startY, compact ? 112 : 132, buttonHeight, gap, compact)
+    this.drawControlRow(secondary, width, startY + buttonHeight + rowGap, compact ? 148 : 176, buttonHeight, gap, compact)
+  }
+
+  private drawControlRow(
+    buttons: Array<{ text: string; action: () => void }>,
+    availableWidth: number,
+    y: number,
+    maximumWidth: number,
+    buttonHeight: number,
+    gap: number,
+    compact: boolean
+  ): void {
+    const horizontalMargin = compact ? 12 : 18
+    const buttonWidth = Math.min(
+      maximumWidth,
+      (availableWidth - horizontalMargin * 2 - gap * (buttons.length - 1)) / buttons.length
+    )
+    const totalWidth = buttons.length * buttonWidth + (buttons.length - 1) * gap
+    const startX = (availableWidth - totalWidth) / 2 + buttonWidth / 2
+
+    buttons.forEach((button, index) => {
+      const container = this.add.container(startX + index * (buttonWidth + gap), y + buttonHeight / 2)
       const background = new Phaser.GameObjects.Graphics(this)
       background.fillStyle(0xffffff, 0.9)
-      background.fillRoundedRect(0, 0, buttonWidth, buttonHeight, 13)
-      const label = new Phaser.GameObjects.Text(this, buttonWidth / 2, buttonHeight / 2, button.text, {
+      background.fillRoundedRect(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight, 15)
+      const label = new Phaser.GameObjects.Text(this, 0, 0, button.text, {
         color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-        fontSize: compact ? '18px' : '22px', fontStyle: 'bold'
+        fontSize: compact ? '21px' : '24px', fontStyle: 'bold'
       }).setOrigin(0.5)
       container.add([background, label])
       container.setSize(buttonWidth, buttonHeight).setInteractive({ useHandCursor: true })
-        .on('pointerup', () => {
+        .on('pointerdown', () => {
           if (!this.paused || button.text === '继续' || button.text === '暂停') button.action()
         })
     })
