@@ -5,6 +5,9 @@ import {
   BOARD_WIDTH,
   ghostRow,
   hardDrop,
+  holdPiece,
+  isGrounded,
+  lockActivePiece,
   moveHorizontal,
   newGame,
   pieceCells,
@@ -44,6 +47,8 @@ export class TetrisScene extends Phaser.Scene {
   private state = newGame()
   private paused = false
   private dropTimer: Phaser.Time.TimerEvent | null = null
+  private lockTimer: Phaser.Time.TimerEvent | null = null
+  private lockResets = 0
   private bestScore = readBestScore()
   private lineFlash = 0
   private readonly audio: GameAudio
@@ -82,6 +87,9 @@ export class TetrisScene extends Phaser.Scene {
       Z: () => this.apply(rotatePiece(this.state, -1), 'move'),
       x: () => this.apply(rotatePiece(this.state), 'move'),
       X: () => this.apply(rotatePiece(this.state), 'move'),
+      c: () => this.applyHold(),
+      C: () => this.applyHold(),
+      Shift: () => this.applyHold(),
       ' ': () => this.apply(hardDrop(this.state), 'drop')
     }
     const action = actions[event.key]
@@ -95,6 +103,11 @@ export class TetrisScene extends Phaser.Scene {
     const previousLevel = this.state.level
     const wasGameOver = this.state.gameOver
     this.state = result.state
+    if (result.locked) {
+      this.lockTimer?.destroy()
+      this.lockTimer = null
+      this.lockResets = 0
+    }
     this.bestScore = Math.max(this.bestScore, this.state.score)
     writeBestScore(this.bestScore)
 
@@ -108,7 +121,17 @@ export class TetrisScene extends Phaser.Scene {
     }
     if (!wasGameOver && this.state.gameOver) this.audio.playGameOver()
     if (this.state.level !== previousLevel) this.scheduleDrop()
+    this.refreshLockTimer(sound === 'move')
     this.draw()
+  }
+
+  private applyHold(): void {
+    const result = holdPiece(this.state)
+    if (!result.changed) return
+    this.lockTimer?.destroy()
+    this.lockTimer = null
+    this.lockResets = 0
+    this.apply(result, 'move')
   }
 
   private scheduleDrop(): void {
@@ -118,7 +141,31 @@ export class TetrisScene extends Phaser.Scene {
       delay,
       loop: true,
       callback: () => {
-        if (!this.paused && !this.state.gameOver) this.apply(tick(this.state), 'tick')
+        if (this.paused || this.state.gameOver) return
+        const result = tick(this.state)
+        if (result.changed) this.apply(result, 'tick')
+        else this.refreshLockTimer(false)
+      }
+    })
+  }
+
+  private refreshLockTimer(requestReset: boolean): void {
+    if (this.paused || this.state.gameOver || !isGrounded(this.state)) {
+      this.lockTimer?.destroy()
+      this.lockTimer = null
+      if (!isGrounded(this.state)) this.lockResets = 0
+      return
+    }
+
+    if (this.lockTimer && (!requestReset || this.lockResets >= 15)) return
+    if (this.lockTimer) {
+      this.lockTimer.destroy()
+      this.lockResets += 1
+    }
+    this.lockTimer = this.time.delayedCall(500, () => {
+      this.lockTimer = null
+      if (!this.paused && !this.state.gameOver && isGrounded(this.state)) {
+        this.apply(lockActivePiece(this.state), 'tick')
       }
     })
   }
@@ -126,6 +173,7 @@ export class TetrisScene extends Phaser.Scene {
   private togglePause(): void {
     if (this.state.gameOver) return
     this.paused = !this.paused
+    if (this.lockTimer) this.lockTimer.paused = this.paused
     this.draw()
   }
 
@@ -133,6 +181,9 @@ export class TetrisScene extends Phaser.Scene {
     this.state = newGame()
     this.paused = false
     this.lineFlash = 0
+    this.lockTimer?.destroy()
+    this.lockTimer = null
+    this.lockResets = 0
     this.audio.playRestart()
     this.scheduleDrop()
     this.draw()
@@ -190,7 +241,7 @@ export class TetrisScene extends Phaser.Scene {
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
 
     if (!compact) {
-      this.add.text(width / 2, 76, '方向键移动 · ↑ 旋转 · 空格直落 · P 暂停', {
+      this.add.text(width / 2, 76, '方向键移动 · ↑/Z 旋转 · C 暂存 · 空格直落 · P 暂停', {
         color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px'
       }).setOrigin(0.5, 0)
     }
@@ -247,20 +298,34 @@ export class TetrisScene extends Phaser.Scene {
       fontSize, fontStyle: 'bold', lineSpacing: compact ? 3 : 6
     })
 
-    this.add.text(x, y + (compact ? 250 : 330), '下一个', {
+    const holdY = y + (compact ? 205 : 270)
+    this.add.text(x, holdY, '暂存', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
     })
-    const previewSize = Math.min(28, width / 5)
-    pieceCells({ type: this.state.nextType, rotation: 0, row: 0, column: 0 }).forEach((cell) => {
-      this.drawBlock(x + cell.column * previewSize, y + (compact ? 275 : 365) + cell.row * previewSize, previewSize, PIECE_COLORS[this.state.nextType], 1)
+    const previewSize = Math.min(compact ? 20 : 23, width / 5)
+    if (this.state.holdType) this.drawPreviewPiece(this.state.holdType, x, holdY + 25, previewSize)
+
+    const nextY = y + (compact ? 285 : 380)
+    this.add.text(x, nextY, '接下来', {
+      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
+    })
+    const visibleQueue = compact ? this.state.nextQueue.slice(0, 1) : this.state.nextQueue
+    visibleQueue.forEach((type, index) => {
+      this.drawPreviewPiece(type, x, nextY + 27 + index * 62, previewSize)
     })
 
-    this.add.text(x, y + (compact ? 350 : 480), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
+    this.add.text(x, y + (compact ? 370 : 720), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
       this.audio.toggleMuted()
       this.draw()
+    })
+  }
+
+  private drawPreviewPiece(type: PieceType, x: number, y: number, size: number): void {
+    pieceCells({ type, rotation: 0, row: 0, column: 0 }).forEach((cell) => {
+      this.drawBlock(x + cell.column * size, y + cell.row * size, size, PIECE_COLORS[type], 1)
     })
   }
 
@@ -270,6 +335,7 @@ export class TetrisScene extends Phaser.Scene {
       { text: '←', action: () => this.apply(moveHorizontal(this.state, -1), 'move') },
       { text: '↓', action: () => this.apply(softDrop(this.state), 'soft') },
       { text: '→', action: () => this.apply(moveHorizontal(this.state, 1), 'move') },
+      { text: '存', action: () => this.applyHold() },
       { text: '落', action: () => this.apply(hardDrop(this.state), 'drop') },
       { text: this.paused ? '继续' : '暂停', action: () => this.togglePause() }
     ]

@@ -16,7 +16,9 @@ export interface ActivePiece {
 export interface TetrisState {
   board: Board
   active: ActivePiece
-  nextType: PieceType
+  nextQueue: readonly PieceType[]
+  holdType: PieceType | null
+  canHold: boolean
   bag: readonly PieceType[]
   score: number
   lines: number
@@ -79,17 +81,38 @@ const SHAPES: Record<PieceType, readonly (readonly Coordinate[])[]> = {
   ]
 }
 
-const ROTATION_KICKS: readonly Coordinate[] = [[0, 0], [-1, 0], [1, 0], [-2, 0], [2, 0], [0, -1], [0, -2]]
+const JLSTZ_KICKS: Record<string, readonly Coordinate[]> = {
+  '0>1': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '1>0': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '1>2': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '2>1': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '2>3': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  '3>2': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '3>0': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '0>3': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]]
+}
+
+const I_KICKS: Record<string, readonly Coordinate[]> = {
+  '0>1': [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+  '1>0': [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+  '1>2': [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]],
+  '2>1': [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+  '2>3': [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+  '3>2': [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+  '3>0': [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+  '0>3': [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]]
+}
 
 export function newGame(random: RandomSource = Math.random): TetrisState {
   const firstBag = shuffledBag(random)
   const activeType = firstBag[0] ?? 'T'
-  const nextType = firstBag[1] ?? 'O'
   return {
     board: Array<Cell>(BOARD_WIDTH * BOARD_HEIGHT).fill(null),
     active: spawnPiece(activeType),
-    nextType,
-    bag: firstBag.slice(2),
+    nextQueue: firstBag.slice(1, 6),
+    holdType: null,
+    canHold: true,
+    bag: firstBag.slice(6),
     score: 0,
     lines: 0,
     level: 1,
@@ -106,8 +129,10 @@ export function moveHorizontal(state: TetrisState, offset: -1 | 1): ActionResult
 
 export function rotatePiece(state: TetrisState, direction: -1 | 1 = 1): ActionResult {
   if (state.gameOver || state.active.type === 'O') return unchanged(state)
-  const rotation = modulo(state.active.rotation + direction, 4)
-  for (const [columnKick, rowKick] of ROTATION_KICKS) {
+  const fromRotation = modulo(state.active.rotation, 4)
+  const rotation = modulo(fromRotation + direction, 4)
+  const kicks = (state.active.type === 'I' ? I_KICKS : JLSTZ_KICKS)[`${fromRotation}>${rotation}`] ?? [[0, 0]]
+  for (const [columnKick, rowKick] of kicks) {
     const active = {
       ...state.active,
       rotation,
@@ -138,6 +163,44 @@ export function hardDrop(state: TetrisState, random: RandomSource = Math.random)
   return lockPiece({ ...state, active, score: state.score + distance * 2 }, random)
 }
 
+export function holdPiece(state: TetrisState, random: RandomSource = Math.random): ActionResult {
+  if (state.gameOver || !state.canHold) return unchanged(state)
+
+  if (state.holdType) {
+    const active = spawnPiece(state.holdType)
+    return changed({
+      ...state,
+      active,
+      holdType: state.active.type,
+      canHold: false,
+      gameOver: !canPlace(state.board, active)
+    })
+  }
+
+  const nextType = state.nextQueue[0]
+  if (!nextType) return unchanged(state)
+  const drawn = takeFromBag(state.bag, random)
+  const active = spawnPiece(nextType)
+  return changed({
+    ...state,
+    active,
+    nextQueue: [...state.nextQueue.slice(1), drawn.type],
+    holdType: state.active.type,
+    canHold: false,
+    bag: drawn.bag,
+    gameOver: !canPlace(state.board, active)
+  })
+}
+
+export function isGrounded(state: TetrisState): boolean {
+  return !canPlace(state.board, { ...state.active, row: state.active.row + 1 })
+}
+
+export function lockActivePiece(state: TetrisState, random: RandomSource = Math.random): ActionResult {
+  if (state.gameOver) return unchanged(state)
+  return lockPiece(state, random)
+}
+
 export function ghostRow(state: TetrisState): number {
   let row = state.active.row
   while (canPlace(state.board, { ...state.active, row: row + 1 })) row += 1
@@ -156,7 +219,7 @@ function moveDown(state: TetrisState, addSoftDropScore: boolean): ActionResult {
   if (canPlace(state.board, active)) {
     return changed({ ...state, active, score: state.score + (addSoftDropScore ? 1 : 0) })
   }
-  return lockPiece(state)
+  return unchanged(state)
 }
 
 function lockPiece(state: TetrisState, random: RandomSource = Math.random): ActionResult {
@@ -170,12 +233,14 @@ function lockPiece(state: TetrisState, random: RandomSource = Math.random): Acti
   const lines = state.lines + cleared.count
   const level = Math.floor(lines / 10) + 1
   const bagResult = takeFromBag(state.bag, random)
-  const active = spawnPiece(state.nextType)
+  const nextType = state.nextQueue[0] ?? bagResult.type
+  const active = spawnPiece(nextType)
   const nextState: TetrisState = {
     ...state,
     board: cleared.board,
     active,
-    nextType: bagResult.type,
+    nextQueue: [...state.nextQueue.slice(1), bagResult.type],
+    canHold: true,
     bag: bagResult.bag,
     score: state.score + lineScore(cleared.count) * state.level,
     lines,
@@ -247,4 +312,3 @@ function normalizeRandom(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(value, 0.999999999999))
 }
-

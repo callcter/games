@@ -5,11 +5,15 @@ import {
   PIECE_TYPES,
   ghostRow,
   hardDrop,
+  holdPiece,
+  isGrounded,
+  lockActivePiece,
   moveHorizontal,
   newGame,
   pieceCells,
   rotatePiece,
   softDrop,
+  tick,
   type Cell,
   type TetrisState
 } from '../../src/games/tetris/core/game'
@@ -19,7 +23,7 @@ const constantRandom = (value: number): (() => number) => () => value
 describe('tetris rules', () => {
   it('uses every tetromino once in the first bag', () => {
     const state = newGame(constantRandom(0.5))
-    const firstSeven = [state.active.type, state.nextType, ...state.bag]
+    const firstSeven = [state.active.type, ...state.nextQueue, ...state.bag]
 
     expect(firstSeven).toHaveLength(7)
     expect(new Set(firstSeven)).toEqual(new Set(PIECE_TYPES))
@@ -46,7 +50,7 @@ describe('tetris rules', () => {
     const result = hardDrop(state, constantRandom(0))
 
     expect(result.locked).toBe(true)
-    expect(result.state.active.type).toBe(state.nextType)
+    expect(result.state.active.type).toBe(state.nextQueue[0])
     expect(result.state.board.filter(Boolean)).toHaveLength(4)
     expect(result.state.score).toBeGreaterThan(0)
   })
@@ -82,6 +86,29 @@ describe('tetris rules', () => {
     expect(pieceCells(result.state.active).every((cell) => cell.column >= 0)).toBe(true)
   })
 
+  it('holds once per piece and restores hold after locking', () => {
+    const state = newGame(constantRandom(0))
+    const held = holdPiece(state, constantRandom(0))
+
+    expect(held.changed).toBe(true)
+    expect(held.state.holdType).toBe(state.active.type)
+    expect(held.state.active.type).toBe(state.nextQueue[0])
+    expect(holdPiece(held.state).changed).toBe(false)
+
+    const locked = hardDrop(held.state, constantRandom(0))
+    expect(locked.state.canHold).toBe(true)
+  })
+
+  it('waits for an explicit lock after touching the stack', () => {
+    const base = newGame(constantRandom(0))
+    const landingRow = ghostRow(base)
+    const grounded: TetrisState = { ...base, active: { ...base.active, row: landingRow } }
+
+    expect(isGrounded(grounded)).toBe(true)
+    expect(tick(grounded).locked).toBe(false)
+    expect(lockActivePiece(grounded, constantRandom(0)).locked).toBe(true)
+  })
+
   it('calculates the landing row without changing state', () => {
     const state = newGame(constantRandom(0))
     const row = ghostRow(state)
@@ -90,4 +117,3 @@ describe('tetris rules', () => {
     expect(state.active.row).toBe(0)
   })
 })
-
