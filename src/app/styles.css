@@ -107,6 +107,38 @@ button { font: inherit; }
   font-weight: 800;
 }
 
+.game-screen,
+.game-host {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+}
+
+.game-screen {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: #f8f1df;
+}
+
+.game-host {
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  width: auto;
+  height: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.game-host canvas { display: block; }
+
+.game-loading {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  margin: 0;
+  color: #527267;
+  transform: translate(-50%, -50%);
+}
+
 @media (max-width: 560px) {
   .game-grid { grid-template-columns: 1fr; }
   .game-card { min-height: 160px; }
@@ -118,4 +150,3 @@ button { font: inherit; }
   .hero h1 { font-size: 2.7rem; }
   .game-card { min-height: 150px; }
 }
-

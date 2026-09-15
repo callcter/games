@@ -8,7 +8,15 @@ const games = [
 export function renderApp(root: HTMLDivElement | null): void {
   if (!root) throw new Error('找不到应用挂载节点')
 
-  root.innerHTML = `
+  let activeGame: { destroy: () => void } | null = null
+  let navigationId = 0
+
+  const showHome = (): void => {
+    navigationId += 1
+    activeGame?.destroy()
+    activeGame = null
+
+    root.innerHTML = `
     <main class="app-shell">
       <header class="hero">
         <span class="hero__eyebrow">没有广告 · 随时离线</span>
@@ -29,7 +37,32 @@ export function renderApp(root: HTMLDivElement | null): void {
       <span>游戏屋有新版本啦</span>
       <button type="button">退出游戏后更新</button>
     </aside>
-  `
+    `
+
+    root.querySelector<HTMLButtonElement>('[data-game="2048"]')?.addEventListener('click', () => {
+      window.location.hash = '/2048'
+    })
+  }
+
+  const show2048 = async (): Promise<void> => {
+    const currentNavigation = ++navigationId
+    activeGame?.destroy()
+    activeGame = null
+    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在摆好棋盘…</p><div class="game-host"></div></main>'
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mount2048 } = await import('../games/game-2048')
+    if (currentNavigation !== navigationId) return
+    activeGame = await mount2048(host, () => {
+      window.location.hash = '/'
+    })
+    root.querySelector('.game-loading')?.remove()
+  }
+
+  const route = (): void => {
+    if (window.location.hash === '#/2048') void show2048()
+    else showHome()
+  }
 
   window.addEventListener('app-update-available', ((event: CustomEvent<() => Promise<void>>) => {
     const toast = root.querySelector<HTMLElement>('.update-toast')
@@ -38,5 +71,7 @@ export function renderApp(root: HTMLDivElement | null): void {
     toast.hidden = false
     button.addEventListener('click', () => void event.detail(), { once: true })
   }) as EventListener)
-}
 
+  window.addEventListener('hashchange', route)
+  route()
+}
