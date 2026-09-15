@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { createHeaderButton } from '../../platform/display/header-button'
 import {
   BOARD_SIZE,
   moveGame,
@@ -143,10 +144,9 @@ export class Game2048Scene extends Phaser.Scene {
       fontSize: compact ? '30px' : '44px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    this.add.text(width - margin, compact ? 18 : 34, '重新开始', {
-      color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '18px' : '21px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    createHeaderButton(this, {
+      x: width - margin, y: compact ? 36 : 44, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
 
     this.add.text(margin, compact ? 48 : 76, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',

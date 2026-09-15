@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { createHeaderButton } from '../../platform/display/header-button'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import { FRUIT_LEVELS, fruitAt, mergeFruits, randomDropLevel } from './core/game'
 
@@ -195,9 +196,9 @@ export class MergeFruitScene extends Phaser.Scene {
     this.add.text(SCENE_WIDTH / 2, 30, '合成水果', {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '42px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.add.text(SCENE_WIDTH - 28, 34, '重新开始', {
-      color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    createHeaderButton(this, {
+      x: SCENE_WIDTH - 28, y: 56, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
 
     this.scoreText = this.add.text(34, 102, this.scoreLabel(), {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', fontStyle: 'bold'

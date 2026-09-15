@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { createHeaderButton } from '../../platform/display/header-button'
 import { createCardSlot, createCardView } from '../cards/card-view'
 import { SUITS, rankLabel, suitSymbol, type Suit } from '../cards/core/cards'
 import {
@@ -66,10 +67,12 @@ export class FreeCellScene extends Phaser.Scene {
     this.add.text(512, 14, '空当接龙', {
       color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.createHeaderAction(690, '提示', () => this.showHint())
-    this.createHeaderAction(780, '撤销', () => this.undo(), this.history.length > 0)
-    this.createHeaderAction(890, '重开本局', () => this.restartDeal())
-    this.createHeaderAction(1000, '新牌局', () => this.newDeal(), true, 1)
+    // 右对齐连续排布：新牌局 / 重开本局 / 撤销 / 提示
+    let actionRight = 1000
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '新牌局', onTap: () => this.newDeal() }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
     this.add.text(145, 22, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
@@ -80,15 +83,6 @@ export class FreeCellScene extends Phaser.Scene {
     this.add.text(512, 60, `${gameLabel}移动 ${this.state.moves} 次 · ${this.hintMessage}`, {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5, 0)
-  }
-
-  private createHeaderAction(x: number, label: string, action: () => void, enabled = true, originX = 0.5): void {
-    this.add.text(x, 20, label, {
-      color: enabled ? '#ffd47b' : '#78968a', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: '17px', fontStyle: 'bold'
-    }).setOrigin(originX, 0).setInteractive({ useHandCursor: enabled }).on('pointerup', () => {
-      if (enabled) action()
-    })
   }
 
   private drawTopSlots(): void {

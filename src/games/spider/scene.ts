@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { createHeaderButton } from '../../platform/display/header-button'
 import { createCardSlot, createCardView } from '../cards/card-view'
 import {
   dealStock,
@@ -68,10 +69,12 @@ export class SpiderScene extends Phaser.Scene {
     this.add.text(512, 12, '蜘蛛纸牌', {
       color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.createHeaderAction(690, '提示', () => this.showHint())
-    this.createHeaderAction(780, '撤销', () => this.undo(), this.history.length > 0)
-    this.createHeaderAction(890, '重开本局', () => this.restartDeal())
-    this.createHeaderAction(1000, '新牌局', () => this.newDeal(), true, 1)
+    // 右对齐连续排布：新牌局 / 重开本局 / 撤销 / 提示
+    let actionRight = 1000
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '新牌局', onTap: () => this.newDeal() }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
     this.add.text(145, 20, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => { this.audio.toggleMuted(); this.draw() })
@@ -81,15 +84,6 @@ export class SpiderScene extends Phaser.Scene {
     this.createDifficultyButton(635, 66, 1, '一花色')
     this.createDifficultyButton(760, 66, 2, '两花色')
     this.createDifficultyButton(885, 66, 4, '四花色')
-  }
-
-  private createHeaderAction(x: number, label: string, action: () => void, enabled = true, originX = 0.5): void {
-    this.add.text(x, 18, label, {
-      color: enabled ? '#ffd47b' : '#78968a', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: '17px', fontStyle: 'bold'
-    }).setOrigin(originX, 0).setInteractive({ useHandCursor: enabled }).on('pointerup', () => {
-      if (enabled) action()
-    })
   }
 
   private createDifficultyButton(x: number, y: number, suitCount: SpiderSuitCount, label: string): void {
@@ -121,19 +115,20 @@ export class SpiderScene extends Phaser.Scene {
     const remainingDeals = Math.floor(this.state.stock.length / 10)
     if (remainingDeals > 0) {
       const card = this.state.stock[0]
-      if (card) createCardView(this, 900, 88, 76, 82, card, { faceUp: false, onSelect: () => this.deal() })
-      this.add.text(938, 130, String(remainingDeals), {
+      if (card) createCardView(this, 900, 92, 76, 82, card, { faceUp: false, onSelect: () => this.deal() })
+      this.add.text(938, 133, String(remainingDeals), {
         color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px', fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(5)
     } else {
-      createCardSlot(this, 900, 88, 76, 82, '空', () => undefined)
+      createCardSlot(this, 900, 92, 76, 82, '空', () => undefined)
     }
-    this.add.text(938, 66, '发牌', {
+    // 说明文字放牌左侧竖排，避免压在牌背和最后一列牌上
+    this.add.text(888, 104, '发牌', {
       color: '#d7e7df', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
-    }).setOrigin(0.5)
-    this.add.text(938, 148, '每列一张', {
+    }).setOrigin(1, 0.5)
+    this.add.text(888, 128, '每列一张', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '13px'
-    }).setOrigin(0.5)
+    }).setOrigin(1, 0.5)
   }
 
   private drawTableau(): void {
@@ -154,7 +149,7 @@ export class SpiderScene extends Phaser.Scene {
         // 本轮新发的牌从右上牌堆依次飞入，让孩子看清每列到了哪张
         if (dealtLast && cardIndex === column.length - 1 && this.dealingColumns.includes(columnIndex)) {
           const order = this.dealingColumns.indexOf(columnIndex)
-          view.setPosition(900, 88)
+          view.setPosition(900, 92)
           this.tweens.add({
             targets: view,
             x: x + (selected ? 5 : 0),

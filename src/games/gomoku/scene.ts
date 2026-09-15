@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { createHeaderButton } from '../../platform/display/header-button'
 import {
   BOARD_SIZE,
   chooseComputerMove,
@@ -145,10 +146,9 @@ export class GomokuScene extends Phaser.Scene {
       fontSize: compact ? '28px' : '40px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    this.add.text(width - margin, compact ? 16 : 30, '重新开始', {
-      color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: regularSize, fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    createHeaderButton(this, {
+      x: width - margin, y: compact ? 34 : 42, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
 
     const status = `${this.scoreLabel()} · ${this.statusText()}`
     this.add.text(width / 2, compact ? 55 : 88, status, {

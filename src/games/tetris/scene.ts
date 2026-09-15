@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { createHeaderButton } from '../../platform/display/header-button'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   BOARD_HEIGHT,
@@ -238,10 +239,9 @@ export class TetrisScene extends Phaser.Scene {
       fontSize: compact ? '25px' : '36px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    this.add.text(width - margin, compact ? 14 : 28, '重新开始', {
-      color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '17px' : '21px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    createHeaderButton(this, {
+      x: width - margin, y: compact ? 32 : 40, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
 
     if (!compact) {
       // 触屏环境不展示键盘快捷键，改为说明屏幕按钮
