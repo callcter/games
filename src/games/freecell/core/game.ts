@@ -1,0 +1,128 @@
+import { SUITS, createDeck, shuffle, type Card, type RandomSource, type Suit } from '../../cards/core/cards'
+
+export interface FreeCellState {
+  tableau: readonly (readonly Card[])[]
+  freeCells: readonly (Card | null)[]
+  foundations: Readonly<Record<Suit, number>>
+  moves: number
+  won: boolean
+}
+
+export interface MoveResult {
+  state: FreeCellState
+  moved: boolean
+}
+
+export function newGame(random: RandomSource = Math.random): FreeCellState {
+  const tableau: Card[][] = Array.from({ length: 8 }, () => [])
+  shuffle(createDeck(), random).forEach((card, index) => tableau[index % 8]?.push(card))
+  return {
+    tableau,
+    freeCells: [null, null, null, null],
+    foundations: { spades: 0, hearts: 0, clubs: 0, diamonds: 0 },
+    moves: 0,
+    won: false
+  }
+}
+
+export function movableSequenceLength(column: readonly Card[], start: number): number {
+  if (start < 0 || start >= column.length) return 0
+  for (let index = start; index < column.length - 1; index += 1) {
+    const upper = column[index]
+    const lower = column[index + 1]
+    if (!upper || !lower || upper.rank !== lower.rank + 1 || upper.color === lower.color) return 0
+  }
+  return column.length - start
+}
+
+export function moveTableauToTableau(state: FreeCellState, from: number, to: number, count = 1): MoveResult {
+  if (from === to || !isColumn(from) || !isColumn(to)) return unchanged(state)
+  const source = state.tableau[from] ?? []
+  const target = state.tableau[to] ?? []
+  const start = source.length - count
+  if (count < 1 || movableSequenceLength(source, start) !== count) return unchanged(state)
+  if (count > maxMovableCards(state, to)) return unchanged(state)
+  const first = source[start]
+  const targetTop = target.at(-1)
+  if (!first || (targetTop && (targetTop.rank !== first.rank + 1 || targetTop.color === first.color))) return unchanged(state)
+
+  const tableau = state.tableau.map((column) => [...column])
+  const moving = tableau[from]?.splice(start, count) ?? []
+  tableau[to]?.push(...moving)
+  return finishMove(state, { tableau })
+}
+
+export function moveTableauToFreeCell(state: FreeCellState, from: number, freeCell: number): MoveResult {
+  if (!isColumn(from) || !isFreeCell(freeCell) || state.freeCells[freeCell] !== null) return unchanged(state)
+  const tableau = state.tableau.map((column) => [...column])
+  const card = tableau[from]?.pop()
+  if (!card) return unchanged(state)
+  const freeCells = [...state.freeCells]
+  freeCells[freeCell] = card
+  return finishMove(state, { tableau, freeCells })
+}
+
+export function moveFreeCellToTableau(state: FreeCellState, freeCell: number, to: number): MoveResult {
+  if (!isFreeCell(freeCell) || !isColumn(to)) return unchanged(state)
+  const card = state.freeCells[freeCell]
+  if (!card) return unchanged(state)
+  const targetTop = state.tableau[to]?.at(-1)
+  if (targetTop && (targetTop.rank !== card.rank + 1 || targetTop.color === card.color)) return unchanged(state)
+  const tableau = state.tableau.map((column) => [...column])
+  tableau[to]?.push(card)
+  const freeCells = [...state.freeCells]
+  freeCells[freeCell] = null
+  return finishMove(state, { tableau, freeCells })
+}
+
+export function moveTableauToFoundation(state: FreeCellState, from: number): MoveResult {
+  if (!isColumn(from)) return unchanged(state)
+  const tableau = state.tableau.map((column) => [...column])
+  const card = tableau[from]?.at(-1)
+  if (!card || state.foundations[card.suit] + 1 !== card.rank) return unchanged(state)
+  tableau[from]?.pop()
+  return addToFoundation(state, card, { tableau })
+}
+
+export function moveFreeCellToFoundation(state: FreeCellState, freeCell: number): MoveResult {
+  if (!isFreeCell(freeCell)) return unchanged(state)
+  const card = state.freeCells[freeCell]
+  if (!card || state.foundations[card.suit] + 1 !== card.rank) return unchanged(state)
+  const freeCells = [...state.freeCells]
+  freeCells[freeCell] = null
+  return addToFoundation(state, card, { freeCells })
+}
+
+export function maxMovableCards(state: FreeCellState, targetColumn: number): number {
+  const free = state.freeCells.filter((card) => card === null).length
+  const emptyColumns = state.tableau.filter((column, index) => column.length === 0 && index !== targetColumn).length
+  return (free + 1) * 2 ** emptyColumns
+}
+
+function addToFoundation(
+  state: FreeCellState,
+  card: Card,
+  changes: Partial<Pick<FreeCellState, 'tableau' | 'freeCells'>>
+): MoveResult {
+  const foundations = { ...state.foundations, [card.suit]: card.rank }
+  return finishMove(state, { ...changes, foundations })
+}
+
+function finishMove(state: FreeCellState, changes: Partial<FreeCellState>): MoveResult {
+  const next = { ...state, ...changes, moves: state.moves + 1 }
+  const won = SUITS.every((suit) => next.foundations[suit] === 13)
+  return { state: { ...next, won }, moved: true }
+}
+
+function unchanged(state: FreeCellState): MoveResult {
+  return { state, moved: false }
+}
+
+function isColumn(index: number): boolean {
+  return Number.isInteger(index) && index >= 0 && index < 8
+}
+
+function isFreeCell(index: number): boolean {
+  return Number.isInteger(index) && index >= 0 && index < 4
+}
+
