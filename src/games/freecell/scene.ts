@@ -67,12 +67,12 @@ export class FreeCellScene extends Phaser.Scene {
     this.add.text(512, 14, '空当接龙', {
       color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    // 右对齐连续排布：新牌局 / 重开本局 / 撤销 / 提示
+    // 右对齐连续排布：新牌局 / 重开本局 / 撤销 / 提示（y28，与信息行拉开间隙）
     let actionRight = 1000
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '新牌局', onTap: () => this.newDeal() }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 32, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '新牌局', onTap: () => this.newDeal() }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
     this.add.text(145, 22, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
