@@ -119,7 +119,9 @@ pnpm preview
 - 路由使用 `window.location.hash`，不依赖服务端 history fallback；
 - 游戏通过动态 import 拆包，避免大厅首屏加载全部场景；
 - `navigationId` 用于丢弃过期的异步装载结果，新增路由时保持这一防竞态模式；
-- 退出游戏统一设置 `window.location.hash = '/'`。
+- 游戏内退出统一调用大厅的 `goHome()`，通过应用自己的 history state 回到首页；
+- 首页保留退出边界，回退时必须先显示确认，不能直接退回浏览器历史；
+- 不要绕过 `openGame()` / `goHome()` 直接写 hash，否则会破坏回退栈。
 
 ## 6. 交互、动画与声音
 
@@ -216,8 +218,10 @@ git diff --check
 
 - `vite.config.ts` 中 `base: './'` 必须保留，以支持静态目录部署；
 - manifest、图标和 Workbox 预缓存范围由 `vite.config.ts` 管理；
-- Service Worker 使用 prompt 更新：发现新版本后派发 `app-update-available`，由大厅提示用户在
-  退出游戏后更新，禁止在游戏中途强制刷新；
+- Service Worker 使用 prompt 更新：发现新版本后派发 `app-update-available`；游戏中只暂存
+  更新，回到大厅后再提示，禁止在游戏中途强制刷新；
+- 大厅支持手动检查更新；应用启动、恢复前台、重新联网和每小时也会检查一次。应用更新重载
+  后应显示完成提示；
 - 新增本地静态资源时确认其扩展名包含在 `workbox.globPatterns`，否则离线可能缺失；
 - 修改 PWA 名称、颜色、方向或图标后，需要同时检查 Safari“添加到主屏幕”的结果；
 - 不要用普通 HTTP 真机验证 PWA 安装；线上 HTTPS 是最终准绳。
