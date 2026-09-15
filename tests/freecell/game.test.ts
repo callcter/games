@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { createDeck, type Card } from '../../src/games/cards/core/cards'
 import {
   maxMovableCards,
+  microsoftDeal,
   moveFreeCellToTableau,
   moveTableauToFoundation,
   moveTableauToFreeCell,
   moveTableauToTableau,
   movableSequenceLength,
   newGame,
+  newNumberedGame,
+  randomGameNumber,
   restoreGame,
   type FreeCellState
 } from '../../src/games/freecell/core/game'
@@ -71,5 +74,46 @@ describe('freecell rules', () => {
     expect(restoreGame(state)).toEqual(state)
     expect(restoreGame({ ...state, tableau: state.tableau.slice(1) })).toBeNull()
     expect(restoreGame({ ...state, freeCells: [state.tableau[0]?.[0], null, null, null] })).toBeNull()
+  })
+
+  it('deals the classic microsoft game number 1 exactly', () => {
+    const game = newNumberedGame(1)
+    // 公开资料中微软 1 号局：第一列 J♦ K♦ 2♠ 4♣ 3♠ 6♦ 6♠
+    expect(game.gameNumber).toBe(1)
+    expect(game.tableau[0]?.map((item) => `${item.rank}${item.suit}`)).toEqual([
+      '11diamonds', '13diamonds', '2spades', '4clubs', '3spades', '6diamonds', '6spades'
+    ])
+    // 第一行（各列首张）：J♦ 2♦ 9♥ J♣ 5♦ 7♥ 7♣ 5♥
+    expect(game.tableau.map((column) => column[0]!).map((item) => `${item.rank}${item.suit}`)).toEqual([
+      '11diamonds', '2diamonds', '9hearts', '11clubs', '5diamonds', '7hearts', '7clubs', '5hearts'
+    ])
+  })
+
+  it('deals identically for the same game number', () => {
+    expect(microsoftDeal(24)).toEqual(microsoftDeal(24))
+    expect(microsoftDeal(32000)).toHaveLength(52)
+    expect(new Set(microsoftDeal(799).map((item) => `${item.suit}-${item.rank}`)).size).toBe(52)
+  })
+
+  it('rejects game numbers outside the classic range', () => {
+    expect(() => microsoftDeal(0)).toThrow()
+    expect(() => microsoftDeal(32001)).toThrow()
+    expect(() => microsoftDeal(1.5)).toThrow()
+  })
+
+  it('never picks the known unsolvable game when choosing randomly', () => {
+    for (let step = 0; step <= 1000; step += 1) {
+      expect(randomGameNumber(() => step / 1000)).not.toBe(11982)
+    }
+    expect(randomGameNumber(() => 0)).toBe(1)
+    expect(randomGameNumber(() => 0.999999)).toBeLessThanOrEqual(32000)
+  })
+
+  it('keeps restoring saves from before game numbers existed', () => {
+    const legacy = { ...newGame(() => 0.4), gameNumber: undefined }
+    const restored = restoreGame(legacy)
+    expect(restored?.gameNumber).toBe(0)
+    expect(restored?.tableau).toEqual(legacy.tableau)
+    expect(restoreGame({ ...legacy, gameNumber: 32001 })).toBeNull()
   })
 })

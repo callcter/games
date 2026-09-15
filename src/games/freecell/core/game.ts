@@ -1,4 +1,4 @@
-import { SUITS, createDeck, shuffle, type Card, type RandomSource, type Suit } from '../../cards/core/cards'
+import { SUITS, type Card, type RandomSource, type Suit } from '../../cards/core/cards'
 
 export interface FreeCellState {
   tableau: readonly (readonly Card[])[]
@@ -6,6 +6,8 @@ export interface FreeCellState {
   foundations: Readonly<Record<Suit, number>>
   moves: number
   won: boolean
+  /** 微软经典牌局编号；0 表示旧版随机发牌的存档，无编号 */
+  gameNumber: number
 }
 
 export interface MoveResult {
@@ -13,16 +15,71 @@ export interface MoveResult {
   moved: boolean
 }
 
+/** 微软经典牌局共 32000 局，其中仅 11982 已被证明无解 */
+export const MICROSOFT_GAME_COUNT = 32000
+export const UNSOLVABLE_GAME_NUMBERS = new Set([11982])
+
 export function newGame(random: RandomSource = Math.random): FreeCellState {
+  return newNumberedGame(randomGameNumber(random))
+}
+
+export function newNumberedGame(gameNumber: number): FreeCellState {
   const tableau: Card[][] = Array.from({ length: 8 }, () => [])
-  shuffle(createDeck(), random).forEach((card, index) => tableau[index % 8]?.push(card))
+  microsoftDeal(gameNumber).forEach((card, index) => tableau[index % 8]?.push(card))
   return {
     tableau,
     freeCells: [null, null, null, null],
     foundations: { spades: 0, hearts: 0, clubs: 0, diamonds: 0 },
     moves: 0,
-    won: false
+    won: false,
+    gameNumber
   }
+}
+
+/** 随机挑选一个微软经典局号，跳过已知无解的牌局 */
+export function randomGameNumber(random: RandomSource = Math.random): number {
+  const choices = MICROSOFT_GAME_COUNT - UNSOLVABLE_GAME_NUMBERS.size
+  const raw = Math.floor(normalize(random()) * choices) + 1
+  if (raw >= 11982) return raw + 1
+  return raw
+}
+
+/**
+ * 微软 FreeCell 的经典发牌算法：线性同余序列决定每张牌的位置。
+ * 同一局号在所有平台上得到完全相同的牌局。
+ */
+export function microsoftDeal(gameNumber: number): Card[] {
+  if (!Number.isInteger(gameNumber) || gameNumber < 1 || gameNumber > MICROSOFT_GAME_COUNT) {
+    throw new Error(`牌局编号必须是 1 到 ${MICROSOFT_GAME_COUNT} 之间的整数`)
+  }
+  let seed = gameNumber
+  const rand = (): number => {
+    seed = (seed * 214013 + 2531011) % 2147483648
+    return Math.floor(seed / 65536)
+  }
+  const remaining = Array.from({ length: 52 }, (_, index) => index)
+  const dealt: Card[] = []
+  for (let index = 0; index < 52; index += 1) {
+    const left = remaining.length
+    const choice = rand() % left
+    const value = remaining[choice]
+    if (value === undefined) throw new Error('发牌过程出现空位，实现有误')
+    dealt.push(toCard(value))
+    remaining[choice] = remaining[left - 1]!
+    remaining.pop()
+  }
+  return dealt
+}
+
+function toCard(value: number): Card {
+  const suit = (['clubs', 'diamonds', 'hearts', 'spades'] as const)[value % 4]!
+  const rank = Math.floor(value / 4) + 1
+  return { id: `0-${suit}-${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black' }
+}
+
+function normalize(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.min(value, 0.999999999999))
 }
 
 export function movableSequenceLength(column: readonly Card[], start: number): number {
@@ -106,6 +163,8 @@ export function restoreGame(value: unknown): FreeCellState | null {
   if (!Array.isArray(candidate.freeCells) || candidate.freeCells.length !== 4) return null
   if (!candidate.foundations || typeof candidate.foundations !== 'object') return null
   if (!Number.isInteger(candidate.moves) || (candidate.moves ?? -1) < 0 || typeof candidate.won !== 'boolean') return null
+  const gameNumber = candidate.gameNumber ?? 0
+  if (!Number.isInteger(gameNumber) || gameNumber < 0 || gameNumber > MICROSOFT_GAME_COUNT) return null
 
   const foundations = candidate.foundations as Record<string, unknown>
   if (!SUITS.every((suit) => Number.isInteger(foundations[suit]) && Number(foundations[suit]) >= 0 && Number(foundations[suit]) <= 13)) return null
@@ -127,7 +186,8 @@ export function restoreGame(value: unknown): FreeCellState | null {
     freeCells: candidate.freeCells.map((card) => card ? { ...card } : null),
     foundations: Object.fromEntries(SUITS.map((suit) => [suit, Number(foundations[suit])])) as Record<Suit, number>,
     moves: candidate.moves ?? 0,
-    won
+    won,
+    gameNumber
   }
 }
 
