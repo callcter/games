@@ -8,13 +8,15 @@ interface SceneCallbacks {
 
 const SCENE_WIDTH = 768
 const SCENE_HEIGHT = 1024
-const BOWL_LEFT = 104
-const BOWL_RIGHT = 664
+const BOWL_LEFT = 134
+const BOWL_RIGHT = 634
 const BOWL_TOP = 286
 const BOWL_BOTTOM = 912
 const WALL_THICKNESS = 28
 const DANGER_Y = 348
 const DROP_Y = 220
+const TEXTURE_SIZE = 128
+const TEXTURE_RADIUS = 56
 const BEST_SCORE_KEY = 'family-game-room-merge-fruit-best'
 
 type FruitImage = Phaser.Physics.Matter.Image
@@ -100,26 +102,83 @@ export class MergeFruitScene extends Phaser.Scene {
       const key = this.textureKey(level)
       if (this.textures.exists(key)) return
       const graphics = this.add.graphics()
-      graphics.fillStyle(0x000000, 0.13)
-      graphics.fillCircle(67, 69, 56)
-      graphics.fillStyle(fruit.color, 1)
-      graphics.fillCircle(64, 64, 56)
-      graphics.fillStyle(fruit.accent, 0.68)
-      graphics.fillCircle(48, 44, 17)
-      graphics.fillStyle(0x173f35, 0.82)
-      graphics.fillCircle(47, 66, 4)
-      graphics.fillCircle(79, 66, 4)
-      graphics.lineStyle(3, 0x173f35, 0.72)
-      graphics.beginPath()
-      graphics.arc(63, 72, 15, 0.22, Math.PI - 0.22)
-      graphics.strokePath()
-      if (level !== 2 && level !== 7) {
-        graphics.fillStyle(0x4f8d55, 1)
-        graphics.fillEllipse(70, 8, 28, 13)
-      }
-      graphics.generateTexture(key, 128, 128)
+      if (level === 0) this.drawCherryTexture(graphics)
+      else if (level === 1) this.drawStrawberryTexture(graphics)
+      else this.drawRoundFruitTexture(graphics, fruit.color, fruit.accent, level)
+      graphics.generateTexture(key, TEXTURE_SIZE, TEXTURE_SIZE)
       graphics.destroy()
     })
+  }
+
+  private drawCherryTexture(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(6, 0x47764d, 1)
+    graphics.beginPath()
+    graphics.moveTo(41, 52)
+    graphics.lineTo(57, 19)
+    graphics.lineTo(68, 10)
+    graphics.moveTo(84, 52)
+    graphics.lineTo(70, 14)
+    graphics.strokePath()
+    graphics.fillStyle(0x57935a, 1)
+    graphics.fillEllipse(82, 13, 30, 14)
+    graphics.fillStyle(0x000000, 0.14)
+    graphics.fillCircle(44, 79, 32)
+    graphics.fillCircle(87, 79, 32)
+    graphics.fillStyle(0xd83c4b, 1)
+    graphics.fillCircle(41, 76, 31)
+    graphics.fillCircle(84, 76, 31)
+    graphics.fillStyle(0xff8990, 0.78)
+    graphics.fillCircle(31, 66, 8)
+    graphics.fillCircle(74, 66, 8)
+    graphics.fillStyle(0x173f35, 0.82)
+    graphics.fillCircle(34, 78, 3)
+    graphics.fillCircle(48, 78, 3)
+    graphics.lineStyle(2, 0x173f35, 0.72)
+    graphics.beginPath()
+    graphics.arc(41, 82, 8, 0.22, Math.PI - 0.22)
+    graphics.strokePath()
+  }
+
+  private drawStrawberryTexture(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.fillStyle(0x000000, 0.13)
+    graphics.fillCircle(42, 50, 29)
+    graphics.fillCircle(88, 50, 29)
+    graphics.fillTriangle(16, 49, 116, 49, 67, 121)
+    graphics.fillStyle(0xf05a61, 1)
+    graphics.fillCircle(40, 46, 29)
+    graphics.fillCircle(86, 46, 29)
+    graphics.fillTriangle(13, 46, 113, 46, 64, 117)
+    graphics.fillStyle(0xffd66b, 0.95)
+    ;[[31, 55], [96, 55], [40, 78], [88, 80], [63, 95]].forEach(([x, y]) => graphics.fillEllipse(x ?? 0, y ?? 0, 5, 9))
+    graphics.fillStyle(0x4f9558, 1)
+    graphics.fillTriangle(22, 33, 48, 39, 39, 15)
+    graphics.fillTriangle(43, 34, 68, 40, 63, 10)
+    graphics.fillTriangle(66, 39, 99, 31, 82, 14)
+    this.drawFruitFace(graphics, 64, 61)
+  }
+
+  private drawRoundFruitTexture(graphics: Phaser.GameObjects.Graphics, color: number, accent: number, level: number): void {
+    graphics.fillStyle(0x000000, 0.13)
+    graphics.fillCircle(67, 67, TEXTURE_RADIUS)
+    graphics.fillStyle(color, 1)
+    graphics.fillCircle(64, 64, TEXTURE_RADIUS)
+    graphics.fillStyle(accent, 0.68)
+    graphics.fillCircle(46, 43, 17)
+    if (level !== 2 && level !== 7) {
+      graphics.fillStyle(0x4f8d55, 1)
+      graphics.fillEllipse(72, 9, 29, 13)
+    }
+    this.drawFruitFace(graphics, 63, 67)
+  }
+
+  private drawFruitFace(graphics: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    graphics.fillStyle(0x173f35, 0.82)
+    graphics.fillCircle(x - 16, y - 2, 4)
+    graphics.fillCircle(x + 16, y - 2, 4)
+    graphics.lineStyle(3, 0x173f35, 0.72)
+    graphics.beginPath()
+    graphics.arc(x, y + 4, 15, 0.22, Math.PI - 0.22)
+    graphics.strokePath()
   }
 
   private createWorld(): void {
@@ -144,9 +203,17 @@ export class MergeFruitScene extends Phaser.Scene {
     this.scoreText = this.add.text(34, 102, this.scoreLabel(), {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', fontStyle: 'bold'
     })
-    this.nextText = this.add.text(SCENE_WIDTH - 34, 102, '下一个', {
+    const nextBubble = this.add.graphics()
+    nextBubble.fillStyle(0xffffff, 0.52)
+    nextBubble.fillCircle(690, 165, 52)
+    nextBubble.lineStyle(3, 0xd8b276, 0.72)
+    nextBubble.strokeCircle(690, 165, 52)
+    this.add.text(690, 94, '下一个', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '17px', fontStyle: 'bold'
-    }).setOrigin(1, 0)
+    }).setOrigin(0.5, 0)
+    this.nextText = this.add.text(690, 218, '', {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
+    }).setOrigin(0.5, 0)
     this.soundText = this.add.text(34, 142, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
@@ -199,8 +266,9 @@ export class MergeFruitScene extends Phaser.Scene {
   private spawnFruit(x: number, y: number, level: number): FruitImage {
     const fruit = fruitAt(level)
     const image = this.matter.add.image(x, y, this.textureKey(level))
-    image.setCircle(56, { restitution: 0.12, friction: 0.08, frictionAir: 0.006, density: 0.0016 })
-    image.setDisplaySize(fruit.radius * 2, fruit.radius * 2)
+    image.setCircle(TEXTURE_RADIUS, { restitution: 0.12, friction: 0.08, frictionAir: 0.006, density: 0.0016 })
+    const displaySize = this.displaySizeForRadius(fruit.radius)
+    image.setDisplaySize(displaySize, displaySize)
     image.setDataEnabled()
     image.setData('fruitLevel', level)
     image.setData('spawnedAt', this.time.now)
@@ -261,11 +329,13 @@ export class MergeFruitScene extends Phaser.Scene {
     const fromRadius = fruitAt(fromLevel).radius
     const toRadius = fruitAt(toLevel).radius
     const burst = this.add.image(x, y, this.textureKey(toLevel)).setDepth(100)
-    burst.setDisplaySize(fromRadius * 2, fromRadius * 2)
+    const fromSize = this.displaySizeForRadius(fromRadius)
+    const toSize = this.displaySizeForRadius(toRadius)
+    burst.setDisplaySize(fromSize, fromSize)
     this.tweens.add({
       targets: burst,
-      displayWidth: toRadius * 2.18,
-      displayHeight: toRadius * 2.18,
+      displayWidth: toSize * 1.09,
+      displayHeight: toSize * 1.09,
       duration: 170,
       ease: 'Back.Out',
       onComplete: () => {
@@ -290,11 +360,13 @@ export class MergeFruitScene extends Phaser.Scene {
     this.nextPreview?.destroy()
     const current = fruitAt(this.currentLevel)
     this.preview = this.add.image(this.guideX, DROP_Y, this.textureKey(this.currentLevel)).setDepth(20)
-    this.preview.setDisplaySize(current.radius * 2, current.radius * 2)
+    const currentSize = this.displaySizeForRadius(current.radius)
+    this.preview.setDisplaySize(currentSize, currentSize)
     const next = fruitAt(this.nextLevel)
-    this.nextPreview = this.add.image(SCENE_WIDTH - 58, 170, this.textureKey(this.nextLevel)).setDepth(20)
-    this.nextPreview.setDisplaySize(next.radius * 1.35, next.radius * 1.35)
-    this.nextText?.setText(`下一个 · ${next.name}`)
+    this.nextPreview = this.add.image(690, 165, this.textureKey(this.nextLevel)).setDepth(20)
+    const nextSize = Phaser.Math.Clamp(this.displaySizeForRadius(next.radius), 42, 76)
+    this.nextPreview.setDisplaySize(nextSize, nextSize)
+    this.nextText?.setText(next.name)
   }
 
   private drawDangerLine(active: boolean): void {
@@ -366,7 +438,11 @@ export class MergeFruitScene extends Phaser.Scene {
   }
 
   private textureKey(level: number): string {
-    return `fruit-${level}`
+    return `fruit-v2-${level}`
+  }
+
+  private displaySizeForRadius(radius: number): number {
+    return radius * 2 * TEXTURE_SIZE / (TEXTURE_RADIUS * 2)
   }
 }
 
