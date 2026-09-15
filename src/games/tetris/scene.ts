@@ -1,0 +1,344 @@
+import Phaser from 'phaser'
+import type { GameAudio } from '../../platform/audio/game-audio'
+import {
+  BOARD_HEIGHT,
+  BOARD_WIDTH,
+  ghostRow,
+  hardDrop,
+  moveHorizontal,
+  newGame,
+  pieceCells,
+  rotatePiece,
+  softDrop,
+  tick,
+  type ActionResult,
+  type ActivePiece,
+  type PieceType
+} from './core/game'
+
+interface SceneCallbacks {
+  onExit: () => void
+}
+
+interface BoardGeometry {
+  x: number
+  y: number
+  width: number
+  height: number
+  cellSize: number
+}
+
+const PIECE_COLORS: Record<PieceType, number> = {
+  I: 0x57c9d8,
+  J: 0x5576c9,
+  L: 0xe79845,
+  O: 0xe5c84f,
+  S: 0x70b86d,
+  T: 0xa66eb7,
+  Z: 0xd96659
+}
+
+const BEST_SCORE_KEY = 'family-game-room-tetris-best'
+
+export class TetrisScene extends Phaser.Scene {
+  private state = newGame()
+  private paused = false
+  private dropTimer: Phaser.Time.TimerEvent | null = null
+  private bestScore = readBestScore()
+  private lineFlash = 0
+  private readonly audio: GameAudio
+  private readonly callbacks: SceneCallbacks
+
+  constructor(audio: GameAudio, callbacks: SceneCallbacks) {
+    super({ key: 'tetris' })
+    this.audio = audio
+    this.callbacks = callbacks
+  }
+
+  create(): void {
+    this.input.on('pointerdown', () => void this.audio.unlock())
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      void this.audio.unlock()
+      this.handleKey(event)
+    })
+    this.scale.on('resize', () => this.draw())
+    this.scheduleDrop()
+    this.draw()
+  }
+
+  private handleKey(event: KeyboardEvent): void {
+    if (event.key.toLowerCase() === 'p') {
+      this.togglePause()
+      return
+    }
+    if (this.paused || this.state.gameOver) return
+
+    const actions: Partial<Record<string, () => void>> = {
+      ArrowLeft: () => this.apply(moveHorizontal(this.state, -1), 'move'),
+      ArrowRight: () => this.apply(moveHorizontal(this.state, 1), 'move'),
+      ArrowDown: () => this.apply(softDrop(this.state), 'soft'),
+      ArrowUp: () => this.apply(rotatePiece(this.state), 'move'),
+      z: () => this.apply(rotatePiece(this.state, -1), 'move'),
+      Z: () => this.apply(rotatePiece(this.state, -1), 'move'),
+      x: () => this.apply(rotatePiece(this.state), 'move'),
+      X: () => this.apply(rotatePiece(this.state), 'move'),
+      ' ': () => this.apply(hardDrop(this.state), 'drop')
+    }
+    const action = actions[event.key]
+    if (!action) return
+    event.preventDefault()
+    action()
+  }
+
+  private apply(result: ActionResult, sound: 'move' | 'soft' | 'drop' | 'tick'): void {
+    if (!result.changed) return
+    const previousLevel = this.state.level
+    const wasGameOver = this.state.gameOver
+    this.state = result.state
+    this.bestScore = Math.max(this.bestScore, this.state.score)
+    writeBestScore(this.bestScore)
+
+    if (result.clearedLines > 0) {
+      this.lineFlash = result.clearedLines
+      this.audio.playMerge()
+    } else if (result.locked || sound === 'drop') {
+      this.audio.playPlace(1)
+    } else if (sound === 'move') {
+      this.audio.playMove()
+    }
+    if (!wasGameOver && this.state.gameOver) this.audio.playGameOver()
+    if (this.state.level !== previousLevel) this.scheduleDrop()
+    this.draw()
+  }
+
+  private scheduleDrop(): void {
+    this.dropTimer?.destroy()
+    const delay = Math.max(110, 820 - (this.state.level - 1) * 65)
+    this.dropTimer = this.time.addEvent({
+      delay,
+      loop: true,
+      callback: () => {
+        if (!this.paused && !this.state.gameOver) this.apply(tick(this.state), 'tick')
+      }
+    })
+  }
+
+  private togglePause(): void {
+    if (this.state.gameOver) return
+    this.paused = !this.paused
+    this.draw()
+  }
+
+  private restart(): void {
+    this.state = newGame()
+    this.paused = false
+    this.lineFlash = 0
+    this.audio.playRestart()
+    this.scheduleDrop()
+    this.draw()
+  }
+
+  private draw(): void {
+    this.tweens.killAll()
+    this.children.removeAll(true)
+    const width = this.scale.width
+    const height = this.scale.height
+    const compact = height < 650
+    const margin = Math.max(12, Math.min(26, width * 0.03))
+    const headerHeight = compact ? 74 : 112
+    const controlsHeight = compact ? 68 : 92
+    const maxBoardHeight = Math.min(780, height - headerHeight - controlsHeight - margin)
+    const panelWidth = width >= 650 ? Math.min(190, width * 0.22) : 0
+    const gap = panelWidth > 0 ? margin : 0
+    const boardHeight = Math.min(maxBoardHeight, (width - margin * 2 - panelWidth - gap) * 2)
+    const boardWidth = boardHeight / 2
+    const groupWidth = boardWidth + panelWidth + gap
+    const boardX = (width - groupWidth) / 2
+    const boardY = headerHeight
+    const geometry: BoardGeometry = {
+      x: boardX,
+      y: boardY,
+      width: boardWidth,
+      height: boardHeight,
+      cellSize: boardWidth / BOARD_WIDTH
+    }
+
+    this.cameras.main.setBackgroundColor('#f8f1df')
+    this.drawHeader(width, compact, margin)
+    this.drawBoard(geometry)
+    if (panelWidth > 0) this.drawSidePanel(boardX + boardWidth + gap, boardY, panelWidth, compact)
+    this.drawControls(width, boardY + boardHeight, compact)
+    if (this.lineFlash > 0) this.drawLineFlash(geometry)
+    if (this.paused || this.state.gameOver) this.drawOverlay(geometry)
+    this.lineFlash = 0
+  }
+
+  private drawHeader(width: number, compact: boolean, margin: number): void {
+    this.add.text(margin, compact ? 14 : 28, '‹ 游戏屋', {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: compact ? '18px' : '22px', fontStyle: 'bold'
+    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
+
+    this.add.text(width / 2, compact ? 15 : 27, '俄罗斯方块', {
+      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: compact ? '25px' : '36px', fontStyle: 'bold'
+    }).setOrigin(0.5, 0)
+
+    this.add.text(width - margin, compact ? 14 : 28, '重新开始', {
+      color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: compact ? '17px' : '21px', fontStyle: 'bold'
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+
+    if (!compact) {
+      this.add.text(width / 2, 76, '方向键移动 · ↑ 旋转 · 空格直落 · P 暂停', {
+        color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px'
+      }).setOrigin(0.5, 0)
+    }
+  }
+
+  private drawBoard(geometry: BoardGeometry): void {
+    const { x, y, width, height, cellSize } = geometry
+    const graphics = this.add.graphics()
+    graphics.fillStyle(0x173f35, 1)
+    graphics.fillRoundedRect(x - 5, y - 5, width + 10, height + 10, 10)
+    graphics.fillStyle(0x223f3a, 1)
+    graphics.fillRect(x, y, width, height)
+
+    graphics.lineStyle(1, 0xffffff, 0.055)
+    for (let column = 1; column < BOARD_WIDTH; column += 1) {
+      graphics.lineBetween(x + column * cellSize, y, x + column * cellSize, y + height)
+    }
+    for (let row = 1; row < BOARD_HEIGHT; row += 1) {
+      graphics.lineBetween(x, y + row * cellSize, x + width, y + row * cellSize)
+    }
+
+    this.state.board.forEach((cell, index) => {
+      if (!cell) return
+      this.drawBlock(
+        x + (index % BOARD_WIDTH) * cellSize,
+        y + Math.floor(index / BOARD_WIDTH) * cellSize,
+        cellSize,
+        PIECE_COLORS[cell],
+        1
+      )
+    })
+
+    const ghost: ActivePiece = { ...this.state.active, row: ghostRow(this.state) }
+    pieceCells(ghost).forEach((cell) => {
+      if (cell.row >= 0) this.drawBlock(x + cell.column * cellSize, y + cell.row * cellSize, cellSize, PIECE_COLORS[ghost.type], 0.2)
+    })
+    pieceCells(this.state.active).forEach((cell) => {
+      if (cell.row >= 0) this.drawBlock(x + cell.column * cellSize, y + cell.row * cellSize, cellSize, PIECE_COLORS[this.state.active.type], 1)
+    })
+  }
+
+  private drawBlock(x: number, y: number, size: number, color: number, alpha: number): void {
+    const block = this.add.graphics()
+    block.fillStyle(color, alpha)
+    block.fillRoundedRect(x + 1.5, y + 1.5, size - 3, size - 3, Math.max(2, size * 0.1))
+    block.lineStyle(Math.max(1, size * 0.055), 0xffffff, alpha * 0.28)
+    block.lineBetween(x + size * 0.16, y + size * 0.18, x + size * 0.78, y + size * 0.18)
+  }
+
+  private drawSidePanel(x: number, y: number, width: number, compact: boolean): void {
+    const fontSize = compact ? '15px' : '18px'
+    this.add.text(x, y, `得分\n${this.state.score}\n\n最高\n${this.bestScore}\n\n消行\n${this.state.lines}\n\n等级\n${this.state.level}`, {
+      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize, fontStyle: 'bold', lineSpacing: compact ? 3 : 6
+    })
+
+    this.add.text(x, y + (compact ? 250 : 330), '下一个', {
+      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
+    })
+    const previewSize = Math.min(28, width / 5)
+    pieceCells({ type: this.state.nextType, rotation: 0, row: 0, column: 0 }).forEach((cell) => {
+      this.drawBlock(x + cell.column * previewSize, y + (compact ? 275 : 365) + cell.row * previewSize, previewSize, PIECE_COLORS[this.state.nextType], 1)
+    })
+
+    this.add.text(x, y + (compact ? 350 : 480), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
+      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
+    }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      this.audio.toggleMuted()
+      this.draw()
+    })
+  }
+
+  private drawControls(width: number, boardBottom: number, compact: boolean): void {
+    const labels = [
+      { text: '↺', action: () => this.apply(rotatePiece(this.state, -1), 'move') },
+      { text: '←', action: () => this.apply(moveHorizontal(this.state, -1), 'move') },
+      { text: '↓', action: () => this.apply(softDrop(this.state), 'soft') },
+      { text: '→', action: () => this.apply(moveHorizontal(this.state, 1), 'move') },
+      { text: '落', action: () => this.apply(hardDrop(this.state), 'drop') },
+      { text: this.paused ? '继续' : '暂停', action: () => this.togglePause() }
+    ]
+    const gap = compact ? 7 : 10
+    const buttonWidth = Math.min(compact ? 62 : 76, (width - gap * (labels.length + 1)) / labels.length)
+    const buttonHeight = compact ? 46 : 56
+    const totalWidth = labels.length * buttonWidth + (labels.length - 1) * gap
+    const startX = (width - totalWidth) / 2
+    const y = boardBottom + (compact ? 11 : 18)
+
+    labels.forEach((button, index) => {
+      const container = this.add.container(startX + index * (buttonWidth + gap), y)
+      const background = new Phaser.GameObjects.Graphics(this)
+      background.fillStyle(0xffffff, 0.9)
+      background.fillRoundedRect(0, 0, buttonWidth, buttonHeight, 13)
+      const label = new Phaser.GameObjects.Text(this, buttonWidth / 2, buttonHeight / 2, button.text, {
+        color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+        fontSize: compact ? '18px' : '22px', fontStyle: 'bold'
+      }).setOrigin(0.5)
+      container.add([background, label])
+      container.setSize(buttonWidth, buttonHeight).setInteractive({ useHandCursor: true })
+        .on('pointerup', () => {
+          if (!this.paused || button.text === '继续' || button.text === '暂停') button.action()
+        })
+    })
+  }
+
+  private drawLineFlash(geometry: BoardGeometry): void {
+    const message = this.add.text(geometry.x + geometry.width / 2, geometry.y + geometry.height * 0.55, `消除 ${this.lineFlash} 行！`, {
+      color: '#fff7c7', backgroundColor: '#cb6544',
+      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '24px', fontStyle: 'bold',
+      padding: { x: 18, y: 10 }
+    }).setOrigin(0.5)
+    message.setScale(0.7)
+    this.tweens.add({ targets: message, scale: 1.08, alpha: 0, y: message.y - 45, duration: 650, ease: 'Back.Out' })
+  }
+
+  private drawOverlay(geometry: BoardGeometry): void {
+    const panel = this.add.container(geometry.x + geometry.width / 2, geometry.y + geometry.height / 2)
+    const background = new Phaser.GameObjects.Graphics(this)
+    background.fillStyle(0x173f35, 0.9)
+    background.fillRoundedRect(-geometry.width * 0.42, -72, geometry.width * 0.84, 144, 20)
+    const title = new Phaser.GameObjects.Text(this, 0, -25, this.state.gameOver ? '游戏结束' : '暂停一下', {
+      color: '#fffaf0', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: `${Math.max(24, geometry.width * 0.095)}px`, fontStyle: 'bold'
+    }).setOrigin(0.5)
+    const action = new Phaser.GameObjects.Text(this, 0, 30, this.state.gameOver ? '再来一局' : '继续游戏', {
+      color: '#173f35', backgroundColor: '#f8f1df',
+      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '17px', fontStyle: 'bold',
+      padding: { x: 18, y: 9 }
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+      .on('pointerup', () => this.state.gameOver ? this.restart() : this.togglePause())
+    panel.add([background, title, action])
+  }
+}
+
+function readBestScore(): number {
+  try {
+    const value = Number(window.localStorage.getItem(BEST_SCORE_KEY))
+    return Number.isFinite(value) && value >= 0 ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+function writeBestScore(score: number): void {
+  try {
+    window.localStorage.setItem(BEST_SCORE_KEY, String(score))
+  } catch {
+    // 隐私模式下可能无法保存最高分，不影响当前游戏。
+  }
+}

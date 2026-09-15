@@ -1,7 +1,7 @@
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
   { id: 'gomoku', title: '五子棋', symbol: '●○', ready: true },
-  { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: false },
+  { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: true },
   { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: false }
 ] as const
 
@@ -45,6 +45,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector<HTMLButtonElement>('[data-game="gomoku"]')?.addEventListener('click', () => {
       window.location.hash = '/gomoku'
     })
+    root.querySelector<HTMLButtonElement>('[data-game="tetris"]')?.addEventListener('click', () => {
+      window.location.hash = '/tetris'
+    })
   }
 
   const show2048 = async (): Promise<void> => {
@@ -77,9 +80,25 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showTetris = async (): Promise<void> => {
+    const currentNavigation = ++navigationId
+    activeGame?.destroy()
+    activeGame = null
+    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在整理方块…</p><div class="game-host"></div></main>'
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mountTetris } = await import('../games/tetris')
+    if (currentNavigation !== navigationId) return
+    activeGame = await mountTetris(host, () => {
+      window.location.hash = '/'
+    })
+    root.querySelector('.game-loading')?.remove()
+  }
+
   const route = (): void => {
     if (window.location.hash === '#/2048') void show2048()
     else if (window.location.hash === '#/gomoku') void showGomoku()
+    else if (window.location.hash === '#/tetris') void showTetris()
     else showHome()
   }
 
