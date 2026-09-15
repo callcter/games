@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import { FRUIT_LEVELS, fruitAt, mergeFruits, randomDropLevel } from './core/game'
 
 interface SceneCallbacks {
@@ -232,7 +233,9 @@ export class MergeFruitScene extends Phaser.Scene {
     this.dangerGraphics = this.add.graphics()
     this.drawDangerLine(false)
 
-    this.add.text(SCENE_WIDTH / 2, 952, '轻点位置投放 · Mac 可用 ← → 移动，空格投放', {
+    // 触屏环境不提示键盘投放方式
+    const dropHint = hasPrecisePointer() ? '轻点位置投放 · 也可用 ← → 移动，空格投放' : '轻点位置投放'
+    this.add.text(SCENE_WIDTH / 2, 952, dropHint, {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5)
   }

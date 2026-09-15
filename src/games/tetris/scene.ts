@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -241,7 +242,11 @@ export class TetrisScene extends Phaser.Scene {
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
 
     if (!compact) {
-      this.add.text(width / 2, 76, '方向键移动 · ↑/Z 旋转 · C 暂存 · 空格直落 · P 暂停', {
+      // 触屏环境不展示键盘快捷键，改为说明屏幕按钮
+      const hint = hasPrecisePointer()
+        ? '方向键移动 · ↑/Z 旋转 · C 暂存 · 空格直落 · P 暂停'
+        : '点下方按钮移动、旋转方块'
+      this.add.text(width / 2, 76, hint, {
         color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px'
       }).setOrigin(0.5, 0)
     }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   chordCell,
   newGame,
@@ -150,7 +151,9 @@ export class MinesweeperScene extends Phaser.Scene {
       this.mode = 'flag'
       this.draw()
     })
-    this.add.text(384, 224, '点数字可展开周围 · Mac 也可右键插旗', {
+    // 触屏环境不提示右键操作
+    const hint = hasPrecisePointer() ? '点数字可展开周围 · 也可右键插旗' : '点数字可展开周围'
+    this.add.text(384, 212, hint, {
       color: '#766f63', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5)
   }
