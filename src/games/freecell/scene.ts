@@ -126,7 +126,7 @@ export class FreeCellScene extends Phaser.Scene {
         const selected = this.selection?.kind === 'tableau'
           && this.selection.column === columnIndex
           && cardIndex >= this.selection.start
-        createCardView(this, x, TABLEAU_Y + cardIndex * overlap, CARD_WIDTH, CARD_HEIGHT, card, {
+        createCardView(this, x + (selected ? 6 : 0), TABLEAU_Y + cardIndex * overlap, CARD_WIDTH, CARD_HEIGHT, card, {
           selected,
           onSelect: () => this.selectTableau(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
@@ -135,18 +135,28 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private selectTableau(column: number, start: number): void {
-    this.hintMessage = '先点牌，再点目标位置'
     if (this.selection) {
       if (this.selection.kind === 'tableau' && this.selection.column === column) {
-        this.targetFoundation()
+        if (this.selection.start === start) {
+          this.selection = null
+          this.hintMessage = '已取消选中'
+          this.draw()
+          return
+        }
       } else {
         this.targetTableau(column)
+        return
       }
-      return
     }
     const cards = this.state.tableau[column] ?? []
     const count = movableSequenceLength(cards, start)
-    if (count > 0) this.selection = { kind: 'tableau', column, start, count }
+    if (count > 0) {
+      this.selection = { kind: 'tableau', column, start, count }
+      this.hintMessage = count > 1 ? `已选中 ${count} 张，点另一列移动` : '已选中 1 张，点目标位置'
+    } else {
+      this.selection = null
+      this.hintMessage = '只能从红黑交替、逐张递减的牌开始选'
+    }
     this.draw()
   }
 
@@ -156,7 +166,10 @@ export class FreeCellScene extends Phaser.Scene {
       this.targetFreeCell(index)
       return
     }
-    if (this.state.freeCells[index]) this.selection = { kind: 'freecell', index }
+    if (this.state.freeCells[index]) {
+      this.selection = { kind: 'freecell', index }
+      this.hintMessage = '已选中 1 张，点目标位置'
+    }
     this.draw()
   }
 

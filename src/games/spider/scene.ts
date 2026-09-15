@@ -140,7 +140,7 @@ export class SpiderScene extends Phaser.Scene {
       column.forEach((item, cardIndex) => {
         const y = TABLEAU_Y + cardIndex * overlap
         const selected = this.selection?.column === columnIndex && cardIndex >= this.selection.start
-        createCardView(this, x, y, CARD_WIDTH, CARD_HEIGHT, item.card, {
+        createCardView(this, x + (selected ? 5 : 0), y, CARD_WIDTH, CARD_HEIGHT, item.card, {
           faceUp: item.faceUp,
           selected,
           onSelect: () => this.selectCard(columnIndex, cardIndex)
@@ -152,11 +152,24 @@ export class SpiderScene extends Phaser.Scene {
   private selectCard(column: number, start: number): void {
     this.hintMessage = ''
     if (this.selection) {
-      this.targetColumn(column)
-      return
+      if (this.selection.column !== column) {
+        this.targetColumn(column)
+        return
+      }
+      if (this.selection.start === start) {
+        this.selection = null
+        this.hintMessage = '已取消选中'
+        this.draw()
+        return
+      }
     }
-    if (movableSequenceLength(this.state.tableau[column] ?? [], start) > 0) {
+    const count = movableSequenceLength(this.state.tableau[column] ?? [], start)
+    if (count > 0) {
       this.selection = { column, start }
+      this.hintMessage = count > 1 ? `已选中 ${count} 张，点另一列移动` : '已选中 1 张，点目标列'
+    } else {
+      this.selection = null
+      this.hintMessage = '只能移动同花色、逐张递减的明牌'
     }
     this.draw()
   }
