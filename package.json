@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && vitest run --passWithNoTests && vite build"
+    "check": "tsc --noEmit && vitest run --passWithNoTests && vite build",
+    "deploy": "pnpm run build && scp -P 1991 -r dist/* ubuntu@101.42.50.27:/home/www/games"
   },
   "dependencies": {
     "phaser": "4.2.1",
