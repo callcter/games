@@ -6,11 +6,15 @@ import {
   moveSequence,
   movableSequenceLength,
   newGame,
+  type SpiderSuitCount,
   type SpiderMoveResult,
   type SpiderState
 } from './core/game'
 
-interface SceneCallbacks { onExit: () => void }
+interface SceneCallbacks {
+  onExit: () => void
+  onStateChange: (state: SpiderState, initialDeal: SpiderState) => void
+}
 interface Selection { column: number; start: number }
 
 const CARD_WIDTH = 82
@@ -20,16 +24,21 @@ const COLUMN_GAP = 18
 const TABLEAU_Y = 185
 
 export class SpiderScene extends Phaser.Scene {
-  private state: SpiderState = newGame()
+  private state: SpiderState
+  private initialDeal: SpiderState
+  private history: SpiderState[] = []
   private selection: Selection | null = null
+  private hintMessage = ''
   private completedFlash = 0
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
-  constructor(audio: GameAudio, callbacks: SceneCallbacks) {
+  constructor(audio: GameAudio, callbacks: SceneCallbacks, initialState = newGame(), initialDeal = initialState) {
     super({ key: 'spider' })
     this.audio = audio
     this.callbacks = callbacks
+    this.state = initialState
+    this.initialDeal = initialDeal
   }
 
   create(): void {
@@ -57,15 +66,37 @@ export class SpiderScene extends Phaser.Scene {
     this.add.text(512, 12, '蜘蛛纸牌', {
       color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.add.text(1000, 18, '新游戏', {
-      color: '#ffd47b', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    this.createHeaderAction(690, '提示', () => this.showHint())
+    this.createHeaderAction(780, '撤销', () => this.undo(), this.history.length > 0)
+    this.createHeaderAction(890, '重开本局', () => this.restartDeal())
+    this.createHeaderAction(1000, '新牌局', () => this.newDeal(), true, 1)
     this.add.text(145, 20, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => { this.audio.toggleMuted(); this.draw() })
-    this.add.text(512, 57, `一花色 · 得分 ${this.state.score} · 移动 ${this.state.moves} 次`, {
+    this.add.text(300, 57, `得分 ${this.state.score} · 移动 ${this.state.moves} 次${this.hintMessage ? ` · ${this.hintMessage}` : ''}`, {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5, 0)
+    this.createDifficultyButton(635, 66, 1, '一花色')
+    this.createDifficultyButton(760, 66, 2, '两花色')
+    this.createDifficultyButton(885, 66, 4, '四花色')
+  }
+
+  private createHeaderAction(x: number, label: string, action: () => void, enabled = true, originX = 0.5): void {
+    this.add.text(x, 18, label, {
+      color: enabled ? '#ffd47b' : '#78968a', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: '17px', fontStyle: 'bold'
+    }).setOrigin(originX, 0).setInteractive({ useHandCursor: enabled }).on('pointerup', () => {
+      if (enabled) action()
+    })
+  }
+
+  private createDifficultyButton(x: number, y: number, suitCount: SpiderSuitCount, label: string): void {
+    const active = this.state.suitCount === suitCount
+    this.add.text(x, y, label, {
+      color: active ? '#173f35' : '#d7e7df', backgroundColor: active ? '#ffd47b' : '#527267',
+      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '14px', fontStyle: 'bold',
+      padding: { x: 10, y: 5 }
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.changeDifficulty(suitCount))
   }
 
   private drawCompletedRuns(): void {
@@ -119,6 +150,7 @@ export class SpiderScene extends Phaser.Scene {
   }
 
   private selectCard(column: number, start: number): void {
+    this.hintMessage = ''
     if (this.selection) {
       this.targetColumn(column)
       return
@@ -145,7 +177,10 @@ export class SpiderScene extends Phaser.Scene {
 
   private finish(result: SpiderMoveResult): void {
     if (result.moved) {
+      this.history.push(this.state)
       this.state = result.state
+      this.hintMessage = ''
+      this.callbacks.onStateChange(this.state, this.initialDeal)
       this.audio.playPlace(2)
       if (result.completed > 0) {
         this.completedFlash = result.completed
@@ -157,10 +192,71 @@ export class SpiderScene extends Phaser.Scene {
     this.draw()
   }
 
-  private restart(): void {
-    this.state = newGame()
+  private undo(): void {
+    const previous = this.history.pop()
+    if (!previous) return
+    this.state = previous
     this.selection = null
+    this.hintMessage = '已撤销'
+    this.callbacks.onStateChange(this.state, this.initialDeal)
+    this.audio.playMove()
+    this.draw()
+  }
+
+  private restartDeal(): void {
+    this.state = this.initialDeal
+    this.history = []
+    this.selection = null
+    this.hintMessage = '已重开同一牌局'
+    this.callbacks.onStateChange(this.state, this.initialDeal)
     this.audio.playRestart()
+    this.draw()
+  }
+
+  private newDeal(suitCount = this.state.suitCount): void {
+    this.state = newGame(suitCount)
+    this.initialDeal = this.state
+    this.history = []
+    this.selection = null
+    this.hintMessage = ''
+    this.callbacks.onStateChange(this.state, this.initialDeal)
+    this.audio.playRestart()
+    this.draw()
+  }
+
+  private changeDifficulty(suitCount: SpiderSuitCount): void {
+    if (suitCount !== this.state.suitCount) this.newDeal(suitCount)
+  }
+
+  private showHint(): void {
+    let fallback: { selection: Selection; target: number } | null = null
+    for (let column = 0; column < this.state.tableau.length; column += 1) {
+      const cards = this.state.tableau[column] ?? []
+      for (let start = 0; start < cards.length; start += 1) {
+        if (movableSequenceLength(cards, start) === 0) continue
+        for (let target = 0; target < this.state.tableau.length; target += 1) {
+          if (!moveSequence(this.state, column, start, target).moved) continue
+          const suggestion = { selection: { column, start }, target }
+          if (start > 0 && !cards[start - 1]?.faceUp) {
+            this.selection = suggestion.selection
+            this.hintMessage = `移到第 ${target + 1} 列，翻开一张牌`
+            this.draw()
+            return
+          }
+          fallback ??= suggestion
+        }
+      }
+    }
+    if (fallback) {
+      this.selection = fallback.selection
+      this.hintMessage = `试试移到第 ${fallback.target + 1} 列`
+    } else if (this.state.stock.length >= 10 && this.state.tableau.every((column) => column.length > 0)) {
+      this.selection = null
+      this.hintMessage = '可以点右上角牌堆发牌'
+    } else {
+      this.selection = null
+      this.hintMessage = '先填满空列，再继续发牌'
+    }
     this.draw()
   }
 
@@ -184,8 +280,7 @@ export class SpiderScene extends Phaser.Scene {
     const button = new Phaser.GameObjects.Text(this, 0, 38, '再玩一局', {
       color: '#fffaf0', backgroundColor: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: '20px', fontStyle: 'bold', padding: { x: 22, y: 11 }
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.newDeal())
     panel.add([background, title, button])
   }
 }
-

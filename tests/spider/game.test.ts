@@ -5,6 +5,7 @@ import {
   moveSequence,
   movableSequenceLength,
   newGame,
+  restoreGame,
   type SpiderCard,
   type SpiderState
 } from '../../src/games/spider/core/game'
@@ -15,6 +16,7 @@ const up = (rank: number, copy = 0): SpiderCard => ({ card: card(rank, copy), fa
 
 function state(tableau: SpiderCard[][], stock: Card[] = []): SpiderState {
   return {
+    suitCount: 1,
     tableau: [...tableau, ...Array.from({ length: 10 - tableau.length }, () => [])],
     stock,
     completedRuns: 0,
@@ -26,7 +28,7 @@ function state(tableau: SpiderCard[][], stock: Card[] = []): SpiderState {
 
 describe('spider rules', () => {
   it('deals 54 cards and keeps 50 cards in stock', () => {
-    const game = newGame(() => 0.5)
+    const game = newGame(1, () => 0.5)
     expect(game.tableau.flat()).toHaveLength(54)
     expect(game.stock).toHaveLength(50)
     expect(game.tableau.map((column) => column.length)).toEqual([6, 6, 6, 6, 5, 5, 5, 5, 5, 5])
@@ -36,6 +38,17 @@ describe('spider rules', () => {
   it('only moves a face-up descending sequence', () => {
     expect(movableSequenceLength([up(8), up(7), up(6)], 0)).toBe(3)
     expect(movableSequenceLength([{ ...up(8), faceUp: false }, up(7)], 0)).toBe(0)
+  })
+
+  it('offers one, two, and four suit deals', () => {
+    expect(new Set(newGame(1, () => 0.4).tableau.flat().map((item) => item.card.suit))).toEqual(new Set(['spades']))
+    expect(new Set(newGame(2, () => 0.4).tableau.flat().map((item) => item.card.suit))).toEqual(new Set(['spades', 'hearts']))
+    expect(new Set(newGame(4, () => 0.4).tableau.flat().map((item) => item.card.suit))).toEqual(new Set(['spades', 'hearts', 'clubs', 'diamonds']))
+  })
+
+  it('only moves same-suit descending sequences', () => {
+    const heartSeven = createDeck().find((item) => item.rank === 7 && item.suit === 'hearts')!
+    expect(movableSequenceLength([up(8), { card: heartSeven, faceUp: true }], 0)).toBe(0)
   })
 
   it('moves a sequence onto the next higher rank and flips the source', () => {
@@ -67,5 +80,11 @@ describe('spider rules', () => {
     expect(result.completed).toBe(1)
     expect(result.state.completedRuns).toBe(1)
     expect(result.state.tableau[0]).toEqual([])
+  })
+
+  it('restores valid saves and rejects incomplete decks', () => {
+    const game = newGame(2, () => 0.4)
+    expect(restoreGame(game)).toEqual(game)
+    expect(restoreGame({ ...game, stock: game.stock.slice(1) })).toBeNull()
   })
 })
