@@ -73,6 +73,11 @@ export class GameAudio {
     this.playEffect(260, 420, 0.2, 0.14, 'triangle')
   }
 
+  playPlace(player: 1 | 2): void {
+    const frequency = player === 1 ? 180 : 260
+    this.playEffect(frequency, frequency * 0.82, 0.1, 0.14, 'sine')
+  }
+
   dispose(): void {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     if (this.musicTimer !== null) window.clearInterval(this.musicTimer)

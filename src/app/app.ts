@@ -1,6 +1,6 @@
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
-  { id: 'gomoku', title: '五子棋', symbol: '●○', ready: false },
+  { id: 'gomoku', title: '五子棋', symbol: '●○', ready: true },
   { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: false },
   { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: false }
 ] as const
@@ -42,6 +42,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector<HTMLButtonElement>('[data-game="2048"]')?.addEventListener('click', () => {
       window.location.hash = '/2048'
     })
+    root.querySelector<HTMLButtonElement>('[data-game="gomoku"]')?.addEventListener('click', () => {
+      window.location.hash = '/gomoku'
+    })
   }
 
   const show2048 = async (): Promise<void> => {
@@ -59,8 +62,24 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showGomoku = async (): Promise<void> => {
+    const currentNavigation = ++navigationId
+    activeGame?.destroy()
+    activeGame = null
+    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在摆好棋盘…</p><div class="game-host"></div></main>'
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mountGomoku } = await import('../games/gomoku')
+    if (currentNavigation !== navigationId) return
+    activeGame = await mountGomoku(host, () => {
+      window.location.hash = '/'
+    })
+    root.querySelector('.game-loading')?.remove()
+  }
+
   const route = (): void => {
     if (window.location.hash === '#/2048') void show2048()
+    else if (window.location.hash === '#/gomoku') void showGomoku()
     else showHome()
   }
 
