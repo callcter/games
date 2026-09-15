@@ -76,7 +76,8 @@ export class FreeCellScene extends Phaser.Scene {
       this.audio.toggleMuted()
       this.draw()
     })
-    this.add.text(512, 60, `移动 ${this.state.moves} 次 · ${this.hintMessage}`, {
+    const gameLabel = this.state.gameNumber > 0 ? `第 ${this.state.gameNumber} 局 · ` : ''
+    this.add.text(512, 60, `${gameLabel}移动 ${this.state.moves} 次 · ${this.hintMessage}`, {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5, 0)
   }
@@ -281,7 +282,8 @@ export class FreeCellScene extends Phaser.Scene {
     const background = new Phaser.GameObjects.Graphics(this)
     background.fillStyle(0xfffdf6, 0.97)
     background.fillRoundedRect(-220, -100, 440, 200, 28)
-    const title = new Phaser.GameObjects.Text(this, 0, -42, '全部回家啦！', {
+    const titleText = this.state.gameNumber > 0 ? `第 ${this.state.gameNumber} 局完成！` : '全部回家啦！'
+    const title = new Phaser.GameObjects.Text(this, 0, -42, titleText, {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5)
     const button = new Phaser.GameObjects.Text(this, 0, 38, '再玩一局', {
