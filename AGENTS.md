@@ -73,6 +73,7 @@ pnpm preview
 │   │       └── scene.ts         # 绘制、输入、音效和场景调度
 │   ├── platform/
 │   │   ├── audio/               # WebAudio 程序化音乐与音效
+│   │   ├── display/             # 游戏宿主视口测量
 │   │   └── storage/             # IndexedDB 存档封装
 │   └── main.ts                  # 应用启动与 PWA 更新事件
 ├── tests/<game>/                # 与 core 对应的规则测试
@@ -108,6 +109,10 @@ pnpm preview
 - Phaser 场景内使用逻辑坐标，依靠 `Phaser.Scale.FIT` 和 `CENTER_BOTH` 适配屏幕；
 - 空当接龙/蜘蛛纸牌使用横屏逻辑尺寸 `1024×768`；合成水果/扫雷使用竖屏 `768×1024`；
   其他游戏当前随容器尺寸启动。修改方向或尺寸前要同时验证 iPad 横竖屏。
+- 固定比例游戏在反方向仍须完整可玩，并在画布留白区显示非阻塞的方向建议；不得强制旋转或
+  因设备旋转重开棋局；
+- `RESIZE` 游戏的 Canvas 显示尺寸必须跟随 `.game-host`。Phaser 复用 Canvas 时可能保留上一
+  个 `FIT` 游戏的内联尺寸，不能移除 `data-preferred-orientation="any"` 对应的 CSS 覆盖。
 
 ### 5.3 路由与异步装载
 
@@ -191,7 +196,7 @@ pnpm check
 git diff --check
 ```
 
-当前基线为 7 个测试文件、48 个测试。新增行为应增加测试，而不是为了维持数字删减覆盖。
+当前基线为 8 个测试文件、50 个测试。新增行为应增加测试，而不是为了维持数字删减覆盖。
 
 ### 10.2 浏览器验收
 

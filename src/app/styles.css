@@ -131,12 +131,55 @@ button { font: inherit; }
 
 .game-host canvas { display: block; }
 
+/* Phaser 会复用 Canvas；从 FIT 游戏返回后可能残留上一局的内联显示尺寸。 */
+.game-screen[data-preferred-orientation="any"] .game-host canvas {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
 .game-loading {
   position: absolute;
   inset: 50% auto auto 50%;
   margin: 0;
   color: #527267;
   transform: translate(-50%, -50%);
+}
+
+.orientation-hint {
+  position: fixed;
+  z-index: 10;
+  display: none;
+  max-width: 180px;
+  padding: 10px 15px;
+  border: 1px solid rgb(23 63 53 / 14%);
+  border-radius: 999px;
+  color: #527267;
+  background: rgb(255 253 246 / 92%);
+  box-shadow: 0 8px 24px rgb(56 72 49 / 10%);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (orientation: portrait) {
+  .game-screen[data-preferred-orientation="landscape"] .orientation-hint {
+    top: calc(116px + env(safe-area-inset-top));
+    left: 50%;
+    display: block;
+    transform: translateX(-50%);
+  }
+}
+
+@media (orientation: landscape) {
+  .game-screen[data-preferred-orientation="portrait"] .orientation-hint {
+    top: 50%;
+    right: max(24px, env(safe-area-inset-right));
+    display: block;
+    transform: translateY(-50%);
+  }
 }
 
 @media (max-width: 560px) {
@@ -149,4 +192,12 @@ button { font: inherit; }
   .hero { margin-bottom: 20px; }
   .hero h1 { font-size: 2.7rem; }
   .game-card { min-height: 150px; }
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .app-shell { padding-top: calc(28px + env(safe-area-inset-top)); }
+  .hero { margin-bottom: 24px; }
+  .hero h1 { font-size: 3.25rem; }
+  .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .game-card { min-height: 174px; padding: 20px; border-radius: 25px; }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GameAudio } from '../../platform/audio/game-audio'
+import { measureGameViewport } from '../../platform/display/game-viewport'
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
 import { newGame, restoreGame, type Game2048State } from './core/game'
 import { Game2048Scene } from './scene'
@@ -20,6 +21,7 @@ export async function mount2048(container: HTMLElement, onExit: () => void): Pro
   const initialState = restoreSavedState(savedValue) ?? newGame()
   let game: Phaser.Game | null = null
   const audio = new GameAudio()
+  const viewport = measureGameViewport(container)
 
   const scene = new Game2048Scene(initialState, audio, {
     onExit: () => onExit(),
@@ -32,8 +34,8 @@ export async function mount2048(container: HTMLElement, onExit: () => void): Pro
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: container,
-    width: container.clientWidth,
-    height: container.clientHeight,
+    width: viewport.width,
+    height: viewport.height,
     backgroundColor: '#f8f1df',
     scene,
     scale: {

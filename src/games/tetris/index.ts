@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GameAudio } from '../../platform/audio/game-audio'
+import { measureGameViewport } from '../../platform/display/game-viewport'
 import { TetrisScene } from './scene'
 
 export interface MountedGame {
@@ -10,12 +11,13 @@ export async function mountTetris(container: HTMLElement, onExit: () => void): P
   const audio = new GameAudio()
   let game: Phaser.Game | null = null
   const scene = new TetrisScene(audio, { onExit })
+  const viewport = measureGameViewport(container)
 
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: container,
-    width: container.clientWidth,
-    height: container.clientHeight,
+    width: viewport.width,
+    height: viewport.height,
     backgroundColor: '#f8f1df',
     scene,
     scale: {
@@ -36,4 +38,3 @@ export async function mountTetris(container: HTMLElement, onExit: () => void): P
     }
   }
 }
-

@@ -8,6 +8,23 @@ const games = [
   { id: 'minesweeper', title: '扫雷', symbol: '✹⚑', ready: true }
 ] as const
 
+type PreferredOrientation = 'any' | 'portrait' | 'landscape'
+
+function gameScreenMarkup(loadingText: string, preferredOrientation: PreferredOrientation = 'any'): string {
+  const hint = preferredOrientation === 'landscape'
+    ? '横过来，牌会更大'
+    : preferredOrientation === 'portrait'
+      ? '竖过来，棋盘会更大'
+      : ''
+  return `
+    <main class="game-screen" data-preferred-orientation="${preferredOrientation}">
+      <p class="game-loading">${loadingText}</p>
+      <div class="game-host"></div>
+      ${hint ? `<p class="orientation-hint" role="status">↻ ${hint}</p>` : ''}
+    </main>
+  `
+}
+
 export function renderApp(root: HTMLDivElement | null): void {
   if (!root) throw new Error('找不到应用挂载节点')
 
@@ -69,14 +86,19 @@ export function renderApp(root: HTMLDivElement | null): void {
     const currentNavigation = ++navigationId
     activeGame?.destroy()
     activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在摆好棋盘…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('正在摆好棋盘…')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mount2048 } = await import('../games/game-2048')
     if (currentNavigation !== navigationId) return
-    activeGame = await mount2048(host, () => {
+    const mountedGame = await mount2048(host, () => {
       window.location.hash = '/'
     })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
@@ -84,14 +106,19 @@ export function renderApp(root: HTMLDivElement | null): void {
     const currentNavigation = ++navigationId
     activeGame?.destroy()
     activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在摆好棋盘…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('正在摆好棋盘…')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mountGomoku } = await import('../games/gomoku')
     if (currentNavigation !== navigationId) return
-    activeGame = await mountGomoku(host, () => {
+    const mountedGame = await mountGomoku(host, () => {
       window.location.hash = '/'
     })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
@@ -99,14 +126,19 @@ export function renderApp(root: HTMLDivElement | null): void {
     const currentNavigation = ++navigationId
     activeGame?.destroy()
     activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在整理方块…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('正在整理方块…')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mountTetris } = await import('../games/tetris')
     if (currentNavigation !== navigationId) return
-    activeGame = await mountTetris(host, () => {
+    const mountedGame = await mountTetris(host, () => {
       window.location.hash = '/'
     })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
@@ -114,38 +146,53 @@ export function renderApp(root: HTMLDivElement | null): void {
     const currentNavigation = ++navigationId
     activeGame?.destroy()
     activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在洗水果…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('正在洗水果…', 'portrait')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mountMergeFruit } = await import('../games/merge-fruit')
     if (currentNavigation !== navigationId) return
-    activeGame = await mountMergeFruit(host, () => {
+    const mountedGame = await mountMergeFruit(host, () => {
       window.location.hash = '/'
     })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
   const showFreeCell = async (): Promise<void> => {
     const currentNavigation = ++navigationId
     activeGame?.destroy(); activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在洗牌…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('正在洗牌…', 'landscape')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mountFreeCell } = await import('../games/freecell')
     if (currentNavigation !== navigationId) return
-    activeGame = await mountFreeCell(host, () => { window.location.hash = '/' })
+    const mountedGame = await mountFreeCell(host, () => { window.location.hash = '/' })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
   const showSpider = async (): Promise<void> => {
     const currentNavigation = ++navigationId
     activeGame?.destroy(); activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">蜘蛛正在发牌…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('蜘蛛正在发牌…', 'landscape')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mountSpider } = await import('../games/spider')
     if (currentNavigation !== navigationId) return
-    activeGame = await mountSpider(host, () => { window.location.hash = '/' })
+    const mountedGame = await mountSpider(host, () => { window.location.hash = '/' })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
@@ -153,12 +200,17 @@ export function renderApp(root: HTMLDivElement | null): void {
     const currentNavigation = ++navigationId
     activeGame?.destroy()
     activeGame = null
-    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在埋好地雷…</p><div class="game-host"></div></main>'
+    root.innerHTML = gameScreenMarkup('正在埋好地雷…', 'portrait')
     const host = root.querySelector<HTMLDivElement>('.game-host')
     if (!host) return
     const { mountMinesweeper } = await import('../games/minesweeper')
     if (currentNavigation !== navigationId) return
-    activeGame = await mountMinesweeper(host, () => { window.location.hash = '/' })
+    const mountedGame = await mountMinesweeper(host, () => { window.location.hash = '/' })
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
     root.querySelector('.game-loading')?.remove()
   }
 
