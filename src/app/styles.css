@@ -52,7 +52,7 @@ button { font: inherit; }
 
 .app-actions {
   display: flex;
-  min-height: 34px;
+  min-height: 44px;
   margin-top: 14px;
   align-items: center;
   gap: 12px;
@@ -61,16 +61,16 @@ button { font: inherit; }
 .check-update {
   border: 1px solid rgb(23 63 53 / 18%);
   border-radius: 999px;
-  padding: 7px 13px;
+  padding: 10px 18px;
   color: #527267;
   background: rgb(255 253 246 / 82%);
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 800;
 }
 
 .update-status {
   color: #698379;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
 }
 
 .game-grid {
@@ -99,7 +99,7 @@ button { font: inherit; }
 .game-card:disabled { cursor: default; opacity: 0.58; }
 .game-card__symbol { font-size: 3.2rem; line-height: 1; }
 .game-card__title { margin-top: auto; font-size: 1.55rem; font-weight: 800; }
-.game-card__status { margin-top: 3px; color: #698379; font-size: 0.9rem; }
+.game-card__status { margin-top: 4px; color: #698379; font-size: 1rem; }
 
 .update-toast,
 .updated-toast,
@@ -266,6 +266,7 @@ button { font: inherit; }
   .app-shell { padding-top: calc(28px + env(safe-area-inset-top)); }
   .hero { margin-bottom: 24px; }
   .hero h1 { font-size: 3.25rem; }
-  .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .game-card { min-height: 174px; padding: 20px; border-radius: 25px; }
+  /* 7 张卡在 4 列下会剩 4+3，用 flex 居中让末行 3 张不悬在左侧 */
+  .game-grid { display: flex; flex-wrap: wrap; justify-content: center; }
+  .game-card { width: calc((100% - 3 * 18px) / 4); min-height: 174px; padding: 20px; border-radius: 25px; }
 }
