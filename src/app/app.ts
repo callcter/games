@@ -3,7 +3,8 @@ const games = [
   { id: 'gomoku', title: '五子棋', symbol: '●○', ready: true },
   { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: true },
   { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: true },
-  { id: 'freecell', title: '空当接龙', symbol: '♠♥', ready: true }
+  { id: 'freecell', title: '空当接龙', symbol: '♠♥', ready: true },
+  { id: 'spider', title: '蜘蛛纸牌', symbol: '🕷♠', ready: true }
 ] as const
 
 export function renderApp(root: HTMLDivElement | null): void {
@@ -54,6 +55,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     })
     root.querySelector<HTMLButtonElement>('[data-game="freecell"]')?.addEventListener('click', () => {
       window.location.hash = '/freecell'
+    })
+    root.querySelector<HTMLButtonElement>('[data-game="spider"]')?.addEventListener('click', () => {
+      window.location.hash = '/spider'
     })
   }
 
@@ -129,12 +133,25 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showSpider = async (): Promise<void> => {
+    const currentNavigation = ++navigationId
+    activeGame?.destroy(); activeGame = null
+    root.innerHTML = '<main class="game-screen"><p class="game-loading">蜘蛛正在发牌…</p><div class="game-host"></div></main>'
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mountSpider } = await import('../games/spider')
+    if (currentNavigation !== navigationId) return
+    activeGame = await mountSpider(host, () => { window.location.hash = '/' })
+    root.querySelector('.game-loading')?.remove()
+  }
+
   const route = (): void => {
     if (window.location.hash === '#/2048') void show2048()
     else if (window.location.hash === '#/gomoku') void showGomoku()
     else if (window.location.hash === '#/tetris') void showTetris()
     else if (window.location.hash === '#/merge-fruit') void showMergeFruit()
     else if (window.location.hash === '#/freecell') void showFreeCell()
+    else if (window.location.hash === '#/spider') void showSpider()
     else showHome()
   }
 
