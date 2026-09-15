@@ -8,6 +8,7 @@ import {
   moveTableauToTableau,
   movableSequenceLength,
   newGame,
+  restoreGame,
   type FreeCellState
 } from '../../src/games/freecell/core/game'
 
@@ -63,5 +64,12 @@ describe('freecell rules', () => {
   it('calculates multi-card capacity from free cells and empty columns', () => {
     const game = state([[card(8, 'clubs')], [card(9, 'hearts')]])
     expect(maxMovableCards(game, 1)).toBe(320)
+  })
+
+  it('restores a valid game and rejects malformed saves', () => {
+    const state = newGame(() => 0.4)
+    expect(restoreGame(state)).toEqual(state)
+    expect(restoreGame({ ...state, tableau: state.tableau.slice(1) })).toBeNull()
+    expect(restoreGame({ ...state, freeCells: [state.tableau[0]?.[0], null, null, null] })).toBeNull()
   })
 })

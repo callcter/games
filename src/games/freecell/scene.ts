@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createCardSlot, createCardView } from '../cards/card-view'
-import { SUITS, suitSymbol, type Suit } from '../cards/core/cards'
+import { SUITS, rankLabel, suitSymbol, type Suit } from '../cards/core/cards'
 import {
   moveFreeCellToFoundation,
   moveFreeCellToTableau,
@@ -14,7 +14,10 @@ import {
   type MoveResult
 } from './core/game'
 
-interface SceneCallbacks { onExit: () => void }
+interface SceneCallbacks {
+  onExit: () => void
+  onStateChange: (state: FreeCellState, initialDeal: FreeCellState) => void
+}
 type Selection =
   | { kind: 'tableau'; column: number; start: number; count: number }
   | { kind: 'freecell'; index: number }
@@ -26,15 +29,20 @@ const TABLEAU_X = 35
 const TABLEAU_Y = 238
 
 export class FreeCellScene extends Phaser.Scene {
-  private state: FreeCellState = newGame()
+  private state: FreeCellState
+  private initialDeal: FreeCellState
+  private history: FreeCellState[] = []
   private selection: Selection | null = null
+  private hintMessage = '先点牌，再点目标位置'
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
-  constructor(audio: GameAudio, callbacks: SceneCallbacks) {
+  constructor(audio: GameAudio, callbacks: SceneCallbacks, initialState = newGame(), initialDeal = initialState) {
     super({ key: 'freecell' })
     this.audio = audio
     this.callbacks = callbacks
+    this.state = initialState
+    this.initialDeal = initialDeal
   }
 
   create(): void {
@@ -58,18 +66,28 @@ export class FreeCellScene extends Phaser.Scene {
     this.add.text(512, 14, '空当接龙', {
       color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.add.text(1000, 20, '新游戏', {
-      color: '#ffd47b', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    this.createHeaderAction(690, '提示', () => this.showHint())
+    this.createHeaderAction(780, '撤销', () => this.undo(), this.history.length > 0)
+    this.createHeaderAction(890, '重开本局', () => this.restartDeal())
+    this.createHeaderAction(1000, '新牌局', () => this.newDeal(), true, 1)
     this.add.text(145, 22, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
       this.audio.toggleMuted()
       this.draw()
     })
-    this.add.text(512, 60, `移动 ${this.state.moves} 次 · 先点牌，再点目标位置`, {
+    this.add.text(512, 60, `移动 ${this.state.moves} 次 · ${this.hintMessage}`, {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5, 0)
+  }
+
+  private createHeaderAction(x: number, label: string, action: () => void, enabled = true, originX = 0.5): void {
+    this.add.text(x, 20, label, {
+      color: enabled ? '#ffd47b' : '#78968a', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: '17px', fontStyle: 'bold'
+    }).setOrigin(originX, 0).setInteractive({ useHandCursor: enabled }).on('pointerup', () => {
+      if (enabled) action()
+    })
   }
 
   private drawTopSlots(): void {
@@ -117,6 +135,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private selectTableau(column: number, start: number): void {
+    this.hintMessage = '先点牌，再点目标位置'
     if (this.selection) {
       if (this.selection.kind === 'tableau' && this.selection.column === column) {
         this.targetFoundation()
@@ -132,6 +151,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private selectFreeCell(index: number): void {
+    this.hintMessage = '先点牌，再点目标位置'
     if (this.selection) {
       this.targetFreeCell(index)
       return
@@ -163,7 +183,10 @@ export class FreeCellScene extends Phaser.Scene {
 
   private finish(result: MoveResult): void {
     if (result.moved) {
+      this.history.push(this.state)
       this.state = result.state
+      this.hintMessage = '先点牌，再点目标位置'
+      this.callbacks.onStateChange(this.state, this.initialDeal)
       this.audio.playPlace(2)
       if (this.state.won) this.audio.playWin()
     }
@@ -171,10 +194,72 @@ export class FreeCellScene extends Phaser.Scene {
     this.draw()
   }
 
-  private restart(): void {
-    this.state = newGame()
+  private undo(): void {
+    const previous = this.history.pop()
+    if (!previous) return
+    this.state = previous
     this.selection = null
+    this.hintMessage = '已撤销上一步'
+    this.callbacks.onStateChange(this.state, this.initialDeal)
+    this.audio.playMove()
+    this.draw()
+  }
+
+  private restartDeal(): void {
+    this.state = this.initialDeal
+    this.history = []
+    this.selection = null
+    this.hintMessage = '已重开同一牌局'
+    this.callbacks.onStateChange(this.state, this.initialDeal)
     this.audio.playRestart()
+    this.draw()
+  }
+
+  private newDeal(): void {
+    this.state = newGame()
+    this.initialDeal = this.state
+    this.history = []
+    this.selection = null
+    this.hintMessage = '新牌局已发好'
+    this.callbacks.onStateChange(this.state, this.initialDeal)
+    this.audio.playRestart()
+    this.draw()
+  }
+
+  private showHint(): void {
+    for (let index = 0; index < this.state.freeCells.length; index += 1) {
+      const card = this.state.freeCells[index]
+      if (card && moveFreeCellToFoundation(this.state, index).moved) {
+        this.selection = { kind: 'freecell', index }
+        this.hintMessage = `把 ${rankLabel(card.rank)}${suitSymbol(card.suit)} 收到右上角`
+        this.draw()
+        return
+      }
+    }
+    for (let column = 0; column < this.state.tableau.length; column += 1) {
+      const cards = this.state.tableau[column] ?? []
+      const card = cards.at(-1)
+      if (card && moveTableauToFoundation(this.state, column).moved) {
+        this.selection = { kind: 'tableau', column, start: cards.length - 1, count: 1 }
+        this.hintMessage = `把 ${rankLabel(card.rank)}${suitSymbol(card.suit)} 收到右上角`
+        this.draw()
+        return
+      }
+      for (let start = 0; start < cards.length; start += 1) {
+        const count = movableSequenceLength(cards, start)
+        if (count === 0) continue
+        for (let target = 0; target < this.state.tableau.length; target += 1) {
+          if (moveTableauToTableau(this.state, column, target, count).moved) {
+            this.selection = { kind: 'tableau', column, start, count }
+            this.hintMessage = `试试移到第 ${target + 1} 列`
+            this.draw()
+            return
+          }
+        }
+      }
+    }
+    this.selection = null
+    this.hintMessage = '暂时没找到明显步骤，试试利用左上角空当'
     this.draw()
   }
 
@@ -189,7 +274,7 @@ export class FreeCellScene extends Phaser.Scene {
     const button = new Phaser.GameObjects.Text(this, 0, 38, '再玩一局', {
       color: '#fffaf0', backgroundColor: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: '20px', fontStyle: 'bold', padding: { x: 22, y: 11 }
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.newDeal())
     panel.add([background, title, button])
   }
 }

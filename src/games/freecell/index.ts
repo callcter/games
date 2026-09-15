@@ -1,15 +1,39 @@
 import Phaser from 'phaser'
 import { GameAudio } from '../../platform/audio/game-audio'
+import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
+import { newGame, restoreGame, type FreeCellState } from './core/game'
 import { FreeCellScene } from './scene'
 
+const SAVE_KEY = 'freecell-v1'
+
+interface SaveEnvelope {
+  schemaVersion: 1
+  state: FreeCellState
+  initialDeal: FreeCellState
+}
+
 export async function mountFreeCell(container: HTMLElement, onExit: () => void): Promise<{ destroy: () => void }> {
+  const saved = restoreSave(await loadGameSave<unknown>(SAVE_KEY))
+  const initialDeal = saved?.initialDeal ?? newGame()
+  const initialState = saved?.state ?? initialDeal
   const audio = new GameAudio()
   let game: Phaser.Game | null = new Phaser.Game({
     type: Phaser.AUTO, parent: container, width: 1024, height: 768, backgroundColor: '#23614f',
-    scene: new FreeCellScene(audio, { onExit }),
+    scene: new FreeCellScene(audio, {
+      onExit,
+      onStateChange: (state, deal) => void saveGame(SAVE_KEY, { schemaVersion: 1, state, initialDeal: deal } satisfies SaveEnvelope)
+    }, initialState, initialDeal),
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: true }
   })
   return { destroy: () => { game?.destroy(true); game = null; audio.dispose() } }
 }
 
+function restoreSave(value: unknown): SaveEnvelope | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as Partial<SaveEnvelope>
+  if (candidate.schemaVersion !== 1) return null
+  const state = restoreGame(candidate.state)
+  const initialDeal = restoreGame(candidate.initialDeal)
+  return state && initialDeal ? { schemaVersion: 1, state, initialDeal } : null
+}

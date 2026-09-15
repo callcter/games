@@ -99,6 +99,38 @@ export function maxMovableCards(state: FreeCellState, targetColumn: number): num
   return (free + 1) * 2 ** emptyColumns
 }
 
+export function restoreGame(value: unknown): FreeCellState | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as Partial<FreeCellState>
+  if (!Array.isArray(candidate.tableau) || candidate.tableau.length !== 8) return null
+  if (!Array.isArray(candidate.freeCells) || candidate.freeCells.length !== 4) return null
+  if (!candidate.foundations || typeof candidate.foundations !== 'object') return null
+  if (!Number.isInteger(candidate.moves) || (candidate.moves ?? -1) < 0 || typeof candidate.won !== 'boolean') return null
+
+  const foundations = candidate.foundations as Record<string, unknown>
+  if (!SUITS.every((suit) => Number.isInteger(foundations[suit]) && Number(foundations[suit]) >= 0 && Number(foundations[suit]) <= 13)) return null
+  if (!candidate.tableau.every((column) => Array.isArray(column) && column.every(isCard))) return null
+  if (!candidate.freeCells.every((card) => card === null || isCard(card))) return null
+
+  const visibleCards = [...candidate.tableau.flat(), ...candidate.freeCells.filter((card): card is Card => card !== null)]
+  const actual = visibleCards.map((card) => `${card.suit}-${card.rank}`).sort()
+  const expected = SUITS.flatMap((suit) => {
+    const foundationRank = Number(foundations[suit])
+    return Array.from({ length: 13 - foundationRank }, (_, index) => `${suit}-${foundationRank + index + 1}`)
+  }).sort()
+  if (actual.length !== expected.length || actual.some((card, index) => card !== expected[index])) return null
+
+  const won = SUITS.every((suit) => Number(foundations[suit]) === 13)
+  if (candidate.won !== won) return null
+  return {
+    tableau: candidate.tableau.map((column) => column.map((card) => ({ ...card }))),
+    freeCells: candidate.freeCells.map((card) => card ? { ...card } : null),
+    foundations: Object.fromEntries(SUITS.map((suit) => [suit, Number(foundations[suit])])) as Record<Suit, number>,
+    moves: candidate.moves ?? 0,
+    won
+  }
+}
+
 function addToFoundation(
   state: FreeCellState,
   card: Card,
@@ -126,3 +158,13 @@ function isFreeCell(index: number): boolean {
   return Number.isInteger(index) && index >= 0 && index < 4
 }
 
+function isCard(value: unknown): value is Card {
+  if (!value || typeof value !== 'object') return false
+  const card = value as Partial<Card>
+  return typeof card.id === 'string'
+    && SUITS.includes(card.suit as Suit)
+    && Number.isInteger(card.rank)
+    && (card.rank ?? 0) >= 1
+    && (card.rank ?? 0) <= 13
+    && card.color === (card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : 'black')
+}
