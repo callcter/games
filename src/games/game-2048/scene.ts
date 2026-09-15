@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import type { GameAudio } from '../../platform/audio/game-audio'
 import {
   BOARD_SIZE,
   moveGame,
@@ -29,21 +30,27 @@ const TILE_COLORS: Record<number, { background: number; foreground: string }> = 
 
 export class Game2048Scene extends Phaser.Scene {
   private state: Game2048State
+  private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
   private pointerStart: Phaser.Math.Vector2 | null = null
 
-  constructor(state: Game2048State, callbacks: SceneCallbacks) {
+  constructor(state: Game2048State, audio: GameAudio, callbacks: SceneCallbacks) {
     super({ key: 'game-2048' })
     this.state = state
+    this.audio = audio
     this.callbacks = callbacks
   }
 
   create(): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      void this.audio.unlock()
       this.pointerStart = new Phaser.Math.Vector2(pointer.x, pointer.y)
     })
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.handleSwipe(pointer))
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleKey(event))
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      void this.audio.unlock()
+      this.handleKey(event)
+    })
     this.scale.on('resize', () => this.draw())
     this.draw()
   }
@@ -73,20 +80,27 @@ export class Game2048Scene extends Phaser.Scene {
   }
 
   private move(direction: Direction): void {
+    const previous = this.state
     const result = moveGame(this.state, direction)
     if (!result.moved) return
     this.state = result.state
+    if (!previous.won && this.state.won) this.audio.playWin()
+    else if (!previous.gameOver && this.state.gameOver) this.audio.playGameOver()
+    else if (this.state.score > previous.score) this.audio.playMerge()
+    else this.audio.playMove()
     this.callbacks.onStateChange(this.state)
     this.draw()
   }
 
   private restart(): void {
     this.state = newGame(this.state.bestScore)
+    this.audio.playRestart()
     this.callbacks.onStateChange(this.state)
     this.draw()
   }
 
   private draw(): void {
+    this.tweens.killAll()
     this.children.removeAll(true)
     const width = this.scale.width
     const height = this.scale.height
@@ -114,6 +128,14 @@ export class Game2048Scene extends Phaser.Scene {
       fontSize: compact ? '18px' : '21px', fontStyle: 'bold'
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
 
+    this.add.text(margin, compact ? 48 : 76, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
+      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
+    }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      this.audio.toggleMuted()
+      this.draw()
+    })
+
     if (!compact) {
       this.add.text(width / 2, 92, `得分 ${this.state.score}　最高 ${this.state.bestScore}`, {
         color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
@@ -134,24 +156,46 @@ export class Game2048Scene extends Phaser.Scene {
 
     const gap = boardSize * 0.022
     const cellSize = (boardSize - gap * (BOARD_SIZE + 1)) / BOARD_SIZE
+    this.state.board.forEach((_value, index) => {
+      const column = index % BOARD_SIZE
+      const row = Math.floor(index / BOARD_SIZE)
+      const x = boardX + gap + column * (cellSize + gap)
+      const y = boardY + gap + row * (cellSize + gap)
+      graphics.fillStyle(0xc9c1ad, 1)
+      graphics.fillRoundedRect(x, y, cellSize, cellSize, cellSize * 0.09)
+    })
+
     this.state.board.forEach((value, index) => {
+      if (value === 0) return
       const column = index % BOARD_SIZE
       const row = Math.floor(index / BOARD_SIZE)
       const x = boardX + gap + column * (cellSize + gap)
       const y = boardY + gap + row * (cellSize + gap)
       const colors = TILE_COLORS[value] ?? { background: 0x9f5630, foreground: '#fffaf0' }
-      graphics.fillStyle(colors.background, 1)
-      graphics.fillRoundedRect(x, y, cellSize, cellSize, cellSize * 0.09)
+      const tile = this.add.container(x, y)
+      const tileGraphics = new Phaser.GameObjects.Graphics(this)
+      tileGraphics.fillStyle(colors.background, 1)
+      tileGraphics.fillRoundedRect(0, 0, cellSize, cellSize, cellSize * 0.09)
 
-      if (value !== 0) {
-        const digits = String(value).length
-        const fontSize = Math.floor(cellSize * (digits <= 2 ? 0.38 : digits === 3 ? 0.31 : 0.25))
-        this.add.text(x + cellSize / 2, y + cellSize / 2, String(value), {
-          color: colors.foreground,
-          fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-          fontSize: `${fontSize}px`, fontStyle: 'bold'
-        }).setOrigin(0.5)
-      }
+      const digits = String(value).length
+      const fontSize = Math.floor(cellSize * (digits <= 2 ? 0.38 : digits === 3 ? 0.31 : 0.25))
+      const label = new Phaser.GameObjects.Text(this, cellSize / 2, cellSize / 2, String(value), {
+        color: colors.foreground,
+        fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+        fontSize: `${fontSize}px`, fontStyle: 'bold'
+      }).setOrigin(0.5)
+      tile.add([tileGraphics, label])
+      tile.setScale(0.74)
+      tile.setAlpha(0.55)
+      this.tweens.add({
+        targets: tile,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 280,
+        delay: (index % BOARD_SIZE) * 16,
+        ease: 'Back.Out'
+      })
     })
 
     if (this.state.gameOver) this.drawGameOver(boardX, boardY, boardSize)

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GameAudio } from '../../platform/audio/game-audio'
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
 import { newGame, restoreGame, type Game2048State } from './core/game'
 import { Game2048Scene } from './scene'
@@ -18,8 +19,9 @@ export async function mount2048(container: HTMLElement, onExit: () => void): Pro
   const savedValue = await loadGameSave<unknown>(SAVE_KEY)
   const initialState = restoreSavedState(savedValue) ?? newGame()
   let game: Phaser.Game | null = null
+  const audio = new GameAudio()
 
-  const scene = new Game2048Scene(initialState, {
+  const scene = new Game2048Scene(initialState, audio, {
     onExit: () => onExit(),
     onStateChange: (state: Game2048State) => {
       const save: SaveEnvelope = { schemaVersion: 1, state }
@@ -48,6 +50,7 @@ export async function mount2048(container: HTMLElement, onExit: () => void): Pro
     destroy: () => {
       game?.destroy(true)
       game = null
+      audio.dispose()
     }
   }
 }
