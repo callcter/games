@@ -128,3 +128,7 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 - 2026-09-15 应要求切换为手动腾讯云证书；同日切回 Let's Encrypt 自动续期，
   一张 SAN 证书覆盖 dreamser.com + games.dreamser.com，certbot.timer 修复并 dry-run 验证。
 - 2026-09-16 DNSPod 补 www 解析，证书 SAN 扩展为三域名；www 502 事件闭环。
+- 2026-09-16 发布 UX 批量修复（存档超时兜底、触屏文案、底部安全区、五子棋
+  分段按钮与比分、44px 头部药丸、蜘蛛发牌堆排布、大厅横屏居中、蜘蛛头部
+  重叠修复），覆盖空当接龙编号局与蜘蛛发牌动画；发版后验证 HTTPS/证书/
+  缓存头正常，线上 sw.js、workbox 与游戏分包哈希均与本地 dist 一致。
