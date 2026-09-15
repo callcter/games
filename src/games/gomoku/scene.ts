@@ -24,6 +24,7 @@ interface BoardGeometry {
 export class GomokuScene extends Phaser.Scene {
   private state = newGame()
   private mode: GameMode = 'computer'
+  private wins: Record<Player, number> = { 1: 0, 2: 0 }
   private thinking = false
   private animateLastMove = false
   private geometry: BoardGeometry | null = null
@@ -87,8 +88,12 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   private finishTurn(player: Player): void {
-    if (this.state.winner === player) this.audio.playWin()
-    else if (this.state.draw) this.audio.playGameOver()
+    if (this.state.winner === player) {
+      this.wins[player] += 1
+      this.audio.playWin()
+    } else if (this.state.draw) {
+      this.audio.playGameOver()
+    }
   }
 
   private restart(): void {
@@ -99,8 +104,11 @@ export class GomokuScene extends Phaser.Scene {
     this.draw()
   }
 
-  private toggleMode(): void {
-    this.mode = this.mode === 'computer' ? 'two-player' : 'computer'
+  private setMode(mode: GameMode): void {
+    if (this.mode === mode) return
+    this.mode = mode
+    // 模式含义不同（你/电脑 vs 黑/白），切换时清空本局比分
+    this.wins = { 1: 0, 2: 0 }
     this.restart()
   }
 
@@ -142,16 +150,17 @@ export class GomokuScene extends Phaser.Scene {
       fontSize: regularSize, fontStyle: 'bold'
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
 
-    const status = this.statusText()
+    const status = `${this.scoreLabel()} · ${this.statusText()}`
     this.add.text(width / 2, compact ? 55 : 88, status, {
       color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: compact ? '14px' : '18px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    this.add.text(margin, compact ? 52 : 88, this.mode === 'computer' ? '和电脑玩' : '双人对战', {
-      color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '13px' : '16px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => this.toggleMode())
+    const buttonWidth = 100
+    const buttonHeight = compact ? 34 : 36
+    const modeY = compact ? 58 : 92
+    this.createModeButton(margin + buttonWidth / 2, modeY, buttonWidth, buttonHeight, '和电脑玩', this.mode === 'computer', () => this.setMode('computer'))
+    this.createModeButton(margin + buttonWidth * 1.5 + 8, modeY, buttonWidth, buttonHeight, '双人对战', this.mode === 'two-player', () => this.setMode('two-player'))
 
     this.add.text(width - margin, compact ? 52 : 88, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
@@ -160,6 +169,32 @@ export class GomokuScene extends Phaser.Scene {
       this.audio.toggleMuted()
       this.draw()
     })
+  }
+
+  // 与扫雷的难度切换同款分段按钮，让孩子一眼看出当前模式可切换
+  private createModeButton(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    selected: boolean,
+    action: () => void
+  ): void {
+    this.add.rectangle(x, y, width, height, selected ? 0xc65f4b : 0xd8cdbb)
+      .setStrokeStyle(2, selected ? 0xa84b3c : 0xb8aa94)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerup', action)
+    this.add.text(x, y, label, {
+      color: selected ? '#fffaf0' : '#53635d', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
+      fontSize: height > 35 ? '15px' : '13px', fontStyle: 'bold'
+    }).setOrigin(0.5)
+  }
+
+  private scoreLabel(): string {
+    return this.mode === 'computer'
+      ? `你 ${this.wins[1]} : ${this.wins[2]} 电脑`
+      : `黑 ${this.wins[1]} : ${this.wins[2]} 白`
   }
 
   private drawBoard(geometry: BoardGeometry): void {
