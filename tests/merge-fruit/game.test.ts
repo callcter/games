@@ -12,14 +12,24 @@ describe('merge fruit rules', () => {
     expect(mergeFruits(2, 2)).toEqual({ nextLevel: 3, score: scoreForLevel(3) })
   })
 
-  it('does not merge different fruits or two largest fruits', () => {
+  it('does not merge different fruits and clears two largest fruits', () => {
     expect(mergeFruits(2, 3)).toBeNull()
-    expect(mergeFruits(FRUIT_LEVELS.length - 1, FRUIT_LEVELS.length - 1)).toBeNull()
+    expect(mergeFruits(FRUIT_LEVELS.length - 1, FRUIT_LEVELS.length - 1)).toEqual({
+      nextLevel: null,
+      score: 66
+    })
   })
 
-  it('applies an integer chain multiplier', () => {
-    expect(mergeFruits(0, 0, 3)?.score).toBe(scoreForLevel(1) * 3)
-    expect(mergeFruits(0, 0, 0)?.score).toBe(scoreForLevel(1))
+  it('uses the standard triangular merge score without a combo multiplier', () => {
+    expect(mergeFruits(0, 0)?.score).toBe(1)
+    expect(mergeFruits(4, 4)?.score).toBe(15)
+    expect(mergeFruits(9, 9)?.score).toBe(55)
+  })
+
+  it('uses the standard eleven-fruit evolution chain', () => {
+    expect(FRUIT_LEVELS.map((fruit) => fruit.name)).toEqual([
+      '樱桃', '草莓', '葡萄', '凸顶柑', '柿子', '苹果', '梨', '桃子', '菠萝', '蜜瓜', '大西瓜'
+    ])
   })
 
   it('only selects one of the five small drop fruits', () => {
@@ -41,4 +51,3 @@ describe('merge fruit rules', () => {
     expect(() => fruitAt(-1)).toThrow('无效的水果等级')
   })
 })
-

@@ -33,8 +33,6 @@ export class MergeFruitScene extends Phaser.Scene {
   private guideX = SCENE_WIDTH / 2
   private canDrop = true
   private gameOver = false
-  private lastMergeAt = 0
-  private chain = 0
   private preview: Phaser.GameObjects.Image | null = null
   private nextPreview: Phaser.GameObjects.Image | null = null
   private scoreText: Phaser.GameObjects.Text | null = null
@@ -301,10 +299,7 @@ export class MergeFruitScene extends Phaser.Scene {
     this.mergingBodies.delete(secondId)
     if (!first.active || !second.active || this.gameOver) return
 
-    const now = this.time.now
-    this.chain = now - this.lastMergeAt < 650 ? this.chain + 1 : 1
-    this.lastMergeAt = now
-    const result = mergeFruits(level, level, this.chain)
+    const result = mergeFruits(level, level)
     if (!result) return
 
     const x = (first.x + second.x) / 2
@@ -313,9 +308,13 @@ export class MergeFruitScene extends Phaser.Scene {
     const velocityY = Math.min(0, ((first.body?.velocity.y ?? 0) + (second.body?.velocity.y ?? 0)) / 2 - 2.2)
     this.removeFruit(first)
     this.removeFruit(second)
-    const merged = this.spawnFruit(x, y, result.nextLevel)
-    merged.setVelocity(velocityX, velocityY)
-    this.animateMerge(x, y, level, result.nextLevel, merged)
+    if (result.nextLevel === null) {
+      this.animateWatermelonClear(x, y)
+    } else {
+      const merged = this.spawnFruit(x, y, result.nextLevel)
+      merged.setVelocity(velocityX, velocityY)
+      this.animateMerge(x, y, level, result.nextLevel, merged)
+    }
 
     this.score += result.score
     this.bestScore = Math.max(this.bestScore, this.score)
@@ -342,6 +341,21 @@ export class MergeFruitScene extends Phaser.Scene {
         burst.destroy()
         if (merged.active) merged.setAlpha(1)
       }
+    })
+  }
+
+  private animateWatermelonClear(x: number, y: number): void {
+    const ring = this.add.graphics().setDepth(100)
+    ring.lineStyle(10, 0xffd47b, 0.9)
+    ring.strokeCircle(x, y, 72)
+    ring.setScale(0.6)
+    this.tweens.add({
+      targets: ring,
+      scale: 2.2,
+      alpha: 0,
+      duration: 360,
+      ease: 'Cubic.Out',
+      onComplete: () => ring.destroy()
     })
   }
 
@@ -422,8 +436,6 @@ export class MergeFruitScene extends Phaser.Scene {
     this.guideX = SCENE_WIDTH / 2
     this.canDrop = true
     this.gameOver = false
-    this.lastMergeAt = 0
-    this.chain = 0
     this.preview = null
     this.nextPreview = null
     this.scoreText = null
