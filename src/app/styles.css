@@ -50,6 +50,29 @@ button { font: inherit; }
 
 .hero p { margin: 12px 0 0; color: #527267; font-size: 1.1rem; }
 
+.app-actions {
+  display: flex;
+  min-height: 34px;
+  margin-top: 14px;
+  align-items: center;
+  gap: 12px;
+}
+
+.check-update {
+  border: 1px solid rgb(23 63 53 / 18%);
+  border-radius: 999px;
+  padding: 7px 13px;
+  color: #527267;
+  background: rgb(255 253 246 / 82%);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.update-status {
+  color: #698379;
+  font-size: 0.88rem;
+}
+
 .game-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -78,7 +101,9 @@ button { font: inherit; }
 .game-card__title { margin-top: auto; font-size: 1.55rem; font-weight: 800; }
 .game-card__status { margin-top: 3px; color: #698379; font-size: 0.9rem; }
 
-.update-toast {
+.update-toast,
+.updated-toast,
+.exit-help {
   position: fixed;
   right: max(20px, env(safe-area-inset-right));
   bottom: max(20px, env(safe-area-inset-bottom));
@@ -97,7 +122,17 @@ button { font: inherit; }
   gap: 14px;
 }
 
-.update-toast[hidden] { display: none; }
+.updated-toast,
+.exit-help {
+  justify-content: center;
+  text-align: center;
+}
+
+.update-toast[hidden],
+.updated-toast[hidden],
+.exit-help[hidden],
+.exit-confirm[hidden] { display: none; }
+
 .update-toast button {
   border: 0;
   border-radius: 999px;
@@ -106,6 +141,39 @@ button { font: inherit; }
   background: #f8f1df;
   font-weight: 800;
 }
+
+.exit-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  padding: 24px;
+  background: rgb(23 63 53 / 46%);
+  place-items: center;
+}
+
+.exit-confirm__panel {
+  width: min(100%, 420px);
+  padding: 28px;
+  border-radius: 26px;
+  background: #fffdf6;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 24%);
+  text-align: center;
+}
+
+.exit-confirm__panel h2 { margin: 0; font-size: 1.65rem; }
+.exit-confirm__panel p { margin: 12px 0 22px; color: #527267; line-height: 1.55; }
+.exit-confirm__panel div { display: flex; justify-content: center; gap: 12px; }
+.exit-confirm__panel button {
+  min-width: 112px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  color: #173f35;
+  background: #e8e2d3;
+  font-weight: 800;
+}
+.exit-confirm__panel [data-exit-confirm] { color: #fffaf0; background: #cb6544; }
 
 .game-screen,
 .game-host {
