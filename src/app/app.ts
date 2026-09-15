@@ -4,7 +4,8 @@ const games = [
   { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: true },
   { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: true },
   { id: 'freecell', title: '空当接龙', symbol: '♠♥', ready: true },
-  { id: 'spider', title: '蜘蛛纸牌', symbol: '🕷♠', ready: true }
+  { id: 'spider', title: '蜘蛛纸牌', symbol: '🕷♠', ready: true },
+  { id: 'minesweeper', title: '扫雷', symbol: '✹⚑', ready: true }
 ] as const
 
 export function renderApp(root: HTMLDivElement | null): void {
@@ -58,6 +59,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     })
     root.querySelector<HTMLButtonElement>('[data-game="spider"]')?.addEventListener('click', () => {
       window.location.hash = '/spider'
+    })
+    root.querySelector<HTMLButtonElement>('[data-game="minesweeper"]')?.addEventListener('click', () => {
+      window.location.hash = '/minesweeper'
     })
   }
 
@@ -145,6 +149,19 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showMinesweeper = async (): Promise<void> => {
+    const currentNavigation = ++navigationId
+    activeGame?.destroy()
+    activeGame = null
+    root.innerHTML = '<main class="game-screen"><p class="game-loading">正在埋好地雷…</p><div class="game-host"></div></main>'
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mountMinesweeper } = await import('../games/minesweeper')
+    if (currentNavigation !== navigationId) return
+    activeGame = await mountMinesweeper(host, () => { window.location.hash = '/' })
+    root.querySelector('.game-loading')?.remove()
+  }
+
   const route = (): void => {
     if (window.location.hash === '#/2048') void show2048()
     else if (window.location.hash === '#/gomoku') void showGomoku()
@@ -152,6 +169,7 @@ export function renderApp(root: HTMLDivElement | null): void {
     else if (window.location.hash === '#/merge-fruit') void showMergeFruit()
     else if (window.location.hash === '#/freecell') void showFreeCell()
     else if (window.location.hash === '#/spider') void showSpider()
+    else if (window.location.hash === '#/minesweeper') void showMinesweeper()
     else showHome()
   }
 
