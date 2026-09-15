@@ -14,9 +14,9 @@ interface SceneCallbacks { onExit: () => void }
 type PlayMode = 'reveal' | 'flag'
 type Difficulty = 'beginner' | 'intermediate' | 'expert'
 
-const BOARD_SIZE = 704
-const BOARD_X = 32
-const BOARD_Y = 244
+const BOARD_SIZE = 680
+const BOARD_X = 44
+const BOARD_Y = 238
 const NUMBER_COLORS = ['#4264a6', '#31805b', '#c24f46', '#6c4ba0', '#9e3d38', '#237d80', '#463f3a', '#77706a']
 
 export class MinesweeperScene extends Phaser.Scene {
@@ -142,12 +142,13 @@ export class MinesweeperScene extends Phaser.Scene {
   }
 
   private drawControls(): void {
-    const y = 986
-    this.createChoiceButton(220, y, 154, 54, '⛏  挖掘', this.mode === 'reveal', () => {
+    // 底边距保持 34px：避开 iPad 底部上滑 Home 手势区
+    const y = 963
+    this.createChoiceButton(294, y, 154, 54, '⛏  挖掘', this.mode === 'reveal', () => {
       this.mode = 'reveal'
       this.draw()
     })
-    this.createChoiceButton(394, y, 154, 54, '⚑  插旗', this.mode === 'flag', () => {
+    this.createChoiceButton(472, y, 154, 54, '⚑  插旗', this.mode === 'flag', () => {
       this.mode = 'flag'
       this.draw()
     })

@@ -198,8 +198,10 @@ export class TetrisScene extends Phaser.Scene {
     const compact = height < 650
     const margin = Math.max(12, Math.min(26, width * 0.03))
     const headerHeight = compact ? 74 : 112
-    const controlsHeight = compact ? 126 : 150
-    const maxBoardHeight = Math.min(780, height - headerHeight - controlsHeight - margin)
+    const controlsHeight = compact ? 132 : 150
+    // 底部至少留 34px：避开 iPad 底部上滑 Home 手势区
+    const bottomSafe = Math.max(34, margin)
+    const maxBoardHeight = Math.min(780, height - headerHeight - controlsHeight - bottomSafe)
     const panelWidth = width >= 650 ? Math.min(190, width * 0.22) : 0
     const gap = panelWidth > 0 ? margin : 0
     const boardHeight = Math.min(maxBoardHeight, (width - margin * 2 - panelWidth - gap) * 2)
@@ -350,8 +352,8 @@ export class TetrisScene extends Phaser.Scene {
       { text: this.paused ? '继续' : '暂停', action: () => this.togglePause() }
     ]
     const gap = compact ? 8 : 10
-    const buttonHeight = compact ? 50 : 58
-    const rowGap = compact ? 7 : 9
+    const buttonHeight = compact ? 56 : 58
+    const rowGap = compact ? 8 : 9
     const startY = boardBottom + (compact ? 7 : 12)
 
     this.drawControlRow(primary, width, startY, compact ? 112 : 132, buttonHeight, gap, compact)
