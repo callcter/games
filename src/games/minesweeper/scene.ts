@@ -11,7 +11,7 @@ import {
 
 interface SceneCallbacks { onExit: () => void }
 type PlayMode = 'reveal' | 'flag'
-type Difficulty = 'beginner' | 'intermediate'
+type Difficulty = 'beginner' | 'intermediate' | 'expert'
 
 const BOARD_SIZE = 704
 const BOARD_X = 32
@@ -73,12 +73,13 @@ export class MinesweeperScene extends Phaser.Scene {
       this.draw()
     })
 
-    this.createChoiceButton(270, 88, 112, 42, '初级 9×9', this.difficulty === 'beginner', () => this.changeDifficulty('beginner'))
-    this.createChoiceButton(390, 88, 132, 42, '中级 16×16', this.difficulty === 'intermediate', () => this.changeDifficulty('intermediate'))
+    this.createChoiceButton(225, 88, 126, 42, '初级 9×9', this.difficulty === 'beginner', () => this.changeDifficulty('beginner'))
+    this.createChoiceButton(384, 88, 146, 42, '中级 16×16', this.difficulty === 'intermediate', () => this.changeDifficulty('intermediate'))
+    this.createChoiceButton(553, 88, 152, 42, '高级 30×16', this.difficulty === 'expert', () => this.changeDifficulty('expert'))
   }
 
   private drawStatus(): void {
-    this.add.text(36, 158, `⚑ ${Math.max(0, remainingMines(this.state))}`, {
+    this.add.text(36, 158, `⚑ ${remainingMines(this.state)}`, {
       color: '#fffaf0', backgroundColor: '#c65f4b', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: '28px', fontStyle: 'bold', padding: { x: 16, y: 8 }
     })
@@ -93,9 +94,10 @@ export class MinesweeperScene extends Phaser.Scene {
 
   private drawBoard(): void {
     const cellSize = BOARD_SIZE / this.state.width
+    const boardHeight = cellSize * this.state.height
     const frame = this.add.graphics()
     frame.fillStyle(0x9a8e79, 1)
-    frame.fillRoundedRect(BOARD_X - 8, BOARD_Y - 8, BOARD_SIZE + 16, BOARD_SIZE + 16, 12)
+    frame.fillRoundedRect(BOARD_X - 8, BOARD_Y - 8, BOARD_SIZE + 16, boardHeight + 16, 12)
 
     this.state.cells.forEach((cell, index) => {
       const column = index % this.state.width
@@ -202,7 +204,11 @@ export class MinesweeperScene extends Phaser.Scene {
   }
 
   private restart(): void {
-    this.state = this.difficulty === 'beginner' ? newGame(9, 9, 10) : newGame(16, 16, 40)
+    this.state = this.difficulty === 'beginner'
+      ? newGame(9, 9, 10)
+      : this.difficulty === 'intermediate'
+        ? newGame(16, 16, 40)
+        : newGame(30, 16, 99)
     this.elapsedSeconds = 0
     this.mode = 'reveal'
     this.audio.playRestart()

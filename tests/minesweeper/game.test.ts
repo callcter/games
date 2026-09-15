@@ -40,6 +40,21 @@ describe('minesweeper rules', () => {
     expect(toggleFlag(flagged, 3).state.cells[3]?.visibility).toBe('hidden')
   })
 
+  it('does not place more flags than there are mines', () => {
+    let state = newGame(4, 4, 1)
+    state = toggleFlag(state, 0).state
+
+    expect(remainingMines(state)).toBe(0)
+    expect(toggleFlag(state, 1).changed).toBe(false)
+    expect(toggleFlag(state, 0).changed).toBe(true)
+  })
+
+  it('supports the classic expert board', () => {
+    const state = newGame(30, 16, 99)
+    expect(state.cells).toHaveLength(480)
+    expect(state.mineCount).toBe(99)
+  })
+
   it('reveals a connected empty area', () => {
     const result = revealCell(newGame(), 0, () => 0)
     expect(result.state.cells.filter((cell) => cell.visibility === 'revealed').length).toBeGreaterThan(1)
@@ -75,4 +90,3 @@ describe('minesweeper rules', () => {
     expect(result.state.cells[5]?.visibility).toBe('revealed')
   })
 })
-

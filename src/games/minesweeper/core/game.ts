@@ -49,6 +49,7 @@ export function toggleFlag(state: MinesweeperState, index: number): RevealResult
   if (!isIndex(state, index) || state.status === 'won' || state.status === 'lost') return unchanged(state)
   const cell = state.cells[index]
   if (!cell || cell.visibility === 'revealed') return unchanged(state)
+  if (cell.visibility === 'hidden' && remainingMines(state) <= 0) return unchanged(state)
   const cells = state.cells.map((item) => ({ ...item }))
   const target = cells[index]
   if (!target) return unchanged(state)
@@ -162,4 +163,3 @@ function isIndex(state: MinesweeperState, index: number): boolean {
 function unchanged(state: MinesweeperState): RevealResult {
   return { state, changed: false }
 }
-
