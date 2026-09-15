@@ -22,7 +22,8 @@ export async function mountMergeFruit(container: HTMLElement, onExit: () => void
       default: 'matter',
       matter: {
         gravity: { x: 0, y: 1.05 },
-        enableSleeping: true,
+        // 支撑物合并消失后，休眠刚体不会仅凭重力自动醒来，会造成水果悬空。
+        enableSleeping: false,
         debug: false
       }
     },
@@ -44,4 +45,3 @@ export async function mountMergeFruit(container: HTMLElement, onExit: () => void
     }
   }
 }
-
