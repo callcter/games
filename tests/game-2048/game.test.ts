@@ -34,6 +34,7 @@ describe('2048 rules', () => {
     expect(result.board.slice(0, 8)).toEqual([4, 4, 0, 0, 8, 8, 0, 0])
     expect(result.scoreGain).toBe(16)
     expect(result.moved).toBe(true)
+    expect(result.mergedIndices).toEqual([0, 1, 4])
   })
 
   it('moves correctly in vertical and reverse directions', () => {
@@ -56,6 +57,7 @@ describe('2048 rules', () => {
       [4, 0, 0, 4],
       [8, 0, 0, 8]
     ))
+    expect(moveBoard(input, 'down').mergedIndices).toEqual([12, 8, 15, 11])
   })
 
   it('does not spawn a tile after an ineffective move', () => {
@@ -78,6 +80,28 @@ describe('2048 rules', () => {
 
     expect(result.moved).toBe(false)
     expect(result.state).toBe(initial)
+    expect(result.spawnedIndex).toBeNull()
+    expect(result.mergedIndices).toEqual([])
+  })
+
+  it('reports only the new and merged cells for selective animation', () => {
+    const initial = {
+      board: board(
+        [2, 2, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+      ),
+      score: 0,
+      bestScore: 0,
+      gameOver: false,
+      won: false
+    }
+
+    const result = moveGame(initial, 'left', sequence(0, 0))
+
+    expect(result.mergedIndices).toEqual([0])
+    expect(result.spawnedIndex).toBe(1)
   })
 
   it('spawns a four in the selected free cell', () => {

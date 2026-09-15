@@ -16,6 +16,14 @@ export interface MoveResult {
   board: Board
   scoreGain: number
   moved: boolean
+  mergedIndices: readonly number[]
+}
+
+export interface GameMoveResult {
+  state: Game2048State
+  moved: boolean
+  spawnedIndex: number | null
+  mergedIndices: readonly number[]
 }
 
 export type RandomSource = () => number
@@ -31,17 +39,20 @@ export function moveGame(
   state: Game2048State,
   direction: Direction,
   random: RandomSource = Math.random
-): { state: Game2048State; moved: boolean } {
-  if (state.gameOver) return { state, moved: false }
+): GameMoveResult {
+  if (state.gameOver) return { state, moved: false, spawnedIndex: null, mergedIndices: [] }
 
   const result = moveBoard(state.board, direction)
-  if (!result.moved) return { state, moved: false }
+  if (!result.moved) return { state, moved: false, spawnedIndex: null, mergedIndices: [] }
 
-  const board = spawnTile(result.board, random)
+  const spawned = spawnTileWithResult(result.board, random)
+  const board = spawned.board
   const score = state.score + result.scoreGain
 
   return {
     moved: true,
+    spawnedIndex: spawned.spawnedIndex,
+    mergedIndices: result.mergedIndices,
     state: {
       board,
       score,
@@ -56,12 +67,17 @@ export function moveBoard(board: Board, direction: Direction): MoveResult {
   assertBoard(board)
   const next = [...board]
   let scoreGain = 0
+  const mergedIndices: number[] = []
 
   for (let lineIndex = 0; lineIndex < BOARD_SIZE; lineIndex += 1) {
     const indices = lineIndices(direction, lineIndex)
     const line = indices.map((index) => board[index] ?? 0)
     const collapsed = collapseLine(line)
     scoreGain += collapsed.scoreGain
+    collapsed.mergedPositions.forEach((position) => {
+      const mergedIndex = indices[position]
+      if (mergedIndex !== undefined) mergedIndices.push(mergedIndex)
+    })
     indices.forEach((index, position) => {
       next[index] = collapsed.line[position] ?? 0
     })
@@ -70,25 +86,33 @@ export function moveBoard(board: Board, direction: Direction): MoveResult {
   return {
     board: next,
     scoreGain,
-    moved: next.some((tile, index) => tile !== board[index])
+    moved: next.some((tile, index) => tile !== board[index]),
+    mergedIndices
   }
 }
 
 export function spawnTile(board: Board, random: RandomSource = Math.random): Board {
+  return spawnTileWithResult(board, random).board
+}
+
+function spawnTileWithResult(
+  board: Board,
+  random: RandomSource = Math.random
+): { board: Board; spawnedIndex: number | null } {
   assertBoard(board)
   const emptyIndices = board
     .map((tile, index) => (tile === 0 ? index : -1))
     .filter((index) => index >= 0)
 
-  if (emptyIndices.length === 0) return [...board]
+  if (emptyIndices.length === 0) return { board: [...board], spawnedIndex: null }
 
   const choice = Math.min(Math.floor(normalizeRandom(random()) * emptyIndices.length), emptyIndices.length - 1)
   const index = emptyIndices[choice]
-  if (index === undefined) return [...board]
+  if (index === undefined) return { board: [...board], spawnedIndex: null }
 
   const next = [...board]
   next[index] = normalizeRandom(random()) < 0.9 ? 2 : 4
-  return next
+  return { board: next, spawnedIndex: index }
 }
 
 export function hasAvailableMove(board: Board): boolean {
@@ -123,15 +147,21 @@ export function restoreGame(value: unknown): Game2048State | null {
   }
 }
 
-function collapseLine(line: readonly number[]): { line: number[]; scoreGain: number } {
+function collapseLine(line: readonly number[]): {
+  line: number[]
+  scoreGain: number
+  mergedPositions: number[]
+} {
   const values = line.filter((tile) => tile !== 0)
   const merged: number[] = []
+  const mergedPositions: number[] = []
   let scoreGain = 0
 
   for (let index = 0; index < values.length; index += 1) {
     const value = values[index] ?? 0
     if (value !== 0 && value === values[index + 1]) {
       const combined = value * 2
+      mergedPositions.push(merged.length)
       merged.push(combined)
       scoreGain += combined
       index += 1
@@ -141,7 +171,7 @@ function collapseLine(line: readonly number[]): { line: number[]; scoreGain: num
   }
 
   while (merged.length < BOARD_SIZE) merged.push(0)
-  return { line: merged, scoreGain }
+  return { line: merged, scoreGain, mergedPositions }
 }
 
 function lineIndices(direction: Direction, line: number): number[] {
@@ -176,4 +206,3 @@ function normalizeRandom(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(value, 0.999999999999))
 }
-

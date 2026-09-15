@@ -8,6 +8,7 @@ export class GameAudio {
   private effectsGain: GainNode | null = null
   private musicTimer: number | null = null
   private melodyIndex = 0
+  private started = false
   private muted = readMutedPreference()
   private readonly handleVisibilityChange = (): void => {
     if (!this.context) return
@@ -26,8 +27,16 @@ export class GameAudio {
   async unlock(): Promise<void> {
     this.createGraph()
     if (!this.context) return
-    if (this.context.state === 'suspended') await this.context.resume()
-    this.startMusic()
+    try {
+      if (this.context.state !== 'running') await this.context.resume()
+      if (!this.started) {
+        this.started = true
+        this.startMusic()
+        this.playEffect(520, 680, 0.16, 0.14, 'triangle')
+      }
+    } catch (error) {
+      console.warn('浏览器暂时没有允许播放声音。', error)
+    }
   }
 
   toggleMuted(): void {
@@ -42,26 +51,26 @@ export class GameAudio {
   }
 
   playMove(): void {
-    this.playEffect(190, 245, 0.07, 0.035, 'sine')
+    this.playEffect(190, 260, 0.08, 0.12, 'sine')
   }
 
   playMerge(): void {
-    this.playEffect(370, 620, 0.16, 0.075, 'triangle')
+    this.playEffect(370, 660, 0.18, 0.2, 'triangle')
   }
 
   playWin(): void {
     ;[0, 0.11, 0.22].forEach((delay, index) => {
       const notes = [523.25, 659.25, 783.99]
-      this.playEffect(notes[index] ?? 523.25, notes[index] ?? 523.25, 0.28, 0.065, 'triangle', delay)
+      this.playEffect(notes[index] ?? 523.25, notes[index] ?? 523.25, 0.28, 0.16, 'triangle', delay)
     })
   }
 
   playGameOver(): void {
-    this.playEffect(330, 165, 0.45, 0.055, 'sine')
+    this.playEffect(330, 165, 0.45, 0.14, 'sine')
   }
 
   playRestart(): void {
-    this.playEffect(260, 420, 0.2, 0.05, 'triangle')
+    this.playEffect(260, 420, 0.2, 0.14, 'triangle')
   }
 
   dispose(): void {
@@ -78,8 +87,8 @@ export class GameAudio {
     this.masterGain = this.context.createGain()
     this.musicGain = this.context.createGain()
     this.effectsGain = this.context.createGain()
-    this.musicGain.gain.value = 0.16
-    this.effectsGain.gain.value = 0.7
+    this.musicGain.gain.value = 0.34
+    this.effectsGain.gain.value = 1
     this.musicGain.connect(this.masterGain)
     this.effectsGain.connect(this.masterGain)
     this.masterGain.connect(this.context.destination)
@@ -88,7 +97,7 @@ export class GameAudio {
 
   private applyMute(): void {
     if (!this.context || !this.masterGain) return
-    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 0.7, this.context.currentTime, 0.025)
+    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 0.85, this.context.currentTime, 0.025)
   }
 
   private startMusic(): void {
@@ -101,9 +110,9 @@ export class GameAudio {
     if (!this.context || !this.musicGain || this.context.state !== 'running') return
     const frequency = MELODY[this.melodyIndex % MELODY.length] ?? 261.63
     this.melodyIndex += 1
-    this.scheduleTone(frequency, frequency * 0.998, 0.34, 0.055, 'sine', this.musicGain)
+    this.scheduleTone(frequency, frequency * 0.998, 0.34, 0.11, 'sine', this.musicGain)
     if (this.melodyIndex % 4 === 1) {
-      this.scheduleTone(frequency / 2, frequency / 2, 0.7, 0.035, 'triangle', this.musicGain)
+      this.scheduleTone(frequency / 2, frequency / 2, 0.7, 0.065, 'triangle', this.musicGain)
     }
   }
 
