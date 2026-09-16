@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
-import { recordBest } from '../puzzle-kit/progress'
+import { recordRun } from '../puzzle-kit/progress'
 import { crossedEdges, move, newGame, won, type UntangleState } from './core/game'
 export class UntangleScene extends PuzzleScene {
   private count = 5
@@ -9,6 +9,7 @@ export class UntangleScene extends PuzzleScene {
   private history: UntangleState[] = []
   private lines!: Phaser.GameObjects.Graphics
   private dragStart: UntangleState | null = null
+  private assisted = false
   constructor(audio: GameAudio, exit: () => void) { super('untangle', '解绳结', audio, exit) }
   protected start(): void {
     this.input.on('dragstart', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
@@ -27,7 +28,7 @@ export class UntangleScene extends PuzzleScene {
       if (!this.dragStart) return
       this.history.push(this.dragStart); this.dragStart = null
       this.audio.playMove()
-      if (won(this.state)) { this.celebrate('所有绳子都分开啦！'); recordBest(`untangle-${this.count}`, this.state.moves) }
+      if (won(this.state)) this.complete()
     })
     this.draw()
   }
@@ -47,9 +48,10 @@ export class UntangleScene extends PuzzleScene {
     this.button(384,850,'提示位置',() => {
       const i = this.state.points.findIndex((p,i) => Math.hypot(p.x-this.state.target[i]!.x,p.y-this.state.target[i]!.y) > 2)
       if (i < 0) return
+      this.assisted = true
       this.history.push(this.state); this.state = move(this.state,i,this.state.target[i]!); this.draw()
       this.say(`已把 ${i+1} 号点放到一个参考位置`)
-      if (won(this.state)) this.celebrate()
+      if (won(this.state)) this.complete()
     },180,this.content)
     this.button(608,850,'新绳结',() => this.restart(),180,this.content)
   }
@@ -62,5 +64,6 @@ export class UntangleScene extends PuzzleScene {
     })
     this.say(`拖动圆点分开绳子 · ${crossed.size} 条交叉线 · ${this.state.moves} 次移动`)
   }
-  private restart(): void { this.state = newGame(this.count); this.history = []; this.draw() }
+  private complete(): void { this.celebrate(this.assisted ? '提示练习完成啦！' : '独立解开啦！'); recordRun(`untangle-${this.count}`, this.state.moves, this.assisted) }
+  private restart(): void { this.assisted = false; this.state = newGame(this.count); this.history = []; this.draw() }
 }

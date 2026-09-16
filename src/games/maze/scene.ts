@@ -1,12 +1,14 @@
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
-import { recordBest } from '../puzzle-kit/progress'
+import { recordRun } from '../puzzle-kit/progress'
 import { DIRECTIONS, neighbor } from '../pipes/core/game'
 import { move, newGame, path, undo } from './core/game'
 export class MazeScene extends PuzzleScene {
   private size = 5
   private state = newGame()
   private hint = -1
+  private assisted = false
+  private shortest = path(this.state).length - 1
   constructor(audio: GameAudio, exit: () => void) { super('maze', '迷宫探险', audio, exit) }
   protected start(): void {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -19,7 +21,7 @@ export class MazeScene extends PuzzleScene {
     const next = move(this.state, d)
     if (next === this.state) return
     this.state = next; this.hint = -1; this.audio.playMove(); this.draw()
-    if (next.won) { this.celebrate('小兔子到家啦！'); recordBest(`maze-${this.size}`, next.trail.length) }
+    if (next.won) { this.celebrate(this.assisted ? '提示练习：小兔子到家啦！' : '小兔子独立到家啦！'); recordRun(`maze-${this.size}`, Math.max(0, next.trail.length - this.shortest), this.assisted) }
   }
   private draw(): void {
     this.resetView(`点相邻格子或方向按钮 · 帮小兔子回家 · ${this.state.trail.length} 步`)
@@ -43,8 +45,8 @@ export class MazeScene extends PuzzleScene {
     })
     ;['↑', '→', '↓', '←'].forEach((label, d) => this.button(222 + d * 108, 775, label, () => this.step(d), 96, this.content))
     this.button(160, 850, '撤销', () => { this.state = undo(this.state); this.draw() }, 180, this.content)
-    this.button(384, 850, '提示一步', () => { this.hint = path(this.state)[1] ?? -1; this.draw() }, 180, this.content)
+    this.button(384, 850, '提示一步', () => { this.assisted = true; this.hint = path(this.state)[1] ?? -1; this.draw() }, 180, this.content)
     this.button(608, 850, '新迷宫', () => this.restart(), 180, this.content)
   }
-  private restart(): void { this.state = newGame(this.size); this.hint = -1; this.draw() }
+  private restart(): void { this.assisted = false; this.state = newGame(this.size); this.shortest = path(this.state).length - 1; this.hint = -1; this.draw() }
 }

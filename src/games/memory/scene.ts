@@ -45,7 +45,7 @@ export class MemoryScene extends PuzzleScene {
         this.draw(index)
         if (next.won) {
           this.celebrate(this.players === 2 ? `完成！比分 ${next.scores.join(' : ')}` : `完成！用了 ${next.turns} 次`)
-          recordBest(`memory-${this.pairs}`, next.turns)
+          recordBest(`memory-${this.pairs}:${this.players === 1 ? 'single' : 'duo'}`, next.turns)
         }
         else if (next.open.length === 2) this.concealTimer = this.time.delayedCall(850, () => { this.state = conceal(this.state); this.draw() })
       })

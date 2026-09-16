@@ -11,6 +11,7 @@ export abstract class PuzzleScene extends Phaser.Scene {
   private exit: () => void
   protected content!: Phaser.GameObjects.Container
   private status!: Phaser.GameObjects.Text
+  protected alive = false
 
   constructor(key: string, title: string, audio: GameAudio, exit: () => void) {
     super(key)
@@ -20,6 +21,8 @@ export abstract class PuzzleScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.alive = true
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.alive = false })
     this.cameras.main.setBackgroundColor('#f8f1df')
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.keyboard?.on('keydown', () => void this.audio.unlock())

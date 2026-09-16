@@ -1,12 +1,13 @@
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
-import { recordBest } from '../puzzle-kit/progress'
+import { recordRun } from '../puzzle-kit/progress'
 import { connected, DIRECTIONS, newGame, turn, won, type PipesState } from './core/game'
 
 export class PipesScene extends PuzzleScene {
   private size = 3
   private state = newGame(3)
   private history: PipesState[] = []
+  private assisted = false
   constructor(audio: GameAudio, exit: () => void) { super('pipes', '接水管', audio, exit) }
   protected start(): void { this.draw() }
   private draw(): void {
@@ -28,19 +29,21 @@ export class PipesScene extends PuzzleScene {
         const next = turn(this.state, index)
         if (next === this.state) return
         this.history.push(this.state); this.state = next; this.audio.playMove(); this.draw()
-        if (won(next)) { this.celebrate('水流通啦，小树喝到水了！'); recordBest(`pipes-${this.size}`, next.moves) }
+        if (won(next)) this.complete()
       })
     })
     this.button(150, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
     this.button(384, 850, '提示', () => {
       const index = this.state.cells.findIndex((mask, i) => mask !== this.state.solution[i])
       if (index < 0) return
+      this.assisted = true
       this.history.push(this.state)
-      this.state = { ...this.state, cells: this.state.cells.map((mask, i) => i === index ? this.state.solution[i]! : mask) }
+      this.state = { ...this.state, moves: this.state.moves + 1, cells: this.state.cells.map((mask, i) => i === index ? this.state.solution[i]! : mask) }
       this.draw(); this.say('已帮你接好一格，试试接下去')
-      if (won(this.state)) this.celebrate()
+      if (won(this.state)) this.complete()
     }, 180, this.content)
     this.button(618, 850, '新关卡', () => this.restart(), 180, this.content)
   }
-  private restart(): void { this.state = newGame(this.size); this.history = []; this.draw() }
+  private complete(): void { this.celebrate(this.assisted ? '提示练习完成啦！' : '独立接通啦！'); recordRun(`pipes-${this.size}`, this.state.moves, this.assisted) }
+  private restart(): void { this.assisted = false; this.state = newGame(this.size); this.history = []; this.draw() }
 }

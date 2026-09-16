@@ -62,7 +62,7 @@ export class BubblesScene extends PuzzleScene {
     this.button(384,850,'重新开始',()=>{if(this.shooting)return;this.restart()},200,this.content)
     if(this.state.status!=='playing'){
       this.guide.clear()
-      recordBest('bubbles',this.state.score,false)
+      recordBest(`bubbles-${this.colors}`,this.state.score,false)
       this.text(384,450,this.state.status==='won'?'全部消除啦！':'泡泡堆满啦',32,this.content).setBackgroundColor('#fffdf6').setPadding(18)
       this.say(this.state.status==='won'?`完成！得分 ${this.state.score}`:'可以撤销一步，或重新开始')
     }
