@@ -16,6 +16,14 @@ it('does not remove a pair and rejects occupied or detached slots',()=>{
   expect(settle(state,1).board.filter(c=>c!==null)).toHaveLength(2)
   expect(settle(state,0)).toBe(state);expect(settle(state,70)).toBe(state)
 })
+it('deals the challenge board with four colors and five rows',()=>{
+  const state=newGame(()=>0.2,4,5)
+  expect(state.board.filter((c,i)=>i<COLS*5&&c!==null)).toHaveLength(COLS*5)
+  expect(new Set(state.board.slice(0,COLS*5)).size).toBe(4)
+  expect(state.board.slice(COLS*5).every(c=>c===null)).toBe(true)
+  expect(new Set(state.board.filter((v):v is number=>v!==null)).size).toBe(4)
+  expect(newGame(()=>0.2)).toEqual(newGame(()=>0.2,3,4))
+})
 it('traces upward shots and wall bounces to vacant cells',()=>{
   const state=newGame()
   for(const angle of [-1.2,-0.5,0,0.5,1.2]){

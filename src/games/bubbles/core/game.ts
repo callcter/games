@@ -13,8 +13,8 @@ function choose(board: readonly (number|null)[], random: RandomSource): number {
   const value=random(), fraction=Number.isFinite(value)?Math.max(0,Math.min(0.999999,value)):0
   return colors[Math.floor(fraction*colors.length)]??0
 }
-export function newGame(random: RandomSource = Math.random): BubbleState {
-  const board=Array.from({length:COLS*ROWS},(_,i)=>i<COLS*4?Math.floor(i/COLS)%3:null)
+export function newGame(random: RandomSource = Math.random, colors = 3, startRows = 4): BubbleState {
+  const board=Array.from({length:COLS*ROWS},(_,i)=>i<COLS*startRows?Math.floor(i/COLS)%colors:null)
   return {board,current:choose(board,random),next:choose(board,random),score:0,shots:0,status:'playing'}
 }
 export function trace(state: BubbleState, angle: number): {path: Point[]; index: number} {

@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { COLORS, PuzzleScene } from '../puzzle-kit/scene'
 import { LEFT, newGame, position, RADIUS, RIGHT, settle, SHOOTER, trace, type BubbleState } from './core/game'
-const SYMBOLS=['●','★','♥']
+const SYMBOLS=['●','★','♥','◆']
 export class BubblesScene extends PuzzleScene {
   private state = newGame()
   private angle = 0
@@ -10,7 +10,10 @@ export class BubblesScene extends PuzzleScene {
   private aiming = false
   private guide!: Phaser.GameObjects.Graphics
   private history: BubbleState[] = []
+  private colors = 3
+  private startRows = 4
   constructor(audio: GameAudio, exit: () => void) { super('bubbles','泡泡龙',audio,exit) }
+  private restart(): void { this.state = newGame(Math.random, this.colors, this.startRows); this.history = []; this.draw() }
   protected start(): void {
     this.input.on('pointerdown',(pointer: Phaser.Input.Pointer)=>{
       if(pointer.y<225||pointer.y>785||pointer.x<LEFT-24||pointer.x>RIGHT+24||this.shooting||this.state.status!=='playing')return
@@ -41,7 +44,9 @@ export class BubblesScene extends PuzzleScene {
   }
   private draw(): void {
     this.resetView(`得分 ${this.state.score} · 发射 ${this.state.shots} 次 · 同色 3 个一起消除`)
-    this.text(384,153,'按住拖动瞄准，松开发射 · 不限时',22,this.content)
+    const hard = this.colors === 4
+    this.button(280,153,`${hard?'':'✓ '}3 色 · 轻松`,()=>{if(this.shooting)return;this.colors=3;this.startRows=4;this.restart()},160,this.content)
+    this.button(490,153,`${hard?'✓ ':''}4 色 · 挑战`,()=>{if(this.shooting)return;this.colors=4;this.startRows=5;this.restart()},160,this.content)
     const walls=this.add.graphics();this.content.add(walls)
     walls.lineStyle(4,0xd8cdbb);walls.strokeRect(LEFT-27,211,RIGHT-LEFT+54,578)
     this.state.board.forEach((color,i)=>{if(color!==null){const p=position(i);this.bubble(p.x,p.y,color)}})
@@ -53,7 +58,7 @@ export class BubblesScene extends PuzzleScene {
       this.history.push(this.state);this.state={...this.state,current:this.state.next,next:this.state.current};this.draw()
     },130,this.content)
     this.button(155,850,'撤销',()=>{if(this.shooting)return;this.state=this.history.pop()??this.state;this.draw()},170,this.content)
-    this.button(384,850,'重新开始',()=>{if(this.shooting)return;this.state=newGame();this.history=[];this.draw()},200,this.content)
+    this.button(384,850,'重新开始',()=>{if(this.shooting)return;this.restart()},200,this.content)
     if(this.state.status!=='playing'){
       this.guide.clear()
       this.text(384,450,this.state.status==='won'?'全部消除啦！':'泡泡堆满啦',32,this.content).setBackgroundColor('#fffdf6').setPadding(18)
