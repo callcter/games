@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { conflicts, countSolutions, newGame, place, PUZZLE_BLANKS, SIZES } from '../../src/games/sudoku/core/game'
+import { conflicts, countSolutions, newGame, place, PUZZLE_BLANKS, SIZES, toggleNote } from '../../src/games/sudoku/core/game'
 
 it('generates unique-solution puzzles deterministically at every difficulty', () => {
   for (const size of SIZES) {
@@ -57,4 +57,16 @@ it('does not count malformed or conflicting boards as solutions', () => {
   expect(countSolutions([NaN, ...Array(15).fill(0)], 4)).toBe(0)
   expect(countSolutions(Array(25).fill(0), 5)).toBe(0)
   expect(countSolutions(Array(16).fill(0), 4, 0)).toBe(0)
+})
+it('toggles pencil marks immutably and clears notes when entering a digit', () => {
+  const state = newGame(4, () => 0.4), i = state.puzzle.indexOf(0)
+  const noted = toggleNote(state, i, 2)
+  expect(noted.notes[i]).toEqual([2])
+  expect(state.notes[i]).toEqual([])
+  expect(toggleNote(noted, i, 2).notes[i]).toEqual([])
+  expect(place(noted, i, 2).notes[i]).toEqual([])
+  expect(place(noted, i, 0).notes[i]).toEqual([])
+  expect(toggleNote(state, -1, 2)).toBe(state)
+  expect(toggleNote(state, i, 5)).toBe(state)
+  expect(toggleNote(state, state.puzzle.findIndex(v => v > 0), 1)).toBe(state)
 })

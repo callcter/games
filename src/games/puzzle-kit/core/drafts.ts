@@ -14,7 +14,9 @@ function sudokuState(value: unknown, validateUnique = true): SudokuState | null 
     || !numbers(s.solution, size*size, 1, size) || conflicts(s.solution, size).size
     || s.puzzle.some((v,i) => v !== 0 && (v !== (s.solution as number[])[i] || v !== (s.values as number[])[i]))
     || (validateUnique && countSolutions(s.puzzle, size) !== 1)) return null
-  return { size, puzzle: [...s.puzzle], values: [...s.values], solution: [...s.solution], won: s.values.every(v => v > 0) && conflicts(s.values, size).size === 0 }
+  const rawNotes = Array.isArray(s.notes) ? s.notes : []
+  const notes = s.values.map((value,i) => !value && Array.isArray(rawNotes[i]) ? [...new Set<number>(rawNotes[i].filter((n: unknown): n is number => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= size))].sort((a,b) => a-b) : [])
+  return { size, puzzle: [...s.puzzle], values: [...s.values], solution: [...s.solution], notes, won: s.values.every(v => v > 0) && conflicts(s.values, size).size === 0 }
 }
 
 function nonogramState(value: unknown): NonogramState | null {

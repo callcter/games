@@ -14,6 +14,7 @@ export interface SudokuState {
   values: number[]
   /** 唯一完整解，提示功能使用。 */
   solution: number[]
+  notes: number[][]
   won: boolean
 }
 
@@ -113,14 +114,29 @@ export function newGame(size: SudokuSize = 9, random: RandomSource = Math.random
     if (countSolutions(values, size) !== 1) values[index] = kept
     else blanks++
   }
-  return { size, puzzle: [...values], values, solution, won: false }
+  return { size, puzzle: [...values], values, solution, notes: values.map(() => []), won: false }
 }
 
 export function place(state: SudokuState, index: number, value: number): SudokuState {
   if (state.won || !Number.isInteger(index) || index < 0 || index >= state.values.length
     || state.puzzle[index] !== 0 || !Number.isInteger(value) || value < 0 || value > state.size) return state
-  if (state.values[index] === value) return state
+  if (state.values[index] === value && (value !== 0 || !state.notes[index]?.length)) return state
   const values = state.values.map((old, i) => i === index ? value : old)
   const won = values.every(current => current > 0) && conflicts(values, state.size).size === 0
-  return { ...state, values, won }
+  const { rows, cols } = boxOf(state.size)
+  const row = Math.floor(index / state.size), col = index % state.size
+  const notes = state.notes.map((list,i) => {
+    if (i === index) return []
+    const r = Math.floor(i / state.size), c = i % state.size
+    const peer = r === row || c === col || (Math.floor(r / rows) === Math.floor(row / rows) && Math.floor(c / cols) === Math.floor(col / cols))
+    return peer && value ? list.filter(n => n !== value) : list
+  })
+  return { ...state, values, notes, won }
+}
+
+export function toggleNote(state: SudokuState, index: number, value: number): SudokuState {
+  if (state.won || !Number.isInteger(index) || index < 0 || index >= state.values.length || state.values[index]
+    || !Number.isInteger(value) || value < 1 || value > state.size) return state
+  const notes = state.notes.map((list,i) => i !== index ? list : list.includes(value) ? list.filter(n => n !== value) : [...list,value].sort((a,b) => a-b))
+  return { ...state, notes }
 }
