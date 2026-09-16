@@ -48,6 +48,18 @@ describe('freecell rules', () => {
     expect(result.state.tableau[1]?.map((item) => item.rank)).toEqual([8, 7, 6])
   })
 
+  it('moves a card or a valid sequence into an empty column', () => {
+    const single = moveTableauToTableau(state([[card(5, 'clubs')]]), 0, 1)
+    expect(single.moved).toBe(true)
+    expect(single.state.tableau[1]?.map((item) => item.rank)).toEqual([5])
+
+    const sequence = moveTableauToTableau(state([
+      [card(8, 'clubs'), card(7, 'hearts'), card(6, 'spades')]
+    ]), 0, 1, 3)
+    expect(sequence.moved).toBe(true)
+    expect(sequence.state.tableau[1]?.map((item) => item.rank)).toEqual([8, 7, 6])
+  })
+
   it('uses a free cell for one exposed card', () => {
     const game = state([[card(5, 'clubs')], [card(6, 'hearts')]])
     const stored = moveTableauToFreeCell(game, 0, 0)

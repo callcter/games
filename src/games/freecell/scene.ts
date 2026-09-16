@@ -28,6 +28,7 @@ const CARD_HEIGHT = 136
 const COLUMN_GAP = 22
 const TABLEAU_X = 35
 const TABLEAU_Y = 238
+const TABLEAU_BOTTOM = 748
 
 export class FreeCellScene extends Phaser.Scene {
   private state: FreeCellState
@@ -116,6 +117,14 @@ export class FreeCellScene extends Phaser.Scene {
     const overlap = Math.min(38, Math.max(22, (748 - TABLEAU_Y - CARD_HEIGHT) / Math.max(1, longest - 1)))
     this.state.tableau.forEach((column, columnIndex) => {
       const x = TABLEAU_X + columnIndex * (CARD_WIDTH + COLUMN_GAP)
+      // 空列不只顶部牌框可点；整列空白都应能作为移动目标。
+      this.add.zone(
+        x + CARD_WIDTH / 2,
+        TABLEAU_Y + (TABLEAU_BOTTOM - TABLEAU_Y) / 2,
+        CARD_WIDTH,
+        TABLEAU_BOTTOM - TABLEAU_Y
+      ).setDepth(-1).setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => this.targetTableau(columnIndex))
       createCardSlot(this, x, TABLEAU_Y, CARD_WIDTH, CARD_HEIGHT, '', () => this.targetTableau(columnIndex))
       column.forEach((card, cardIndex) => {
         const selected = this.selection?.kind === 'tableau'
@@ -170,15 +179,26 @@ export class FreeCellScene extends Phaser.Scene {
 
   private targetTableau(column: number): void {
     if (!this.selection) return
+    const targetIsEmpty = (this.state.tableau[column]?.length ?? 0) === 0
     const result = this.selection.kind === 'tableau'
       ? moveTableauToTableau(this.state, this.selection.column, column, this.selection.count)
       : moveFreeCellToTableau(this.state, this.selection.index, column)
-    this.finish(result)
+    this.finish(
+      result,
+      targetIsEmpty
+        ? '空列可以放牌，但一次可搬的张数受空当格和其他空列限制'
+        : '这里要接颜色相反、点数大一号的牌'
+    )
   }
 
   private targetFreeCell(index: number): void {
-    if (!this.selection || this.selection.kind !== 'tableau' || this.selection.count !== 1) return
-    this.finish(moveTableauToFreeCell(this.state, this.selection.column, index))
+    if (!this.selection) return
+    if (this.selection.kind !== 'tableau' || this.selection.count !== 1) {
+      this.hintMessage = '空当格一次只能放 1 张牌'
+      this.draw()
+      return
+    }
+    this.finish(moveTableauToFreeCell(this.state, this.selection.column, index), '这个空当格已经有牌了')
   }
 
   private targetFoundation(_suit?: Suit): void {
@@ -186,10 +206,10 @@ export class FreeCellScene extends Phaser.Scene {
     const result = this.selection.kind === 'tableau'
       ? moveTableauToFoundation(this.state, this.selection.column)
       : moveFreeCellToFoundation(this.state, this.selection.index)
-    this.finish(result)
+    this.finish(result, '右上角要从 A 开始，按同一花色依次收牌')
   }
 
-  private finish(result: MoveResult): void {
+  private finish(result: MoveResult, failureMessage: string): void {
     if (result.moved) {
       this.history.push(this.state)
       this.state = result.state
@@ -197,8 +217,10 @@ export class FreeCellScene extends Phaser.Scene {
       this.callbacks.onStateChange(this.state, this.initialDeal)
       this.audio.playPlace(2)
       if (this.state.won) this.audio.playWin()
+      this.selection = null
+    } else {
+      this.hintMessage = failureMessage
     }
-    this.selection = null
     this.draw()
   }
 
