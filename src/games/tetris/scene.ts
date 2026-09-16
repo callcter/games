@@ -33,6 +33,13 @@ interface BoardGeometry {
   cellSize: number
 }
 
+interface SceneLayout {
+  compact: boolean
+  board: BoardGeometry
+  panelWidth: number
+  gap: number
+}
+
 interface ControlButton {
   text: string
   action: () => void
@@ -61,6 +68,9 @@ export class TetrisScene extends Phaser.Scene {
   private lockResets = 0
   private bestScore = readBestScore()
   private lineFlash = 0
+  private layout: SceneLayout | null = null
+  private dynamicLayer: Phaser.GameObjects.Container | null = null
+  private pauseButtonText: Phaser.GameObjects.Text | null = null
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
@@ -78,9 +88,9 @@ export class TetrisScene extends Phaser.Scene {
       void this.audio.unlock()
       this.handleKey(event)
     })
-    this.scale.on('resize', () => this.draw())
+    this.scale.on('resize', () => this.draw(true))
     this.scheduleDrop()
-    this.draw()
+    this.draw(true)
   }
 
   private handleKey(event: KeyboardEvent): void {
@@ -120,8 +130,10 @@ export class TetrisScene extends Phaser.Scene {
       this.lockTimer = null
       this.lockResets = 0
     }
-    this.bestScore = Math.max(this.bestScore, this.state.score)
-    writeBestScore(this.bestScore)
+    if (this.state.score > this.bestScore) {
+      this.bestScore = this.state.score
+      writeBestScore(this.bestScore)
+    }
 
     if (result.clearedLines > 0) {
       this.lineFlash = result.clearedLines
@@ -192,6 +204,7 @@ export class TetrisScene extends Phaser.Scene {
 
   private restart(): void {
     this.stopControlRepeat()
+    this.tweens.killAll()
     this.state = newGame()
     this.paused = false
     this.lineFlash = 0
@@ -203,9 +216,30 @@ export class TetrisScene extends Phaser.Scene {
     this.draw()
   }
 
-  private draw(): void {
+  private draw(rebuildLayout = false): void {
+    if (rebuildLayout || !this.layout) this.rebuildStaticLayout()
+    const layout = this.layout
+    if (!layout) return
+
+    this.dynamicLayer?.removeAll(true)
+    this.dynamicLayer?.destroy()
+    this.dynamicLayer = this.add.container(0, 0)
+
+    const { board, compact, gap, panelWidth } = layout
+    this.drawBoard(board)
+    if (panelWidth > 0) this.drawSidePanel(board.x + board.width + gap, board.y, panelWidth, compact)
+    this.pauseButtonText?.setText(this.paused ? '继续' : '暂停')
+    if (this.lineFlash > 0) this.drawLineFlash(board)
+    if (this.paused || this.state.gameOver) this.drawOverlay(board)
+    this.lineFlash = 0
+  }
+
+  private rebuildStaticLayout(): void {
     this.tweens.killAll()
     this.children.removeAll(true)
+    this.dynamicLayer = null
+    this.pauseButtonText = null
+
     const width = this.scale.width
     const height = this.scale.height
     const compact = height < 650
@@ -222,7 +256,7 @@ export class TetrisScene extends Phaser.Scene {
     const groupWidth = boardWidth + panelWidth + gap
     const boardX = (width - groupWidth) / 2
     const boardY = headerHeight
-    const geometry: BoardGeometry = {
+    const board: BoardGeometry = {
       x: boardX,
       y: boardY,
       width: boardWidth,
@@ -230,14 +264,15 @@ export class TetrisScene extends Phaser.Scene {
       cellSize: boardWidth / BOARD_WIDTH
     }
 
+    this.layout = { compact, board, panelWidth, gap }
     this.cameras.main.setBackgroundColor('#f8f1df')
     this.drawHeader(width, compact, margin)
-    this.drawBoard(geometry)
-    if (panelWidth > 0) this.drawSidePanel(boardX + boardWidth + gap, boardY, panelWidth, compact)
     this.drawControls(width, boardY + boardHeight, compact)
-    if (this.lineFlash > 0) this.drawLineFlash(geometry)
-    if (this.paused || this.state.gameOver) this.drawOverlay(geometry)
-    this.lineFlash = 0
+  }
+
+  private addDynamic<T extends Phaser.GameObjects.GameObject>(gameObject: T): T {
+    this.dynamicLayer?.add(gameObject)
+    return gameObject
   }
 
   private drawHeader(width: number, compact: boolean, margin: number): void {
@@ -268,7 +303,7 @@ export class TetrisScene extends Phaser.Scene {
 
   private drawBoard(geometry: BoardGeometry): void {
     const { x, y, width, height, cellSize } = geometry
-    const graphics = this.add.graphics()
+    const graphics = this.addDynamic(this.add.graphics())
     graphics.fillStyle(0x173f35, 1)
     graphics.fillRoundedRect(x - 5, y - 5, width + 10, height + 10, 10)
     graphics.fillStyle(0x223f3a, 1)
@@ -285,6 +320,7 @@ export class TetrisScene extends Phaser.Scene {
     this.state.board.forEach((cell, index) => {
       if (!cell) return
       this.drawBlock(
+        graphics,
         x + (index % BOARD_WIDTH) * cellSize,
         y + Math.floor(index / BOARD_WIDTH) * cellSize,
         cellSize,
@@ -295,59 +331,59 @@ export class TetrisScene extends Phaser.Scene {
 
     const ghost: ActivePiece = { ...this.state.active, row: ghostRow(this.state) }
     pieceCells(ghost).forEach((cell) => {
-      if (cell.row >= 0) this.drawBlock(x + cell.column * cellSize, y + cell.row * cellSize, cellSize, PIECE_COLORS[ghost.type], 0.2)
+      if (cell.row >= 0) this.drawBlock(graphics, x + cell.column * cellSize, y + cell.row * cellSize, cellSize, PIECE_COLORS[ghost.type], 0.2)
     })
     pieceCells(this.state.active).forEach((cell) => {
-      if (cell.row >= 0) this.drawBlock(x + cell.column * cellSize, y + cell.row * cellSize, cellSize, PIECE_COLORS[this.state.active.type], 1)
+      if (cell.row >= 0) this.drawBlock(graphics, x + cell.column * cellSize, y + cell.row * cellSize, cellSize, PIECE_COLORS[this.state.active.type], 1)
     })
   }
 
-  private drawBlock(x: number, y: number, size: number, color: number, alpha: number): void {
-    const block = this.add.graphics()
-    block.fillStyle(color, alpha)
-    block.fillRoundedRect(x + 1.5, y + 1.5, size - 3, size - 3, Math.max(2, size * 0.1))
-    block.lineStyle(Math.max(1, size * 0.055), 0xffffff, alpha * 0.28)
-    block.lineBetween(x + size * 0.16, y + size * 0.18, x + size * 0.78, y + size * 0.18)
+  private drawBlock(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, color: number, alpha: number): void {
+    graphics.fillStyle(color, alpha)
+    graphics.fillRoundedRect(x + 1.5, y + 1.5, size - 3, size - 3, Math.max(2, size * 0.1))
+    graphics.lineStyle(Math.max(1, size * 0.055), 0xffffff, alpha * 0.28)
+    graphics.lineBetween(x + size * 0.16, y + size * 0.18, x + size * 0.78, y + size * 0.18)
   }
 
   private drawSidePanel(x: number, y: number, width: number, compact: boolean): void {
+    const previewGraphics = this.addDynamic(this.add.graphics())
     const fontSize = compact ? '15px' : '18px'
     const stats = compact
       ? `得分 ${this.state.score}\n最高 ${this.bestScore}\n消行 ${this.state.lines}\n等级 ${this.state.level}`
       : `得分\n${this.state.score}\n\n最高\n${this.bestScore}\n\n消行\n${this.state.lines}\n\n等级\n${this.state.level}`
-    this.add.text(x, y, stats, {
+    this.addDynamic(this.add.text(x, y, stats, {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize, fontStyle: 'bold', lineSpacing: compact ? 3 : 6
-    })
+    }))
 
     const holdY = y + (compact ? 88 : 270)
-    this.add.text(x, holdY, '暂存', {
+    this.addDynamic(this.add.text(x, holdY, '暂存', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
-    })
+    }))
     const previewSize = Math.min(compact ? 18 : 23, width / 5)
-    if (this.state.holdType) this.drawPreviewPiece(this.state.holdType, x, holdY + 25, previewSize)
+    if (this.state.holdType) this.drawPreviewPiece(previewGraphics, this.state.holdType, x, holdY + 25, previewSize)
 
     const nextY = y + (compact ? 158 : 380)
-    this.add.text(x, nextY, '接下来', {
+    this.addDynamic(this.add.text(x, nextY, '接下来', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
-    })
+    }))
     const visibleQueue = compact ? this.state.nextQueue.slice(0, 1) : this.state.nextQueue
     visibleQueue.forEach((type, index) => {
-      this.drawPreviewPiece(type, x, nextY + 27 + index * 62, previewSize)
+      this.drawPreviewPiece(previewGraphics, type, x, nextY + 27 + index * 62, previewSize)
     })
 
-    this.add.text(compact ? x + width - 52 : x, y + (compact ? 220 : 720), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
+    this.addDynamic(this.add.text(compact ? x + width - 52 : x, y + (compact ? 220 : 720), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
       this.audio.toggleMuted()
       this.draw()
-    })
+    }))
   }
 
-  private drawPreviewPiece(type: PieceType, x: number, y: number, size: number): void {
+  private drawPreviewPiece(graphics: Phaser.GameObjects.Graphics, type: PieceType, x: number, y: number, size: number): void {
     pieceCells({ type, rotation: 0, row: 0, column: 0 }).forEach((cell) => {
-      this.drawBlock(x + cell.column * size, y + cell.row * size, size, PIECE_COLORS[type], 1)
+      this.drawBlock(graphics, x + cell.column * size, y + cell.row * size, size, PIECE_COLORS[type], 1)
     })
   }
 
@@ -398,6 +434,7 @@ export class TetrisScene extends Phaser.Scene {
         color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
         fontSize: compact ? '21px' : '24px', fontStyle: 'bold'
       }).setOrigin(0.5)
+      if (button.text === '暂停' || button.text === '继续') this.pauseButtonText = label
       container.add([background, label])
       container.setSize(buttonWidth, buttonHeight).setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.triggerControl(button))
@@ -440,11 +477,19 @@ export class TetrisScene extends Phaser.Scene {
       padding: { x: 18, y: 10 }
     }).setOrigin(0.5)
     message.setScale(0.7)
-    this.tweens.add({ targets: message, scale: 1.08, alpha: 0, y: message.y - 45, duration: 650, ease: 'Back.Out' })
+    this.tweens.add({
+      targets: message,
+      scale: 1.08,
+      alpha: 0,
+      y: message.y - 45,
+      duration: 650,
+      ease: 'Back.Out',
+      onComplete: () => message.destroy()
+    })
   }
 
   private drawOverlay(geometry: BoardGeometry): void {
-    const panel = this.add.container(geometry.x + geometry.width / 2, geometry.y + geometry.height / 2)
+    const panel = this.addDynamic(this.add.container(geometry.x + geometry.width / 2, geometry.y + geometry.height / 2))
     const background = new Phaser.GameObjects.Graphics(this)
     background.fillStyle(0x173f35, 0.9)
     background.fillRoundedRect(-geometry.width * 0.42, -72, geometry.width * 0.84, 144, 20)
