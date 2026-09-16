@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import { FRUIT_LEVELS, fruitAt, mergeFruits, randomDropLevel } from './core/game'
 
@@ -34,6 +35,7 @@ export class MergeFruitScene extends Phaser.Scene {
   private nextLevel = 0
   private guideX = SCENE_WIDTH / 2
   private canDrop = true
+  private useArtFruits = false
   private gameOver = false
   private preview: Phaser.GameObjects.Image | null = null
   private nextPreview: Phaser.GameObjects.Image | null = null
@@ -50,7 +52,12 @@ export class MergeFruitScene extends Phaser.Scene {
     this.callbacks = callbacks
   }
 
+  preload(): void {
+    preloadFruitSheets(this)
+  }
+
   create(): void {
+    this.useArtFruits = ensureFruitArtFrames(this)
     this.createFruitTextures()
     this.createWorld()
     this.currentLevel = randomDropLevel()
@@ -581,11 +588,11 @@ export class MergeFruitScene extends Phaser.Scene {
   }
 
   private textureKey(level: number): string {
-    return `fruit-v2-${level}`
+    return this.useArtFruits ? fruitArtKey(level) : `fruit-v2-${level}`
   }
 
   private displaySizeForRadius(radius: number): number {
-    return radius * 2 * TEXTURE_SIZE / (TEXTURE_RADIUS * 2)
+    return this.useArtFruits ? radius * 2 : radius * 2 * TEXTURE_SIZE / (TEXTURE_RADIUS * 2)
   }
 }
 

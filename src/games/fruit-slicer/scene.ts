@@ -1,16 +1,21 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene } from '../action-kit/scene'
-import { FRUITS, MODES, newGame, slice, step, type Fruit } from './core/game'
+import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
+import { FRUIT_RADIUS, FRUITS, MODES, newGame, slice, step, type Fruit } from './core/game'
 
 const TRAIL_MS = 130
 const JUICE_COLORS = [0xe88065, 0xc0392b, 0xe6952d, 0x87b65e, 0xe6b84d, 0x7e8dcd]
 
 interface TrailPoint { x: number; y: number; t: number }
 
+// 六种飞行水果与共享素材等级的对应（西瓜/草莓/凸顶柑/苹果/桃子/葡萄）。
+const KIND_TO_LEVEL = [10, 1, 3, 5, 7, 2] as const
+
 export class FruitSlicerScene extends ActionScene {
   private state = newGame()
-  private views: Phaser.GameObjects.Text[] = []
+  private views: (Phaser.GameObjects.Image | Phaser.GameObjects.Text)[] = []
+  private useArtFruits = false
   private spins: number[] = []
   private trail: TrailPoint[] = []
   private blade!: Phaser.GameObjects.Graphics
@@ -25,7 +30,12 @@ export class FruitSlicerScene extends ActionScene {
   protected statusLine(): string {
     return `分数 ${this.state.score} · 已切 ${this.state.cut} 个 · 剩余 ${this.remainingSeconds} 秒`
   }
+  preload(): void {
+    preloadFruitSheets(this)
+  }
+
   protected startRound(mode: number): void {
+    this.useArtFruits = ensureFruitArtFrames(this)
     this.state = newGame(mode)
     this.views = []
     this.spins = []
@@ -70,13 +80,14 @@ export class FruitSlicerScene extends ActionScene {
     const index = this.views.findIndex(view => Math.abs(view.x - fruit.x) < 1 && Math.abs(view.y - fruit.y) < 1)
     if (index >= 0) { this.views.splice(index, 1)[0]?.destroy(); this.spins.splice(index, 1) }
     if (fruit.bomb) return
-    const emoji = FRUITS[fruit.kind]!
     const tx = Math.cos(Math.atan2(to.y - from.y, to.x - from.x))
     const ty = Math.sin(Math.atan2(to.y - from.y, to.x - from.x))
     const nx = -ty, ny = tx
     for (const side of [-1, 1] as const) {
       const half = this.add.container(fruit.x, fruit.y)
-      half.add(this.add.text(0, 0, emoji, { fontSize: '68px' }).setOrigin(0.5))
+      half.add(this.useArtFruits
+        ? this.add.image(0, 0, fruitArtKey(fruit.bomb ? -1 : KIND_TO_LEVEL[fruit.kind]!)).setDisplaySize(FRUIT_RADIUS * 2, FRUIT_RADIUS * 2)
+        : this.add.text(0, 0, fruit.bomb ? '💣' : FRUITS[fruit.kind]!, { fontSize: '68px' }).setOrigin(0.5))
       this.entities.add(half)
       // 固定在世界坐标的半平面遮罩：只显示切线法向 side 一侧，半果移动时从切口滑出。
       const shape = this.make.graphics()
@@ -115,7 +126,10 @@ export class FruitSlicerScene extends ActionScene {
       this.views.forEach(view => view.destroy())
       this.spins = this.state.fruits.map((fruit, index) => (index % 2 ? 1 : -1) * (0.8 + (fruit.kind % 3) * 0.5))
       this.views = this.state.fruits.map(fruit => {
-        const view = this.add.text(fruit.x, fruit.y, fruit.bomb ? '💣' : FRUITS[fruit.kind]!, { fontSize: '68px' }).setOrigin(0.5)
+        const view = this.useArtFruits
+          ? this.add.image(fruit.x, fruit.y, fruitArtKey(fruit.bomb ? -1 : KIND_TO_LEVEL[fruit.kind]!)).setDisplaySize(FRUIT_RADIUS * 2, FRUIT_RADIUS * 2)
+          : this.add.text(fruit.x, fruit.y, fruit.bomb ? '💣' : FRUITS[fruit.kind]!, { fontSize: '68px' })
+        view.setOrigin(0.5)
         this.entities.add(view)
         return view
       })

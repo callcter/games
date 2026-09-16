@@ -6,7 +6,7 @@ export const MODES: readonly { label: string; interval: number; speed: number; b
   { label: '挑战', interval: 720, speed: 960, bomb: 0.15, doubleChance: 0.5 }
 ]
 const GRAVITY = 1350
-const FRUIT_RADIUS = 46
+export const FRUIT_RADIUS = 46
 const FIELD = { left: 100, right: 668, launchY: 905 }
 export const FRUITS = ['🍉', '🍓', '🍊', '🍏', '🍋', '🍇'] as const
 
