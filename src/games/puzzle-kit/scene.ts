@@ -24,13 +24,18 @@ export abstract class PuzzleScene extends Phaser.Scene {
 
   create(): void {
     this.alive = true
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.alive = false })
     const flush = (): void => { if (this.draftId) flushDraft(this.draftId) }
     window.addEventListener('pagehide', flush)
     document.addEventListener('visibilitychange', flush)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    const cleanup = (): void => {
+      this.alive = false
       flush(); window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', flush)
-    })
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, cleanup)
+      this.events.off(Phaser.Scenes.Events.DESTROY, cleanup)
+    }
+    // Scene.stop 发 SHUTDOWN，Game.destroy 直接发 DESTROY；两条离开路径都必须释放外部资源。
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup)
+    this.events.once(Phaser.Scenes.Events.DESTROY, cleanup)
     this.cameras.main.setBackgroundColor('#f8f1df')
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.keyboard?.on('keydown', () => void this.audio.unlock())

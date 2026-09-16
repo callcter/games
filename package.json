@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "test:browser": "node scripts/browser-smoke.mjs",
     "check": "tsc --noEmit && vitest run --passWithNoTests && vite build",
     "deploy": "pnpm run build && scp -P 1991 -r dist/* ubuntu@101.42.50.27:/home/www/games"
   },
