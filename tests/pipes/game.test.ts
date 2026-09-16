@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest'
 import { connected, newGame, rotate, turn, won } from '../../src/games/pipes/core/game'
 it('generates solvable trees deterministically at every difficulty', () => {
-  for (const size of [3, 4, 5]) {
+  for (const size of [3, 4, 5, 6]) {
     const state = newGame(size, () => 0.4)
     expect(state).toEqual(newGame(size, () => 0.4))
     expect(won({ ...state, cells: state.solution })).toBe(true)

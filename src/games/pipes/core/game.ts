@@ -11,7 +11,7 @@ export function rotate(mask: number): number { return ((mask << 1) & 15) | (mask
 export interface PipesState { size: number; cells: number[]; solution: number[]; moves: number }
 
 export function newGame(size = 4, random: RandomSource = Math.random): PipesState {
-  if (![3, 4, 5].includes(size)) throw new Error('无效尺寸')
+  if (![3, 4, 5, 6].includes(size)) throw new Error('无效尺寸')
   const solution = Array<number>(size * size).fill(0), seen = new Set([0])
   const visit = (index: number): void => {
     for (const direction of shuffle([0, 1, 2, 3], random)) {

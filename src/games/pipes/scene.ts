@@ -10,7 +10,7 @@ export class PipesScene extends PuzzleScene {
   protected start(): void { this.draw() }
   private draw(): void {
     this.resetView(`点管道旋转 · 从左上水源连通全部格子 · ${this.state.moves} 步`)
-    ;[3, 4, 5].forEach((size, i) => this.button(170 + i * 214, 165, `${size === this.size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 180, this.content))
+    ;[3, 4, 5, 6].forEach((size, i) => this.button(129 + 170 * i, 165, `${size === this.size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 155, this.content))
     const reached = connected(this.state), cell = 570 / this.size
     this.state.cells.forEach((mask, index) => {
       const x = 99 + index % this.size * cell, y = 240 + Math.floor(index / this.size) * cell
