@@ -96,6 +96,10 @@ export function summarizeProgress(progress: PuzzleProgress | null): Record<strin
   const bubbleMode = [4, 3].find(mode => progress.best[`bubbles-${mode}`] !== undefined)
   if (bubbleMode) lines.bubbles = `${bubbleMode} 色最高 ${progress.best[`bubbles-${bubbleMode}`]} 分`
   else if (progress.best.bubbles !== undefined) lines.bubbles = `历史最高 ${progress.best.bubbles} 分（未分难度）`
+  // 动作游戏统一存裸键最高分（action-kit 的 ActionScene 记录）
+  for (const id of ['pop-bubbles', 'red-rain', 'whack-mole', 'fruit-slicer']) {
+    if (progress.best[id] !== undefined) lines[id] = `最高 ${progress.best[id]} 分`
+  }
   const solvedLevels = new Set(Object.keys(progress.best).flatMap(key => { const match = /^sokoban-L(\d+)(?::(?:solo|assisted))?$/.exec(key); return match && Number(match[1]) < 10 ? [match[1]] : [] }))
   if (solvedLevels.size) lines.sokoban = `已过 ${solvedLevels.size} 关`
   const flagLine = (prefix: string, total: number, verb: string): string | undefined => {

@@ -7,5 +7,9 @@ export const puzzles = [
   { id: 'untangle', title: '解绳结', symbol: '✳', ready: true, load: () => import('../games/untangle') },
   { id: 'maze', title: '迷宫探险', symbol: '🐰', ready: true, load: () => import('../games/maze') },
   { id: 'nonogram', title: '数织', symbol: '▧', ready: true, load: () => import('../games/nonogram') },
-  { id: 'sudoku', title: '数独', symbol: '⑨', ready: true, load: () => import('../games/sudoku') }
+  { id: 'sudoku', title: '数独', symbol: '⑨', ready: true, load: () => import('../games/sudoku') },
+  { id: 'pop-bubbles', title: '点泡泡', symbol: '◯', ready: true, load: () => import('../games/pop-bubbles') },
+  { id: 'red-rain', title: '红包雨', symbol: '🧧', ready: true, load: () => import('../games/red-rain') },
+  { id: 'whack-mole', title: '打地鼠', symbol: '🐹', ready: true, load: () => import('../games/whack-mole') },
+  { id: 'fruit-slicer', title: '切水果', symbol: '🍉', ready: true, load: () => import('../games/fruit-slicer') }
 ] as const
