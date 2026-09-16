@@ -29,7 +29,7 @@ export class TangramScene extends PuzzleScene {
   private draw(): void {
     this.resetView(this.state.won ? '七块都拼好啦！' : `拖图形到${this.silhouette ? '剪影' : '同色轮廓'} · 已拼 ${this.state.pieces.filter(p=>p.placed).length} / 7 块`)
     this.text(384,153,`${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,20,this.content)
-    this.button(160,210,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.draw()},200,this.content)
+    this.button(135,210,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.draw()},190,this.content)
     this.state.targets.forEach((target,i)=>{
       const g=this.add.graphics();this.content.add(g)
       const points=vertices(i,target).map(p=>new Phaser.Math.Vector2(p.x,p.y))
@@ -56,9 +56,9 @@ export class TangramScene extends PuzzleScene {
         this.input.setDraggable(node)
       }
     })
-    this.button(350,210,'↻ 旋转',()=>this.transform(false),170,this.content)
-    this.button(534,210,'翻面',()=>this.transform(true),150,this.content)
-    this.button(678,210,'提示一块',()=>{
+    this.button(327,210,'↻ 旋转',()=>this.transform(false),160,this.content)
+    this.button(491,210,'翻面',()=>this.transform(true),136,this.content)
+    this.button(656,210,'提示一块',()=>{
       const i=this.state.pieces.findIndex(p=>!p.placed);if(i<0)return
       this.history.push(this.state);this.state=place(this.state,i,this.state.targets[i]!);this.draw()
       if(this.state.won){this.audio.playWin();recordFlag(`tangram-${this.state.level}`)}
