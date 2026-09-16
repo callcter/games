@@ -1,4 +1,5 @@
 import { puzzles } from './puzzles'
+import { gameIcon } from './icons'
 import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
 import { CATEGORIES, categoryOf, clearOrder, orderedIds, readRecent, rememberRecent, writeOrder, type Category } from './library'
 
@@ -152,12 +153,12 @@ export function renderApp(root: HTMLDivElement | null): void {
         <button type="button" data-order-reset>恢复默认</button>
         <button type="button" data-order-done>完成</button>
       </div>` : `
-      ${recent.length ? `<section class="recent-games" aria-label="最近玩过"><h2>最近玩过</h2><div>${recent.map(game => `<button type="button" data-game="${game.id}"><span aria-hidden="true">${game.symbol}</span> ${game.title}</button>`).join('')}</div></section>` : ''}
+      ${recent.length ? `<section class="recent-games" aria-label="最近玩过"><h2>最近玩过</h2><div>${recent.map(game => `<button type="button" data-game="${game.id}">${gameIcon(game.id)} ${game.title}</button>`).join('')}</div></section>` : ''}
       <nav class="game-categories" aria-label="游戏分类">${CATEGORIES.map(category => `<button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">${category.title}</button>`).join('')}</nav>`}
       <section class="game-grid${editingOrder ? ' game-grid--editable' : ''}" aria-label="游戏列表">
         ${ordered.map((game) => `
           <button class="game-card${editingOrder ? ' game-card--editing' : ''}" data-game="${game.id}" ${editingOrder || selectedCategory === 'all' || categoryOf(game.id) === selectedCategory ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
-            <span class="game-card__symbol" aria-hidden="true">${game.symbol}</span>
+            <span class="game-card__symbol" aria-hidden="true">${gameIcon(game.id)}</span>
             <span class="game-card__title">${game.title}</span>
             <span class="game-card__status">${game.ready ? '' : '正在准备'}</span>
           </button>
