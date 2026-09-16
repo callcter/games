@@ -81,6 +81,29 @@ describe('freecell rules', () => {
     expect(maxMovableCards(game, 1)).toBe(320)
   })
 
+  it('does not count the empty destination as a temporary column', () => {
+    const game: FreeCellState = {
+      ...state([
+        [
+          card(13, 'clubs'), card(12, 'hearts'), card(11, 'spades'), card(10, 'hearts'),
+          card(9, 'clubs'), card(8, 'diamonds'), card(7, 'spades'), card(6, 'hearts')
+        ],
+        [],
+        [],
+        [card(2, 'clubs')],
+        [card(3, 'hearts')],
+        [card(4, 'spades')],
+        [card(5, 'diamonds')],
+        [card(1, 'clubs')]
+      ]),
+      freeCells: [null, card(1, 'spades'), card(1, 'hearts'), card(1, 'diamonds')]
+    }
+
+    expect(maxMovableCards(game, 1)).toBe(4)
+    expect(moveTableauToTableau(game, 0, 1, 8).moved).toBe(false)
+    expect(moveTableauToTableau(game, 0, 1, 4).state.tableau[1]?.map((item) => item.rank)).toEqual([9, 8, 7, 6])
+  })
+
   it('restores a valid game and rejects malformed saves', () => {
     const state = newGame(() => 0.4)
     expect(restoreGame(state)).toEqual(state)

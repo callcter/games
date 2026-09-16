@@ -9,6 +9,7 @@ import {
   moveTableauToFoundation,
   moveTableauToFreeCell,
   moveTableauToTableau,
+  maxMovableCards,
   movableSequenceLength,
   newGame,
   type FreeCellState,
@@ -156,7 +157,12 @@ export class FreeCellScene extends Phaser.Scene {
     const count = movableSequenceLength(cards, start)
     if (count > 0) {
       this.selection = { kind: 'tableau', column, start, count }
-      this.hintMessage = count > 1 ? `已选中 ${count} 张，点另一列移动` : '已选中 1 张，点目标位置'
+      const emptyTarget = this.state.tableau.findIndex((target, index) => target.length === 0 && index !== column)
+      this.hintMessage = count > 1 && emptyTarget >= 0
+        ? `已选 ${count} 张 · 放空列最多 ${maxMovableCards(this.state, emptyTarget)} 张`
+        : count > 1
+          ? `已选中 ${count} 张，点另一列移动`
+          : '已选中 1 张，点目标位置'
     } else {
       this.selection = null
       this.hintMessage = '只能从红黑交替、逐张递减的牌开始选'
@@ -180,12 +186,17 @@ export class FreeCellScene extends Phaser.Scene {
   private targetTableau(column: number): void {
     if (!this.selection) return
     const targetIsEmpty = (this.state.tableau[column]?.length ?? 0) === 0
+    const selectedCount = this.selection.kind === 'tableau' ? this.selection.count : 1
+    const capacity = this.selection.kind === 'tableau' ? maxMovableCards(this.state, column) : 1
+    const exceedsCapacity = selectedCount > capacity
     const result = this.selection.kind === 'tableau'
       ? moveTableauToTableau(this.state, this.selection.column, column, this.selection.count)
       : moveFreeCellToTableau(this.state, this.selection.index, column)
     this.finish(
       result,
-      targetIsEmpty
+      exceedsCapacity
+        ? `选了 ${selectedCount} 张，最多移动 ${capacity} 张${targetIsEmpty ? '（目标空列不算中转）' : ''}`
+        : targetIsEmpty
         ? '空列可以放牌，但一次可搬的张数受空当格和其他空列限制'
         : '这里要接颜色相反、点数大一号的牌'
     )
