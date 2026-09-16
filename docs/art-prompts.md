@@ -86,7 +86,27 @@ lines, no drop shadows. Flat 2D, vector style.
 
 注意「No cute faces」：切面是果肉特写，不需要表情（整果保留表情）。
 
-## 提示词 B：packets.png（红包雨）
+### A2 的替代做法：用「图片编辑」而不是从零生成（推荐）
+
+文字凭空生成"侧视半果"成功率低（模型见过的多是横截面圆图）。改用
+GPT-Image 的编辑功能：**上传 `public/art/fruits-big.png` / `fruits-small.png`
+中合格的整果格**（或直接上传整图），用下面这段指令，让它在已有水果上改：
+
+```text
+Edit this sprite sheet: for each fruit in the grid, cut it vertically
+in half and KEEP ONLY THE LEFT HALF. The left half must keep its
+rounded skin on the right side and show the flat cut face on the left
+with juicy flesh, seeds and pit visible on that flat side (watermelon:
+red flesh with black seeds; strawberry: pale pink flesh; mandarin:
+segmented orange flesh; apple: cream flesh with two brown seeds;
+peach: golden flesh with a wrinkled pit; pineapple: yellow flesh).
+Do not change anything else: keep the same grid positions, same sizes,
+same style, same white background. No whole fruits, no round top-view
+cross-sections, no faces, no text.
+```
+
+编辑模式继承了原图的布局与风格，只需要它执行"切掉右半"这一个动作，
+这是它擅长的。## 提示词 B：packets.png（红包雨）
 
 ```text
 Sprite sheet with exactly 2 equal square cells side by side (1 row,
