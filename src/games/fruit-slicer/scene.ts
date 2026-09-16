@@ -1,8 +1,9 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { ActionScene } from '../action-kit/scene'
+import { ActionScene, FIELD } from '../action-kit/scene'
 import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
-import { FRUIT_RADIUS, FRUITS, MODES, newGame, slice, step, type Fruit } from './core/game'
+import { endSwipe, FRUIT_RADIUS, FRUITS, MODES, newGame, slice, step, type Fruit } from './core/game'
+import { makeCutHalf } from './cut-art'
 
 const TRAIL_MS = 130
 const JUICE_COLORS = [0xe8564d, 0xf05a61, 0xf39a48, 0xd85e54, 0xef9c8e, 0xd8a93d]
@@ -11,15 +12,6 @@ interface TrailPoint { x: number; y: number; t: number }
 
 // 六种飞行水果与共享素材等级的对应（西瓜/草莓/凸顶柑/苹果/桃子/菠萝）。
 const KIND_TO_LEVEL = [10, 1, 3, 5, 7, 8] as const
-// 半果切面配色：皮边、果肉与籽（kind 顺序同上），程序叠加在平直切面上。
-const CUT_FACES = [
-  { rind: 0x4f9d65, flesh: 0xe8564d, seeds: 0x2b2b2b, seedCount: 5 },
-  { rind: 0xf05a61, flesh: 0xffd9dc, seeds: 0xe6b84d, seedCount: 6 },
-  { rind: 0xf39a48, flesh: 0xffb75e, seeds: 0xe8803a, seedCount: 4 },
-  { rind: 0xd85e54, flesh: 0xfaf0d8, seeds: 0x6b4423, seedCount: 2 },
-  { rind: 0xef9c8e, flesh: 0xf7d774, seeds: 0x9c7047, seedCount: 1 },
-  { rind: 0xd8a93d, flesh: 0xf2cf62, seeds: 0xb8862f, seedCount: 3 }
-] as const
 
 export class FruitSlicerScene extends ActionScene {
   private state = newGame()
@@ -28,6 +20,8 @@ export class FruitSlicerScene extends ActionScene {
   private spins: number[] = []
   private trail: TrailPoint[] = []
   private blade!: Phaser.GameObjects.Graphics
+  private lastPointer: TrailPoint | null = null
+  private lastWhoosh = 0
   constructor(audio: GameAudio, exit: () => void) { super('fruit-slicer', '切水果', audio, exit) }
   protected modes(): readonly { label: string }[] {
     return MODES.map((entry, index) => ({ label: `${this.mode === index ? '✓ ' : ''}${entry.label}` }))
@@ -49,23 +43,51 @@ export class FruitSlicerScene extends ActionScene {
     this.views = []
     this.spins = []
     this.trail = []
+    this.lastPointer = null
+    this.lastWhoosh = 0
+    this.drawBoard()
     JUICE_COLORS.forEach((color, index) => this.makeDotTexture(`juice-${index}`, color, 5))
     this.makeDotTexture('sparkle-white', 0xffffff, 4)
     this.makeDotTexture('sparkle-gold', 0xffe08a, 5)
     this.blade = this.add.graphics()
     this.entities.add(this.blade)
     this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (!this.running) return
-      this.trail = [{ x: pointer.x, y: pointer.y, t: performance.now() }]
+      if (!this.running || pointer.y < FIELD.top || pointer.y > 890) return
+      this.state = endSwipe(this.state)
+      this.lastPointer = { x: pointer.x, y: pointer.y, t: performance.now() }
+      this.trail = [this.lastPointer]
     })
     this.onRoundInput('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (!this.running || !pointer.isDown || !this.trail.length) return
-      const previous = this.trail.at(-1)!
+      if (!this.running || !pointer.isDown || !this.lastPointer) return
+      if (pointer.y < FIELD.top || pointer.y > 900 || pointer.x < 0 || pointer.x > 768) { this.finishSwipe(); return }
+      const previous = this.lastPointer
       const current = { x: pointer.x, y: pointer.y, t: performance.now() }
       if (Math.hypot(current.x - previous.x, current.y - previous.y) < 3) return
       this.trySlice(previous, current)
+      if (current.t - this.lastWhoosh > 160 && Math.hypot(current.x - previous.x, current.y - previous.y) > 18) {
+        this.audio.playWhoosh(); this.lastWhoosh = current.t
+      }
+      if (!this.trail.length) this.trail.push({ ...previous, t: current.t - 16 })
       this.trail.push(current)
+      if (this.trail.length > 48) this.trail.shift()
+      this.lastPointer = current
     })
+    this.onRoundInput('pointerup', () => this.finishSwipe())
+    this.onRoundInput('pointerupoutside', () => this.finishSwipe())
+    this.onRoundInput('gameout', () => this.finishSwipe())
+  }
+  private finishSwipe(): void { this.lastPointer = null; this.state = endSwipe(this.state) }
+
+  private drawBoard(): void {
+    const board = this.add.graphics()
+    board.fillStyle(0x553e32).fillRoundedRect(12, 220, 744, 672, 22)
+    for (let row = 0; row < 7; row++) {
+      const y = 232 + row * 92
+      board.fillStyle(row % 2 ? 0x644a3a : 0x6c503d).fillRoundedRect(22, y, 724, 86, 8)
+      board.lineStyle(1, 0xc39766, 0.14)
+      for (let line = 0; line < 3; line++) board.lineBetween(42 + row * 7, y + 17 + line * 21, 720 - row * 9, y + 14 + line * 21)
+    }
+    this.entities.add(board)
   }
   private trySlice(from: TrailPoint, to: TrailPoint): void {
     const result = slice(this.state, from.x, from.y, to.x, to.y)
@@ -78,47 +100,33 @@ export class FruitSlicerScene extends ActionScene {
       this.cameras.main.shake(150, 0.004)
       this.floatText(to.x, to.y - 30, `炸弹 −${result.bombs * 5} 秒`, '#c0392b', 22)
     } else {
-      this.audio.playWhoosh()
+      this.audio.playPop(0.9 + Math.min(4, this.state.swipeCount) * 0.12)
       const gained = result.cutFruits.length + result.bonus
-      this.floatText(to.x, to.y - 20, result.bonus ? `+${gained} 一刀多果！` : `+${gained}`, result.bonus ? '#d9a12e' : '#2f6f8f', result.bonus ? 26 : 24)
+      this.floatText(to.x, to.y - 20, result.bonus ? `${this.state.swipeCount} 连切！+${gained}` : `+${gained}`, result.bonus ? '#ffe08a' : '#fff4d3', result.bonus ? 30 : 24)
     }
   }
-  // 切开的水果沿切线裂成两半：emoji 套固定半平面遮罩，半果从切口滑出下坠，
-  // 切口有闪光线加白金双色闪亮粒子和对应颜色的果汁。
+  // 固化切中瞬间的朝向，两个透明半果继承抛出速度并沿切线法向分离。
   private playCut(fruit: Fruit, from: TrailPoint, to: TrailPoint): void {
     const index = this.views.findIndex(view => Math.abs(view.x - fruit.x) < 1 && Math.abs(view.y - fruit.y) < 1)
+    const rotation = index >= 0 ? this.views[index]!.rotation : 0
     if (index >= 0) { this.views.splice(index, 1)[0]?.destroy(); this.spins.splice(index, 1) }
     if (fruit.bomb) return
     const tx = Math.cos(Math.atan2(to.y - from.y, to.x - from.x))
     const ty = Math.sin(Math.atan2(to.y - from.y, to.x - from.x))
     const nx = -ty, ny = tx
     for (const side of [-1, 1] as const) {
-      const half = this.add.container(fruit.x, fruit.y)
-      half.add(this.useArtFruits
-        ? this.add.image(0, 0, fruitArtKey(fruit.bomb ? -1 : KIND_TO_LEVEL[fruit.kind]!)).setDisplaySize(FRUIT_RADIUS * 2, FRUIT_RADIUS * 2)
-        : this.add.text(0, 0, fruit.bomb ? '💣' : FRUITS[fruit.kind]!, { fontSize: '68px' }).setOrigin(0.5))
-      half.add(this.makeCutFace(fruit.kind, tx, ty, nx, ny, side))
+      const half = makeCutHalf(this, this.useArtFruits ? fruitArtKey(KIND_TO_LEVEL[fruit.kind]!) : null,
+        FRUITS[fruit.kind]!, fruit.kind, rotation, Math.atan2(ty, tx), side).setPosition(fruit.x, fruit.y)
       this.entities.add(half)
-      // 固定在世界坐标的半平面遮罩：只显示切线法向 side 一侧，半果移动时从切口滑出。
-      const shape = this.make.graphics()
-      const reach = 160
-      shape.fillStyle(0xffffff)
-      shape.fillPoints([
-        new Phaser.Math.Vector2(fruit.x - tx * reach, fruit.y - ty * reach),
-        new Phaser.Math.Vector2(fruit.x + tx * reach, fruit.y + ty * reach),
-        new Phaser.Math.Vector2(fruit.x + tx * reach + nx * reach * side, fruit.y + ty * reach + ny * reach * side),
-        new Phaser.Math.Vector2(fruit.x - tx * reach + nx * reach * side, fruit.y - ty * reach + ny * reach * side)
-      ], true)
-      half.setMask(shape.createGeometryMask())
-      half.once('destroy', () => { half.clearMask(true); shape.destroy() })
+      const vx = fruit.vx * 0.6 + nx * 180 * side
+      const vy = fruit.vy * 0.3 + ny * 180 * side - 100
       this.tweens.add({
-        targets: half,
-        x: fruit.x + nx * 120 * side,
-        y: fruit.y + 330,
-        rotation: side * 1.4,
-        alpha: 0,
-        duration: 640,
-        ease: 'Cubic.In',
+        targets: half, rotation: side * 1.4, duration: 720,
+        onUpdate: tween => {
+          const t = tween.progress * 0.72
+          half.setPosition(fruit.x + vx * t, fruit.y + vy * t + 650 * t * t)
+          half.setAlpha(Math.min(1, (1 - tween.progress) * 3))
+        },
         onComplete: () => half.destroy()
       })
     }
@@ -130,31 +138,17 @@ export class FruitSlicerScene extends ActionScene {
     this.spray('sparkle-white', fruit.x, fruit.y, 8, 340, 380)
     this.spray('sparkle-gold', fruit.x, fruit.y, 6, 260, 460)
     this.spray(`juice-${fruit.kind}`, fruit.x, fruit.y, 12, 230)
+    this.splash(fruit)
   }
-  // 在半果的平直切面上叠一条皮边、果肉与籽，随半果一起飞出，让切口露出真实果肉。
-  private makeCutFace(kind: number, tx: number, ty: number, nx: number, ny: number, side: number): Phaser.GameObjects.Graphics {
-    const face = CUT_FACES[kind] ?? CUT_FACES[0]!
-    const halfLength = 38
-    const graphics = this.add.graphics()
-    const band = (inner: number, outer: number, color: number, alpha = 1): void => {
-      graphics.fillStyle(color, alpha)
-      graphics.fillPoints([
-        new Phaser.Math.Vector2(-tx * halfLength + nx * inner * side, -ty * halfLength + ny * inner * side),
-        new Phaser.Math.Vector2(tx * halfLength + nx * inner * side, ty * halfLength + ny * inner * side),
-        new Phaser.Math.Vector2(tx * halfLength + nx * outer * side, ty * halfLength + ny * outer * side),
-        new Phaser.Math.Vector2(-tx * halfLength + nx * outer * side, -ty * halfLength + ny * outer * side)
-      ], true)
+  private splash(fruit: Fruit): void {
+    const mark = this.add.graphics().setPosition(fruit.x, fruit.y)
+    mark.fillStyle(JUICE_COLORS[fruit.kind]!, 0.35).fillEllipse(0, 0, 64, 45)
+    for (let i = 0; i < 7; i++) {
+      const a = i * 2.4 + fruit.kind
+      mark.fillCircle(Math.cos(a) * (25 + i * 4), Math.sin(a) * (20 + i * 3), 3 + i % 4)
     }
-    band(0, 3, face.rind)
-    band(3, 15, face.flesh)
-    if (face.seedCount > 0) {
-      graphics.fillStyle(face.seeds, 0.95)
-      for (let i = 0; i < face.seedCount; i++) {
-        const along = -24 + (48 / Math.max(1, face.seedCount - 1)) * i
-        graphics.fillCircle(tx * along + nx * 9 * side, ty * along + ny * 9 * side, 2.5)
-      }
-    }
-    return graphics
+    this.entities.addAt(mark, 1)
+    this.tweens.add({ targets: mark, alpha: 0, delay: 250, duration: 800, onComplete: () => mark.destroy() })
   }
   protected tick(delta: number): void {
     this.state = step(this.state, delta)
@@ -187,14 +181,20 @@ export class FruitSlicerScene extends ActionScene {
     const now = performance.now()
     this.trail = this.trail.filter(point => now - point.t <= TRAIL_MS)
     this.blade.clear()
+    this.entities.bringToTop(this.blade)
     for (let i = 1; i < this.trail.length; i++) {
       const age = (now - this.trail[i]!.t) / TRAIL_MS
-      this.blade.lineStyle(Math.max(2, 10 * (1 - age)), 0xffffff, Math.max(0.25, 0.95 * (1 - age)))
-      this.blade.lineBetween(this.trail[i - 1]!.x, this.trail[i - 1]!.y, this.trail[i]!.x, this.trail[i]!.y)
+      const from = this.trail[i - 1]!, to = this.trail[i]!
+      const width = Math.max(1, 8 * (1 - age))
+      this.blade.lineStyle(width * 2.4, 0x8be3ff, 0.18 * (1 - age))
+        .lineBetween(from.x, from.y, to.x, to.y)
+      this.blade.lineStyle(width, 0xffffff, 0.95 * (1 - age))
+        .lineBetween(from.x, from.y, to.x, to.y)
+      this.blade.fillStyle(0xffffff, 0.9 * (1 - age)).fillCircle(to.x, to.y, width / 2)
     }
   }
   private floatText(x: number, y: number, content: string, color: string, size: number): void {
-    const label = this.text(x, Math.max(248, y), content, size, this.entities).setColor(color)
+    const label = this.text(Phaser.Math.Clamp(x, 120, 648), Math.max(280, y), content, size, this.entities).setColor(color)
     this.tweens.add({ targets: label, y: label.y - 46, alpha: 0, duration: 560, ease: 'Cubic.Out', onComplete: () => label.destroy() })
   }
 }

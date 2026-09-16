@@ -193,10 +193,20 @@ try {
         const fruit = await evaluate('__scene.state.fruits.find(f => !f.bomb && f.y > 300 && f.y < 740)')
         const from = await point(fruit.x-60,fruit.y), to = await point(fruit.x+60,fruit.y)
         await send('Input.dispatchMouseEvent',{type:'mousePressed',...from,button:'left',clickCount:1})
-        await send('Input.dispatchMouseEvent',{type:'mouseMoved',...to,button:'left',buttons:1})
-        await send('Input.dispatchMouseEvent',{type:'mouseReleased',...to,button:'left',clickCount:1})
+        await pause(250) // 刀光已经消失，手指仍按住；继续移动必须仍可切。
+        assert.ok(await evaluate('__scene.lastPointer !== null && __scene.trail.length === 0'))
+        const target = await evaluate('__scene.state.fruits.find(f => !f.bomb && f.y < 880)')
+        assert.ok(target)
+        const end = await point(target.x,target.y)
+        await send('Input.dispatchMouseEvent',{type:'mouseMoved',...end,button:'left',buttons:1})
+        await send('Input.dispatchMouseEvent',{type:'mouseReleased',...end,button:'left',clickCount:1})
         await pause(50)
         assert.ok(await evaluate('__scene.state.cut > 0'))
+        assert.equal(await evaluate('__scene.lastPointer'),null)
+        assert.ok(await evaluate("__scene.textures.getTextureKeys().filter(k=>k.startsWith('cut-half-')).length >= 2"))
+        await screenshot(`fruit-slicer-cut-${width}`)
+        await pause(900)
+        assert.equal(await evaluate("__scene.textures.getTextureKeys().filter(k=>k.startsWith('cut-half-')).length"),0)
       }
       // 检查发射器局部坐标和有界粒子池；不改规则状态。
       const burst = await evaluate(`(()=>{__scene.makeDotTexture('test-dot',0xffffff);for(let i=0;i<20;i++)__scene.spray('test-dot',300,400,24,100);const e=__scene.bursts.get('test-dot');return {x:e.x,y:e.y,px:e.alive[0].x,py:e.alive[0].y,count:e.alive.length}})()`)
