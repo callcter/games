@@ -79,7 +79,11 @@ export abstract class PuzzleScene extends Phaser.Scene {
     const background = this.add.rectangle(x, y, width, 60, 0xfffdf6).setStrokeStyle(2, 0xd8cdbb)
     parent?.add(background)
     const text = this.text(x, y, label, 21, parent)
-    background.setInteractive({ useHandCursor: true }).on('pointerup', action)
+    let pressed = false
+    background.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => { pressed = true })
+      .on('pointerout', () => { pressed = false })
+      .on('pointerup', () => { if (pressed) { pressed = false; action() } })
     return text
   }
 

@@ -30,9 +30,17 @@ export function newGame(level = 0): NonogramState { const size = patternSize(lev
 export function mark(state: NonogramState, index: number, value: Mark): NonogramState {
   const total = patternSize(state.level) ** 2
   if (state.won || !Number.isInteger(index) || index < 0 || index >= total || ![-1, 0, 1].includes(value)) return state
+  if (state.marks[index] === value) return state
   const marks = state.marks.map((old, i) => i === index ? value : old)
   const target = solution(state.level)
   return { ...state, marks, won: target.every((filled, i) => (marks[i] === 1) === (filled === 1)) }
+}
+
+export function lineCells(from: number, to: number, size: number): number[] {
+  if (!Number.isInteger(size) || size < 1 || ![from,to].every(i => Number.isInteger(i) && i >= 0 && i < size*size)) return []
+  const x = from % size, y = Math.floor(from/size), dx = to % size - x, dy = Math.floor(to/size) - y
+  const steps = Math.max(Math.abs(dx), Math.abs(dy))
+  return steps ? Array.from({ length: steps+1 }, (_,i) => Math.round(y+dy*i/steps)*size + Math.round(x+dx*i/steps)) : [from]
 }
 
 // 逐行枚举 + 列前缀剪枝，验证关卡唯一解；只在测试里执行，不在每次点击时运行。
