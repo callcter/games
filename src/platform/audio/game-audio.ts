@@ -9,6 +9,8 @@ export class GameAudio {
   private musicTimer: number | null = null
   private melodyIndex = 0
   private started = false
+  private disposed = false
+  private voices = new Set<() => void>()
   private noiseBuffer: AudioBuffer | null = null
   private muted = readMutedPreference()
   private readonly handleVisibilityChange = (): void => {
@@ -26,10 +28,13 @@ export class GameAudio {
   }
 
   async unlock(): Promise<void> {
-    this.createGraph()
-    if (!this.context) return
+    if (this.disposed) return
     try {
-      if (this.context.state !== 'running') await this.context.resume()
+      this.createGraph()
+      const context = this.context
+      if (!context) return
+      if (context.state !== 'running') await context.resume()
+      if (this.disposed || this.context !== context) return
       if (!this.started) {
         this.started = true
         this.startMusic()
@@ -81,7 +86,9 @@ export class GameAudio {
 
   /** 泡泡破裂的「啵」声；pitch 越大越清脆，可随泡泡大小映射音阶。 */
   playPop(pitch = 1): void {
-    this.playNoise(500 * pitch, 2600 * pitch, 0.08, 0.22, 'lowpass')
+    const safePitch = Number.isFinite(pitch) ? Math.min(3, Math.max(0.35, pitch)) : 1
+    this.playEffect(760 * safePitch, 220 * safePitch, 0.09, 0.13, 'sine')
+    this.playNoise(500 * safePitch, 2600 * safePitch, 0.065, 0.09, 'lowpass')
   }
 
   /** 炸弹或炮仗的低沉「砰」声。 */
@@ -95,11 +102,15 @@ export class GameAudio {
   }
 
   dispose(): void {
+    this.disposed = true
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     if (this.musicTimer !== null) window.clearInterval(this.musicTimer)
     this.musicTimer = null
     if (this.context && this.context.state !== 'closed') void this.context.close()
     this.context = null
+    for (const release of this.voices) release()
+    this.masterGain = this.musicGain = this.effectsGain = null
+    this.noiseBuffer = null
   }
 
   private createGraph(): void {
@@ -128,7 +139,7 @@ export class GameAudio {
   }
 
   private playNextMusicNote(): void {
-    if (!this.context || !this.musicGain || this.context.state !== 'running') return
+    if (!this.context || !this.musicGain || this.context.state !== 'running' || this.muted) return
     const frequency = MELODY[this.melodyIndex % MELODY.length] ?? 261.63
     this.melodyIndex += 1
     this.scheduleTone(frequency, frequency * 0.998, 0.34, 0.11, 'sine', this.musicGain)
@@ -145,7 +156,7 @@ export class GameAudio {
     type: OscillatorType,
     delay = 0
   ): void {
-    if (!this.context || !this.effectsGain || this.muted) return
+    if (!this.context || !this.effectsGain || this.muted || this.context.state !== 'running') return
     this.scheduleTone(startFrequency, endFrequency, duration, volume, type, this.effectsGain, delay)
   }
 
@@ -157,7 +168,7 @@ export class GameAudio {
     volume: number,
     filterType: BiquadFilterType
   ): void {
-    if (!this.context || !this.effectsGain || this.muted) return
+    if (!this.context || !this.effectsGain || this.muted || this.context.state !== 'running' || this.voices.size >= 24) return
     if (!this.noiseBuffer) {
       const rate = this.context.sampleRate
       this.noiseBuffer = this.context.createBuffer(1, rate, rate)
@@ -180,6 +191,7 @@ export class GameAudio {
     source.connect(filter)
     filter.connect(envelope)
     envelope.connect(this.effectsGain)
+    this.trackVoice(source, filter, envelope)
     source.start(start)
     source.stop(start + duration + 0.02)
   }
@@ -193,7 +205,7 @@ export class GameAudio {
     destination: AudioNode,
     delay = 0
   ): void {
-    if (!this.context) return
+    if (!this.context || this.voices.size >= 24) return
     const start = this.context.currentTime + delay
     const oscillator = this.context.createOscillator()
     const envelope = this.context.createGain()
@@ -205,8 +217,20 @@ export class GameAudio {
     envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration)
     oscillator.connect(envelope)
     envelope.connect(destination)
+    this.trackVoice(oscillator, envelope)
     oscillator.start(start)
     oscillator.stop(start + duration + 0.02)
+  }
+
+  private trackVoice(source: AudioScheduledSourceNode, ...nodes: AudioNode[]): void {
+    const release = (): void => {
+      source.onended = null
+      source.disconnect()
+      nodes.forEach(node => node.disconnect())
+      this.voices.delete(release)
+    }
+    source.onended = release
+    this.voices.add(release)
   }
 }
 
