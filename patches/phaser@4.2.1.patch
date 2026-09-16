@@ -1,0 +1,132 @@
+diff --git a/dist/phaser.esm.js b/dist/phaser.esm.js
+index 8c6521ac895c8ba041b6990573cdb38e7210fec6..37f8a6d87617a3a559f381ff2f42a9f7774a4dd7 100644
+--- a/dist/phaser.esm.js
++++ b/dist/phaser.esm.js
+@@ -19343,16 +19343,37 @@ var VisibilityHandler = function (game)
+         document.addEventListener(hiddenVar, onChange, false);
+     }
+ 
+-    window.onblur = function ()
++    var onBlur = function ()
+     {
+         eventEmitter.emit(Events.BLUR);
+     };
+ 
+-    window.onfocus = function ()
++    var onFocus = function ()
+     {
+         eventEmitter.emit(Events.FOCUS);
+     };
+ 
++    window.onblur = onBlur;
++    window.onfocus = onFocus;
++
++    game.events.once(Events.DESTROY, function ()
++    {
++        if (hiddenVar)
++        {
++            document.removeEventListener(hiddenVar, onChange, false);
++        }
++
++        if (window.onblur === onBlur)
++        {
++            window.onblur = null;
++        }
++
++        if (window.onfocus === onFocus)
++        {
++            window.onfocus = null;
++        }
++    });
++
+     //  Automatically give the window focus unless config says otherwise
+     if (window.focus && game.config.autoFocus)
+     {
+diff --git a/dist/phaser.js b/dist/phaser.js
+index d5f7d60dd067d6a5b9d1fc2518b216f821f16e0c..1ef5ff26df905c104f4c4c73c3eb6854c4c8ed39 100644
+--- a/dist/phaser.js
++++ b/dist/phaser.js
+@@ -19355,16 +19355,37 @@ var VisibilityHandler = function (game)
+         document.addEventListener(hiddenVar, onChange, false);
+     }
+ 
+-    window.onblur = function ()
++    var onBlur = function ()
+     {
+         eventEmitter.emit(Events.BLUR);
+     };
+ 
+-    window.onfocus = function ()
++    var onFocus = function ()
+     {
+         eventEmitter.emit(Events.FOCUS);
+     };
+ 
++    window.onblur = onBlur;
++    window.onfocus = onFocus;
++
++    game.events.once(Events.DESTROY, function ()
++    {
++        if (hiddenVar)
++        {
++            document.removeEventListener(hiddenVar, onChange, false);
++        }
++
++        if (window.onblur === onBlur)
++        {
++            window.onblur = null;
++        }
++
++        if (window.onfocus === onFocus)
++        {
++            window.onfocus = null;
++        }
++    });
++
+     //  Automatically give the window focus unless config says otherwise
+     if (window.focus && game.config.autoFocus)
+     {
+diff --git a/src/core/VisibilityHandler.js b/src/core/VisibilityHandler.js
+index 13978368556927dd57411a38a264b7252f0046bb..2bcf1962c1a69f1275fc238f8ab509b5d680adea 100644
+--- a/src/core/VisibilityHandler.js
++++ b/src/core/VisibilityHandler.js
+@@ -74,16 +74,37 @@ var VisibilityHandler = function (game)
+         document.addEventListener(hiddenVar, onChange, false);
+     }
+ 
+-    window.onblur = function ()
++    var onBlur = function ()
+     {
+         eventEmitter.emit(Events.BLUR);
+     };
+ 
+-    window.onfocus = function ()
++    var onFocus = function ()
+     {
+         eventEmitter.emit(Events.FOCUS);
+     };
+ 
++    window.onblur = onBlur;
++    window.onfocus = onFocus;
++
++    game.events.once(Events.DESTROY, function ()
++    {
++        if (hiddenVar)
++        {
++            document.removeEventListener(hiddenVar, onChange, false);
++        }
++
++        if (window.onblur === onBlur)
++        {
++            window.onblur = null;
++        }
++
++        if (window.onfocus === onFocus)
++        {
++            window.onfocus = null;
++        }
++    });
++
+     //  Automatically give the window focus unless config says otherwise
+     if (window.focus && game.config.autoFocus)
+     {

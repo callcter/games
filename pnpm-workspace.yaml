@@ -1,0 +1,2 @@
+patchedDependencies:
+  phaser@4.2.1: patches/phaser@4.2.1.patch

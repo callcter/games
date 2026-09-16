@@ -1,0 +1,2 @@
+# 补丁的上下文空行含一个空格，且 CRLF 必须原样保留以匹配上游包及 lockfile hash。
+patches/*.patch -text whitespace=-blank-at-eol,cr-at-eol
