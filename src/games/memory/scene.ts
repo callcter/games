@@ -2,11 +2,11 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { conceal, flip, newGame } from './core/game'
 
-const FRUITS = ['🍎', '🍌', '🍇', '🍉', '🍊', '🍓', '🍒', '🥝']
-const ANIMALS = ['🐱', '🐶', '🐰', '🐼', '🦊', '🐸', '🐻', '🐯']
+const FRUITS = ['🍎', '🍌', '🍇', '🍉', '🍊', '🍓', '🍒', '🥝', '🍑', '🥭', '🍍', '🥥', '🍐', '🍏', '🍈', '🥑', '🍋', '🍅', '🥕', '🌽', '🍄', '🌰', '🥜', '🍞']
+const ANIMALS = ['🐱', '🐶', '🐰', '🐼', '🦊', '🐸', '🐻', '🐯', '🦁', '🐨', '🐷', '🐮', '🐔', '🐧', '🦆', '🦉', '🦋', '🐝', '🐞', '🐢', '🐬', '🦄', '🐙', '🐳']
 
 export class MemoryScene extends PuzzleScene {
-  private pairs = 3
+  private pairs = 8
   private players = 1
   private animals = false
   private state = newGame()
@@ -21,8 +21,8 @@ export class MemoryScene extends PuzzleScene {
   private draw(animatedIndex = -1): void {
     const s = this.state
     this.resetView(`${s.turns} 次尝试 · ${this.players === 2 ? `轮到玩家 ${s.player + 1}　比分 ${s.scores.join(' : ')}` : `找到 ${s.matched.length / 2} / ${this.pairs} 对`}`)
-    ;[3, 6, 8].forEach((pairs, i) => this.button(170 + i * 214, 165, `${pairs === this.pairs ? '✓ ' : ''}${pairs} 对`, () => { this.pairs = pairs; this.restart() }, 190, this.content))
-    const cols = this.pairs === 3 ? 3 : 4
+    ;[8, 16, 24].forEach((pairs, i) => this.button(170 + i * 214, 165, `${pairs === this.pairs ? '✓ ' : ''}${pairs} 对`, () => { this.pairs = pairs; this.restart() }, 190, this.content))
+    const cols = this.pairs === 8 ? 4 : 8
     const rows = s.cards.length / cols
     const cell = Math.min(148, 570 / cols, 450 / rows)
     s.cards.forEach((value, index) => {
