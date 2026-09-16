@@ -16,7 +16,8 @@
 
 | 精灵图 | 内容 | 网格 | 帧数 | 服务游戏 |
 | --- | --- | --- | --- | --- |
-| fruits.png | 带表情脸的水果 11 种 + 炸弹 | 4 列 × 3 行 | 12 | 合成水果、切水果 |
+| fruits-small.png / fruits-big.png | 带表情脸的水果 11 种 + 炸弹 | 各 3 列 × 2 行 | 各 6 | 已接入：合成水果、切水果 |
+| half-fruits.png | 半果切面（D 形平边朝左）6 种 | 3 列 × 2 行 | 6 | 切水果（另一半代码镜像） |
 | packets.png | 红包、金色炮仗 | 2 列 × 1 行 | 2 | 红包雨 |
 | moles.png | 棕色地鼠、睡觉地鼠 | 2 列 × 1 行 | 2 | 打地鼠 |
 | bubbles.png | 蓝色泡泡、金色泡泡 | 2 列 × 1 行 | 2 | 点泡泡 |
@@ -50,6 +51,32 @@ cartoon bomb with a short rope fuse and a small orange spark.
 No text, no numbers, no letters, no watermark, no borders, no grid lines,
 no drop shadows outside the objects. Flat 2D front view, vector style.
 ```
+
+## 提示词 A2：half-fruits.png（切水果的半果切面）
+
+背景说明：当前切开效果是整果遮罩模拟，切面没有果肉。这张图让切开
+的两半露出真实果肉；另一半在代码里水平镜像，不必画两份。
+
+```text
+Sprite sheet on plain white background, 3 columns × 2 rows grid of 6
+equal square cells. Kawaii flat cartoon style, thick smooth outlines,
+soft cel shading, glossy highlights, consistent bright colors.
+Each cell contains exactly ONE HALF of a fruit, cut cleanly in half
+vertically: a D-shaped half fruit seen from the side, with the FLAT CUT
+FACE on the LEFT showing the juicy interior (flesh and seeds), and the
+rounded skin on the right. All halves exactly the same size, centered,
+occupying about 60% of the cell, clear white gaps between cells.
+Cell 1: half watermelon — light green striped rind, red flesh, black seeds.
+Cell 2: half strawberry — red skin, pale pink flesh with tiny seeds.
+Cell 3: half mandarin orange — orange skin, segmented juicy flesh.
+Cell 4: half apple — red skin, cream flesh, two small brown seeds.
+Cell 5: half peach — pink skin, golden flesh, wrinkled pit on the cut face.
+Cell 6: half pineapple — golden skin with diamond pattern, yellow flesh.
+No cute faces on these halves. No text, no numbers, no watermark, no
+borders, no grid lines, no drop shadows. Flat 2D, vector style.
+```
+
+注意「No cute faces」：切面是果肉特写，不需要表情（整果保留表情）。
 
 ## 提示词 B：packets.png（红包雨）
 
