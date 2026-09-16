@@ -52,3 +52,10 @@ it('rejects silhouette placements outside the outline', () => {
   const state = newGame()
   expect(place(state, 0, { ...state.targets[0]!, x: 120 }, true).pieces[0]!.placed).toBe(false)
 })
+it('accepts an alternative partition across several reference pieces', () => {
+  const state = newGame()
+  // 大三角放在方块底部，覆盖原分块中的多个小块，而非任一指定大三角槽位。
+  const alternate = { x: 384, y: 500, rotation: 4, flipped: false }
+  expect(place(state, 0, alternate, true).pieces[0]!.placed).toBe(true)
+  expect(place(state, 0, alternate).pieces[0]!.placed).toBe(false)
+})
