@@ -23,7 +23,7 @@ export class RedRainScene extends ActionScene {
     this.views = []
     this.makePacketTextures()
     this.makeDotTexture('gold-coin', 0xe6b84d, 6)
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
       const index = this.nearestDrop(pointer.x, pointer.y)
       if (index < 0) return
@@ -51,7 +51,11 @@ export class RedRainScene extends ActionScene {
       this.views = this.state.drops.map(drop => this.makeDrop(drop))
       return
     }
-    this.state.drops.forEach((drop, index) => this.views[index]!.setPosition(drop.x, drop.y))
+    this.state.drops.forEach((drop, index) => {
+      const view = this.views[index]!, key = drop.cracker ? 'firecracker' : 'red-packet'
+      view.setPosition(drop.x, drop.y)
+      if (view.texture.key !== key) view.setTexture(key)
+    })
   }
   // 红包在持续下落，点击判定取点击瞬间最近的实体索引交给 core 的 tap 处理。
   private nearestDrop(x: number, y: number): number {
@@ -78,6 +82,15 @@ export class RedRainScene extends ActionScene {
     graphics.fillRoundedRect(3, 3, 74, 28, 10)
     graphics.lineStyle(2, 0xe6b84d)
     graphics.lineBetween(3, 31, 77, 31)
+    graphics.fillStyle(0xe6b84d)
+    graphics.fillCircle(40, 55, 17)
+    graphics.lineStyle(2, 0xffe8a8)
+    graphics.strokeCircle(40, 55, 13)
+    graphics.fillStyle(0xb53d33)
+    graphics.fillRect(35, 50, 10, 10)
+    graphics.lineStyle(2, 0xffd79a, 0.6)
+    graphics.lineBetween(12, 76, 12, 86)
+    graphics.lineBetween(12, 86, 22, 86)
     graphics.generateTexture('red-packet', 80, 102)
     graphics.clear()
     graphics.fillStyle(0x4a5568)

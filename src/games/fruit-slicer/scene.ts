@@ -54,11 +54,11 @@ export class FruitSlicerScene extends ActionScene {
     this.makeDotTexture('sparkle-gold', 0xffe08a, 5)
     this.blade = this.add.graphics()
     this.entities.add(this.blade)
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
       this.trail = [{ x: pointer.x, y: pointer.y, t: performance.now() }]
     })
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+    this.onRoundInput('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (!this.running || !pointer.isDown || !this.trail.length) return
       const previous = this.trail.at(-1)!
       const current = { x: pointer.x, y: pointer.y, t: performance.now() }
@@ -110,6 +110,7 @@ export class FruitSlicerScene extends ActionScene {
         new Phaser.Math.Vector2(fruit.x - tx * reach + nx * reach * side, fruit.y - ty * reach + ny * reach * side)
       ], true)
       half.setMask(shape.createGeometryMask())
+      half.once('destroy', () => { half.clearMask(true); shape.destroy() })
       this.tweens.add({
         targets: half,
         x: fruit.x + nx * 120 * side,
@@ -118,7 +119,7 @@ export class FruitSlicerScene extends ActionScene {
         alpha: 0,
         duration: 640,
         ease: 'Cubic.In',
-        onComplete: () => { half.destroy(); shape.destroy() }
+        onComplete: () => half.destroy()
       })
     }
     const flash = this.add.graphics()
@@ -172,6 +173,11 @@ export class FruitSlicerScene extends ActionScene {
     this.state.fruits.forEach((fruit, index) => {
       const view = this.views[index]!
       view.setPosition(fruit.x, fruit.y)
+      // 一颗离场、另一颗同帧出生时数量不变，仍要同步外观，不能把炸弹画成果实。
+      if (view instanceof Phaser.GameObjects.Image) {
+        const key = fruitArtKey(fruit.bomb ? -1 : KIND_TO_LEVEL[fruit.kind]!)
+        if (view.texture.key !== key) view.setTexture(key).setDisplaySize(FRUIT_RADIUS * 2, FRUIT_RADIUS * 2)
+      } else view.setText(fruit.bomb ? '💣' : FRUITS[fruit.kind]!)
       view.rotation += this.spins[index]! * delta / 1000
     })
     this.drawBlade()

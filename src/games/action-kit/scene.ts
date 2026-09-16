@@ -19,6 +19,21 @@ export abstract class ActionScene extends PuzzleScene {
   private best = 0
   private readonly bestKey: string
   private readonly gameId: string
+  private roundInputs: Array<() => void> = []
+  private bursts = new Map<string, Phaser.GameObjects.Particles.ParticleEmitter>()
+
+  protected onRoundInput(event: string, handler: (pointer: Phaser.Input.Pointer) => void): void {
+    this.input.on(event, handler)
+    this.roundInputs.push(() => this.input.off(event, handler))
+  }
+
+  protected override resetView(message: string): void {
+    this.roundInputs.splice(0).forEach(remove => remove())
+    this.bursts.clear()
+    // 动作游戏的补间都属于当前面板/回合，结束时不能继续操作已销毁的图片。
+    this.tweens.killAll()
+    super.resetView(message)
+  }
 
   constructor(key: string, title: string, audio: GameAudio, exit: () => void) {
     super(key, title, audio, exit)
@@ -72,7 +87,7 @@ export abstract class ActionScene extends PuzzleScene {
   protected showIntro(): void {
     this.running = false
     this.resetView('选一个难度开始')
-    this.text(384, 268, this.headline(), 23, this.content)
+    this.text(384, 268, this.headline(), 23, this.content).setWordWrapWidth(660)
     this.modes().forEach((entry, index) => {
       this.button(160 + index * 224, 400, entry.label, () => this.launch(index, this.roundSeconds(index)), 204, this.content)
     })
@@ -125,16 +140,24 @@ export abstract class ActionScene extends PuzzleScene {
     graphics.destroy()
   }
 
-  /** 在指定位置爆开一圈粒子后自动销毁；单次数量受控，避免 iPad 老设备压力。 */
+  /** 复用每回合的粒子池；每种纹理最多 64 个存活粒子，回合结束统一销毁。 */
   protected spray(textureKey: string, x: number, y: number, count: number, speed: number, lifespan = 520): void {
-    const emitter = this.add.particles(x, y, textureKey, {
-      speed: { min: speed * 0.4, max: speed },
-      lifespan,
-      scale: { start: 1, end: 0.2 },
-      emitting: false
-    })
-    this.entities.add(emitter)
-    emitter.explode(count, x, y)
-    this.time.delayedCall(lifespan + 120, () => emitter.destroy())
+    let emitter = this.bursts.get(textureKey)
+    if (!emitter) {
+      emitter = this.add.particles(0, 0, textureKey, {
+        speed: { min: speed * 0.4, max: speed },
+        lifespan,
+        scale: { start: 1, end: 0.2 },
+        alpha: { start: 0.9, end: 0 },
+        gravityY: 180,
+        maxParticles: 64,
+        maxAliveParticles: 64,
+        emitting: false
+      })
+      this.entities.add(emitter)
+      this.bursts.set(textureKey, emitter)
+    }
+    // 粒子位置相对发射器；原点只应用一次。每种纹理复用粒子池，不为每次点击创建计时器。
+    emitter.explode(Math.min(24, Math.max(0, count)), x, y)
   }
 }

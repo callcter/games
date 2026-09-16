@@ -62,7 +62,7 @@ try {
   }
   // 只在开发服中观察场景状态，不在产品中暴露调试入口。
   const open = async id => {
-    await evaluate(`(async()=>{const source=await(await fetch('/src/games/${id}/scene.ts')).text();const path=source.split(String.fromCharCode(10)).find(line=>line.includes('puzzle-kit/scene.ts')).split('"')[1];const {PuzzleScene}=await import(path);if(!PuzzleScene.prototype.__test){const create=PuzzleScene.prototype.create;PuzzleScene.prototype.create=function(){window.__scene=this;return create.call(this)};PuzzleScene.prototype.__test=true}})()`)
+    await evaluate(`(async()=>{const {PuzzleScene}=await import('/src/games/puzzle-kit/scene.ts');if(!PuzzleScene.prototype.__test){const create=PuzzleScene.prototype.create;PuzzleScene.prototype.create=function(){window.__scene=this;return create.call(this)};PuzzleScene.prototype.__test=true}})()`)
     await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
     await until(`window.__scene?.sys?.settings.key==='${id}' && __scene.alive`)
     await pause(400)
@@ -161,6 +161,50 @@ try {
   await open('sudoku');assert.ok(await evaluate("__scene.message.includes('找到')"));await click(260,480)
   assert.equal(await evaluate('JSON.stringify(__scene.state)'),beforeReload)
   await home()
+  for (const [width,height] of [[768,1024],[1024,768]]) {
+    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
+    for (const id of ['pop-bubbles','red-rain','whack-mole','fruit-slicer']) {
+      await open(id); await click(160,400)
+      const listeners = await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')")
+      for(let i=0;i<3;i++) { await evaluate('__scene.endRound()'); await click(240,640) }
+      assert.equal(await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')"),listeners, `${id}: 重玩不能累积输入监听器`)
+      await pause(1400)
+      if(id==='pop-bubbles') {
+        const bubble = await evaluate('__scene.state.bubbles[0]')
+        assert.ok(bubble)
+        await click(bubble.x,bubble.y)
+        assert.equal(await evaluate('__scene.state.popped'),1)
+        assert.ok(await evaluate('__scene.audio.context?.state === "running"'))
+      }
+      if(id==='red-rain') {
+        await until('__scene.state.drops.some(d => !d.cracker && d.y > 270 && d.y < 780)')
+        const drop = await evaluate('__scene.state.drops.find(d => !d.cracker && d.y > 270 && d.y < 780)')
+        await click(drop.x,drop.y)
+        assert.ok(await evaluate('__scene.state.score > 0'))
+      }
+      if(id==='whack-mole') {
+        await until('__scene.state.holes.some(m => m && !m.sleeper)')
+        const index = await evaluate('__scene.state.holes.findIndex(m => m && !m.sleeper)')
+        await click(384+(index%3-1)*224,528+(Math.floor(index/3)-1)*224)
+        assert.ok(await evaluate('__scene.state.score > 0'))
+      }
+      if(id==='fruit-slicer') {
+        await until('__scene.state.fruits.some(f => !f.bomb && f.y > 300 && f.y < 740)')
+        const fruit = await evaluate('__scene.state.fruits.find(f => !f.bomb && f.y > 300 && f.y < 740)')
+        const from = await point(fruit.x-60,fruit.y), to = await point(fruit.x+60,fruit.y)
+        await send('Input.dispatchMouseEvent',{type:'mousePressed',...from,button:'left',clickCount:1})
+        await send('Input.dispatchMouseEvent',{type:'mouseMoved',...to,button:'left',buttons:1})
+        await send('Input.dispatchMouseEvent',{type:'mouseReleased',...to,button:'left',clickCount:1})
+        await pause(50)
+        assert.ok(await evaluate('__scene.state.cut > 0'))
+      }
+      // 检查发射器局部坐标和有界粒子池；不改规则状态。
+      const burst = await evaluate(`(()=>{__scene.makeDotTexture('test-dot',0xffffff);for(let i=0;i<20;i++)__scene.spray('test-dot',300,400,24,100);const e=__scene.bursts.get('test-dot');return {x:e.x,y:e.y,px:e.alive[0].x,py:e.alive[0].y,count:e.alive.length}})()`)
+      assert.deepEqual([burst.x,burst.y,burst.px,burst.py],[0,0,300,400])
+      assert.ok(burst.count<=64)
+      await screenshot(`${id}-${width}`); await home()
+    }
+  }
   assert.deepEqual(errors,[])
   console.log(`通过；截图目录：${artifacts}`)
 } finally {

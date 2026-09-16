@@ -3,7 +3,7 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene, FIELD } from '../action-kit/scene'
 import { hitTest, MODES, newGame, pop, step, type Bubble } from './core/game'
 
-type BubbleView = Phaser.GameObjects.Container & { orb: Phaser.GameObjects.Arc; glint: Phaser.GameObjects.Arc }
+type BubbleView = Phaser.GameObjects.Container & { orb: Phaser.GameObjects.Arc; glint: Phaser.GameObjects.Arc; shine: Phaser.GameObjects.Graphics }
 
 export class PopBubblesScene extends ActionScene {
   private state = newGame()
@@ -24,7 +24,7 @@ export class PopBubblesScene extends ActionScene {
     this.views = []
     this.makeDotTexture('pop-drop', 0x7ec8e3, 5)
     this.makeDotTexture('pop-gold', 0xe6b84d, 5)
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
       const index = hitTest(this.state, pointer.x, pointer.y)
       if (index < 0) return
@@ -50,9 +50,11 @@ export class PopBubblesScene extends ActionScene {
     const body = this.add.circle(0, 0, bubble.radius, bubble.golden ? 0xe6b84d : 0x7ec8e3, 0.72)
       .setStrokeStyle(4, bubble.golden ? 0xd9a12e : 0xffffff, 0.9)
     const glint = this.add.circle(0, 0, Math.max(3, bubble.radius * 0.22), 0xffffff, 0.85)
-    const view = this.add.container(bubble.x, bubble.y, [body, glint]) as BubbleView
+    const shine = this.add.graphics()
+    const view = this.add.container(bubble.x, bubble.y, [body, shine, glint]) as BubbleView
     view.orb = body
     view.glint = glint
+    view.shine = shine
     this.entities.add(view)
     this.syncBubble(view, bubble)
     return view
@@ -60,7 +62,18 @@ export class PopBubblesScene extends ActionScene {
   private syncBubble(view: BubbleView, bubble: Bubble): void {
     view.setPosition(bubble.x, bubble.y)
     view.orb.setRadius(bubble.radius)
+      .setFillStyle(bubble.golden ? 0xe6b84d : 0x7ec8e3, 0.35)
+      .setStrokeStyle(3, bubble.golden ? 0xd9a12e : 0x58a9c8, 0.85)
     view.glint.setPosition(-bubble.radius * 0.35, -bubble.radius * 0.35).setRadius(Math.max(3, bubble.radius * 0.22))
+    const r = bubble.radius
+    view.shine.clear().lineStyle(3, 0xffffff, 0.9)
+      .beginPath().arc(0, 0, r * 0.8, Math.PI * 1.1, Math.PI * 1.55).strokePath()
+      .lineStyle(2, bubble.golden ? 0xfff1a4 : 0xcaa8e8, 0.8)
+      .beginPath().arc(0, 0, r * 0.84, 0.1, 1.25).strokePath()
+    if (bubble.golden) {
+      view.shine.lineStyle(2, 0xfffaf0, 1)
+        .lineBetween(-r * 0.2, 0, r * 0.2, 0).lineBetween(0, -r * 0.2, 0, r * 0.2)
+    }
   }
   private floatScore(x: number, y: number, gained: number): void {
     const label = this.text(x, Math.max(FIELD.top + 20, y - 20), `+${gained}`, 24, this.entities).setColor(gained >= 3 ? '#d9a12e' : '#2f6f8f')

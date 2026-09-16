@@ -30,7 +30,7 @@ export class WhackMoleScene extends ActionScene {
     this.makeMoleTextures()
     this.makeDotTexture('mole-star', 0xe6b84d, 6)
     this.buildBoard()
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
       this.hammerFlash(pointer.x, pointer.y)
       const hole = this.holeAt(pointer.x, pointer.y)
@@ -84,6 +84,7 @@ export class WhackMoleScene extends ActionScene {
       maskShape.fillRect(0, 0, 768, Math.max(0, y - HOLE_H / 2))
       maskShape.fillEllipse(x, y, HOLE_W + 8, HOLE_H + 8)
       mole.setMask(maskShape.createGeometryMask())
+      mole.once('destroy', () => { mole.clearMask(true); maskShape.destroy() })
       this.holes.push({ mole, holeIndex: index })
     }
   }
