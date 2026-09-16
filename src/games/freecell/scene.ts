@@ -4,6 +4,7 @@ import { createHeaderButton } from '../../platform/display/header-button'
 import { createCardSlot, createCardView } from '../cards/card-view'
 import { SUITS, rankLabel, suitSymbol, type Suit } from '../cards/core/cards'
 import {
+  canAutoFinish,
   moveFreeCellToFoundation,
   moveFreeCellToTableau,
   moveTableauToFoundation,
@@ -12,6 +13,7 @@ import {
   maxMovableCards,
   movableSequenceLength,
   newGame,
+  nextAutoMove,
   type FreeCellState,
   type MoveResult
 } from './core/game'
@@ -36,6 +38,7 @@ export class FreeCellScene extends Phaser.Scene {
   private initialDeal: FreeCellState
   private history: FreeCellState[] = []
   private selection: Selection | null = null
+  private autoFinishing = false
   private hintMessage = '先点牌，再点目标位置'
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
@@ -140,6 +143,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private selectTableau(column: number, start: number): void {
+    if (this.autoFinishing) return
     if (this.selection) {
       if (this.selection.kind === 'tableau' && this.selection.column === column) {
         if (this.selection.start === start) {
@@ -171,6 +175,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private selectFreeCell(index: number): void {
+    if (this.autoFinishing) return
     this.hintMessage = '先点牌，再点目标位置'
     if (this.selection) {
       this.targetFreeCell(index)
@@ -184,6 +189,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private targetTableau(column: number): void {
+    if (this.autoFinishing) return
     if (!this.selection) return
     const targetIsEmpty = (this.state.tableau[column]?.length ?? 0) === 0
     const selectedCount = this.selection.kind === 'tableau' ? this.selection.count : 1
@@ -203,7 +209,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private targetFreeCell(index: number): void {
-    if (!this.selection) return
+    if (this.autoFinishing || !this.selection) return
     if (this.selection.kind !== 'tableau' || this.selection.count !== 1) {
       this.hintMessage = '空当格一次只能放 1 张牌'
       this.draw()
@@ -213,7 +219,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private targetFoundation(_suit?: Suit): void {
-    if (!this.selection) return
+    if (this.autoFinishing || !this.selection) return
     const result = this.selection.kind === 'tableau'
       ? moveTableauToFoundation(this.state, this.selection.column)
       : moveFreeCellToFoundation(this.state, this.selection.index)
@@ -233,9 +239,48 @@ export class FreeCellScene extends Phaser.Scene {
       this.hintMessage = failureMessage
     }
     this.draw()
+    if (result.moved && !this.state.won) this.maybeAutoFinish()
+  }
+
+  /** 各列都已排成连续递减时，剩下的收牌没有悬念，自动替孩子收完。 */
+  private maybeAutoFinish(): void {
+    if (this.autoFinishing || !canAutoFinish(this.state)) return
+    this.autoFinishing = true
+    this.selection = null
+    this.hintMessage = '牌都排好了，自动收回家～'
+    this.draw()
+    this.runAutoFinish()
+  }
+
+  private runAutoFinish(): void {
+    const move = nextAutoMove(this.state)
+    if (!move) {
+      this.autoFinishing = false
+      return
+    }
+    const result = move.source === 'tableau'
+      ? moveTableauToFoundation(this.state, move.index)
+      : moveFreeCellToFoundation(this.state, move.index)
+    if (!result.moved) {
+      this.autoFinishing = false
+      return
+    }
+    this.history.push(this.state)
+    this.state = result.state
+    this.callbacks.onStateChange(this.state, this.initialDeal)
+    this.audio.playPlace(2)
+    if (this.state.won) {
+      this.autoFinishing = false
+      this.audio.playWin()
+      this.draw()
+      return
+    }
+    this.draw()
+    this.time.delayedCall(130, () => this.runAutoFinish())
   }
 
   private undo(): void {
+    if (this.autoFinishing) return
     const previous = this.history.pop()
     if (!previous) return
     this.state = previous
@@ -247,6 +292,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private restartDeal(): void {
+    this.autoFinishing = false
     this.state = this.initialDeal
     this.history = []
     this.selection = null
@@ -257,6 +303,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private newDeal(): void {
+    this.autoFinishing = false
     this.state = newGame()
     this.initialDeal = this.state
     this.history = []
@@ -268,6 +315,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private showHint(): void {
+    if (this.autoFinishing) return
     for (let index = 0; index < this.state.freeCells.length; index += 1) {
       const card = this.state.freeCells[index]
       if (card && moveFreeCellToFoundation(this.state, index).moved) {
