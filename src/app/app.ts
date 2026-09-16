@@ -1,3 +1,5 @@
+import { puzzles } from './puzzles'
+
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
   { id: 'gomoku', title: '五子棋', symbol: '●○', ready: true },
@@ -5,7 +7,8 @@ const games = [
   { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: true },
   { id: 'freecell', title: '空当接龙', symbol: '♠♥', ready: true },
   { id: 'spider', title: '蜘蛛纸牌', symbol: '🕷♠', ready: true },
-  { id: 'minesweeper', title: '扫雷', symbol: '✹⚑', ready: true }
+  { id: 'minesweeper', title: '扫雷', symbol: '✹⚑', ready: true },
+  ...puzzles
 ] as const
 
 type PreferredOrientation = 'any' | 'portrait' | 'landscape'
@@ -183,6 +186,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector<HTMLButtonElement>('[data-game="minesweeper"]')?.addEventListener('click', () => {
       openGame('minesweeper')
     })
+    for (const puzzle of puzzles) {
+      root.querySelector<HTMLButtonElement>(`[data-game="${puzzle.id}"]`)?.addEventListener('click', () => openGame(puzzle.id))
+    }
 
     root.querySelector<HTMLButtonElement>('.check-update')?.addEventListener('click', () => {
       const status = root.querySelector<HTMLElement>('.update-status')
@@ -381,7 +387,25 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showPuzzle = async (puzzle: typeof puzzles[number]): Promise<void> => {
+    currentView = 'game'
+    const currentNavigation = ++navigationId
+    activeGame?.destroy()
+    activeGame = null
+    root.innerHTML = gameScreenMarkup('正在准备小游戏…', 'portrait')
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const module = await puzzle.load()
+    if (currentNavigation !== navigationId) return
+    const mounted = module.mount(host, goHome)
+    if (currentNavigation !== navigationId) { mounted.destroy(); return }
+    activeGame = mounted
+    root.querySelector('.game-loading')?.remove()
+  }
+
   const route = (): void => {
+    const puzzle = puzzles.find(item => `#/${item.id}` === window.location.hash)
+    if (puzzle) { void showPuzzle(puzzle); return }
     if (window.location.hash === '#/2048') void show2048()
     else if (window.location.hash === '#/gomoku') void showGomoku()
     else if (window.location.hash === '#/tetris') void showTetris()
