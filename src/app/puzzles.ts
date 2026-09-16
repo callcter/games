@@ -1,4 +1,5 @@
 export const puzzles = [
+  { id: 'sokoban', title: '推箱子', symbol: '📦', ready: true, load: () => import('../games/sokoban') },
   { id: 'nonogram', title: '数织', symbol: '▧', ready: true, load: () => import('../games/nonogram') },
   { id: 'maze', title: '迷宫探险', symbol: '🐰', ready: true, load: () => import('../games/maze') },
   { id: 'pipes', title: '接水管', symbol: '💧', ready: true, load: () => import('../games/pipes') },
