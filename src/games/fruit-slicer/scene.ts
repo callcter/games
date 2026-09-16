@@ -5,12 +5,21 @@ import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../pla
 import { FRUIT_RADIUS, FRUITS, MODES, newGame, slice, step, type Fruit } from './core/game'
 
 const TRAIL_MS = 130
-const JUICE_COLORS = [0xe88065, 0xc0392b, 0xe6952d, 0x87b65e, 0xe6b84d, 0x7e8dcd]
+const JUICE_COLORS = [0xe8564d, 0xf05a61, 0xf39a48, 0xd85e54, 0xef9c8e, 0xd8a93d]
 
 interface TrailPoint { x: number; y: number; t: number }
 
-// 六种飞行水果与共享素材等级的对应（西瓜/草莓/凸顶柑/苹果/桃子/葡萄）。
-const KIND_TO_LEVEL = [10, 1, 3, 5, 7, 2] as const
+// 六种飞行水果与共享素材等级的对应（西瓜/草莓/凸顶柑/苹果/桃子/菠萝）。
+const KIND_TO_LEVEL = [10, 1, 3, 5, 7, 8] as const
+// 半果切面配色：皮边、果肉与籽（kind 顺序同上），程序叠加在平直切面上。
+const CUT_FACES = [
+  { rind: 0x4f9d65, flesh: 0xe8564d, seeds: 0x2b2b2b, seedCount: 5 },
+  { rind: 0xf05a61, flesh: 0xffd9dc, seeds: 0xe6b84d, seedCount: 6 },
+  { rind: 0xf39a48, flesh: 0xffb75e, seeds: 0xe8803a, seedCount: 4 },
+  { rind: 0xd85e54, flesh: 0xfaf0d8, seeds: 0x6b4423, seedCount: 2 },
+  { rind: 0xef9c8e, flesh: 0xf7d774, seeds: 0x9c7047, seedCount: 1 },
+  { rind: 0xd8a93d, flesh: 0xf2cf62, seeds: 0xb8862f, seedCount: 3 }
+] as const
 
 export class FruitSlicerScene extends ActionScene {
   private state = newGame()
@@ -88,6 +97,7 @@ export class FruitSlicerScene extends ActionScene {
       half.add(this.useArtFruits
         ? this.add.image(0, 0, fruitArtKey(fruit.bomb ? -1 : KIND_TO_LEVEL[fruit.kind]!)).setDisplaySize(FRUIT_RADIUS * 2, FRUIT_RADIUS * 2)
         : this.add.text(0, 0, fruit.bomb ? '💣' : FRUITS[fruit.kind]!, { fontSize: '68px' }).setOrigin(0.5))
+      half.add(this.makeCutFace(fruit.kind, tx, ty, nx, ny, side))
       this.entities.add(half)
       // 固定在世界坐标的半平面遮罩：只显示切线法向 side 一侧，半果移动时从切口滑出。
       const shape = this.make.graphics()
@@ -119,6 +129,31 @@ export class FruitSlicerScene extends ActionScene {
     this.spray('sparkle-white', fruit.x, fruit.y, 8, 340, 380)
     this.spray('sparkle-gold', fruit.x, fruit.y, 6, 260, 460)
     this.spray(`juice-${fruit.kind}`, fruit.x, fruit.y, 12, 230)
+  }
+  // 在半果的平直切面上叠一条皮边、果肉与籽，随半果一起飞出，让切口露出真实果肉。
+  private makeCutFace(kind: number, tx: number, ty: number, nx: number, ny: number, side: number): Phaser.GameObjects.Graphics {
+    const face = CUT_FACES[kind] ?? CUT_FACES[0]!
+    const halfLength = 38
+    const graphics = this.add.graphics()
+    const band = (inner: number, outer: number, color: number, alpha = 1): void => {
+      graphics.fillStyle(color, alpha)
+      graphics.fillPoints([
+        new Phaser.Math.Vector2(-tx * halfLength + nx * inner * side, -ty * halfLength + ny * inner * side),
+        new Phaser.Math.Vector2(tx * halfLength + nx * inner * side, ty * halfLength + ny * inner * side),
+        new Phaser.Math.Vector2(tx * halfLength + nx * outer * side, ty * halfLength + ny * outer * side),
+        new Phaser.Math.Vector2(-tx * halfLength + nx * outer * side, -ty * halfLength + ny * outer * side)
+      ], true)
+    }
+    band(0, 3, face.rind)
+    band(3, 15, face.flesh)
+    if (face.seedCount > 0) {
+      graphics.fillStyle(face.seeds, 0.95)
+      for (let i = 0; i < face.seedCount; i++) {
+        const along = -24 + (48 / Math.max(1, face.seedCount - 1)) * i
+        graphics.fillCircle(tx * along + nx * 9 * side, ty * along + ny * 9 * side, 2.5)
+      }
+    }
+    return graphics
   }
   protected tick(delta: number): void {
     this.state = step(this.state, delta)
