@@ -58,22 +58,30 @@ no drop shadows outside the objects. Flat 2D front view, vector style.
 的两半露出真实果肉；另一半在代码里水平镜像，不必画两份。
 
 ```text
-Sprite sheet on plain white background, 3 columns × 2 rows grid of 6
-equal square cells. Kawaii flat cartoon style, thick smooth outlines,
-soft cel shading, glossy highlights, consistent bright colors.
-Each cell contains exactly ONE HALF of a fruit, cut cleanly in half
-vertically: a D-shaped half fruit seen from the side, with the FLAT CUT
-FACE on the LEFT showing the juicy interior (flesh and seeds), and the
-rounded skin on the right. All halves exactly the same size, centered,
+Sprite sheet for a fruit-slicing arcade game. Plain white background,
+3 columns × 2 rows grid of 6 equal square cells.
+
+Scene context: in the game, a blade slices a whole fruit vertically
+down the middle, and the fruit splits into two identical halves that
+fly apart. Each cell shows the LEFT half of a fruit right after that
+slice, as if the right half has just been carried away by the blade:
+a D-shaped half fruit in SIDE VIEW, with the FLAT CUT FACE on the left
+showing the juicy interior (flesh, seeds, pit) and the rounded outer
+skin on the right. It must NOT be a full round cross-section viewed
+from above, NOT a whole fruit — only the left half.
+
+Style: kawaii flat cartoon, thick smooth outlines, soft cel shading,
+glossy highlights. All halves exactly the same size, centered,
 occupying about 60% of the cell, clear white gaps between cells.
-Cell 1: half watermelon — light green striped rind, red flesh, black seeds.
+Cell 1: half watermelon — light green striped rind, red flesh with
+black seeds on the cut face.
 Cell 2: half strawberry — red skin, pale pink flesh with tiny seeds.
 Cell 3: half mandarin orange — orange skin, segmented juicy flesh.
 Cell 4: half apple — red skin, cream flesh, two small brown seeds.
-Cell 5: half peach — pink skin, golden flesh, wrinkled pit on the cut face.
-Cell 6: half pineapple — golden skin with diamond pattern, yellow flesh.
-No cute faces on these halves. No text, no numbers, no watermark, no
-borders, no grid lines, no drop shadows. Flat 2D, vector style.
+Cell 5: half peach — pink skin, golden flesh, wrinkled pit on the cut.
+Cell 6: half pineapple — golden diamond-pattern skin, yellow flesh.
+No cute faces. No text, no numbers, no watermark, no borders, no grid
+lines, no drop shadows. Flat 2D, vector style.
 ```
 
 注意「No cute faces」：切面是果肉特写，不需要表情（整果保留表情）。
