@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createDeck, type Card } from '../../src/games/cards/core/cards'
 import {
+  canAutoFinish,
   maxMovableCards,
   microsoftDeal,
+  moveFreeCellToFoundation,
   moveFreeCellToTableau,
   moveTableauToFoundation,
   moveTableauToFreeCell,
@@ -10,6 +12,7 @@ import {
   movableSequenceLength,
   newGame,
   newNumberedGame,
+  nextAutoMove,
   randomGameNumber,
   restoreGame,
   type FreeCellState
@@ -150,5 +153,54 @@ describe('freecell rules', () => {
     expect(restored?.gameNumber).toBe(0)
     expect(restored?.tableau).toEqual(legacy.tableau)
     expect(restoreGame({ ...legacy, gameNumber: 32001 })).toBeNull()
+  })
+
+  it('auto-finishes when every column descends by one', () => {
+    // 各列连续递减（红黑交替与否都行），回收区已到 Q：剩牌可全部自动收完
+    const base = state([
+      [card(13, 'spades')],
+      [card(13, 'hearts')],
+      [card(13, 'clubs'), card(12, 'clubs')],
+      [card(13, 'diamonds')]
+    ])
+    const almostDone = { ...base, foundations: { spades: 12, hearts: 12, clubs: 11, diamonds: 12 } }
+    expect(canAutoFinish(almostDone)).toBe(true)
+    // 收完一张 K 之后再判定：剩余仍满足条件，可继续自动收
+    const afterKings = moveTableauToFoundation(almostDone, 0)
+    expect(afterKings.moved).toBe(true)
+    expect(canAutoFinish(afterKings.state)).toBe(true)
+
+    // 列内出现跳级（K 压着 10）时不能自动完成，避免错误地锁死局面
+    const gapped = state([[card(13, 'spades'), card(10, 'hearts')], [card(13, 'hearts')]])
+    expect(canAutoFinish(gapped)).toBe(false)
+    // 已胜利的牌局不需要再判
+    expect(canAutoFinish({ ...base, won: true })).toBe(false)
+  })
+
+  it('walks auto moves all the way to victory', () => {
+    // 每门花色从 A 到 K 完整可收：列内递减保证 nextAutoMove 一直有牌可回
+    const spades = Array.from({ length: 13 }, (_, index) => card(13 - index, 'spades'))
+    const hearts = Array.from({ length: 13 }, (_, index) => card(13 - index, 'hearts'))
+    const clubs = Array.from({ length: 13 }, (_, index) => card(13 - index, 'clubs'))
+    const diamonds = Array.from({ length: 13 }, (_, index) => card(13 - index, 'diamonds'))
+    let game = state([spades, hearts, clubs, diamonds])
+    expect(canAutoFinish(game)).toBe(true)
+
+    let guard = 0
+    while (!game.won) {
+      const move = nextAutoMove(game)
+      expect(move).not.toBeNull()
+      if (!move) break
+      const result = move.source === 'tableau'
+        ? moveTableauToFoundation(game, move.index)
+        : moveFreeCellToFoundation(game, move.index)
+      expect(result.moved).toBe(true)
+      game = result.state
+      guard += 1
+      expect(guard).toBeLessThan(60)
+    }
+    expect(game.won).toBe(true)
+    expect(game.foundations).toEqual({ spades: 13, hearts: 13, clubs: 13, diamonds: 13 })
+    expect(nextAutoMove(game)).toBeNull()
   })
 })

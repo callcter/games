@@ -156,6 +156,36 @@ export function maxMovableCards(state: FreeCellState, targetColumn: number): num
   return (free + 1) * 2 ** emptyColumns
 }
 
+/**
+ * 判断剩余局面是否可以不加思考地自动收完：每一列从底到顶 rank 严格递减 1
+ * 时，任何时刻最小的未回收牌必在列顶或空当，可一直回收到胜利。空当里的牌
+ * 不受限制。用于「剩几列已经排好」时自动完成，替孩子省掉机械的收牌操作。
+ */
+export function canAutoFinish(state: FreeCellState): boolean {
+  if (state.won) return false
+  return state.tableau.every((column) => {
+    for (let index = 0; index < column.length - 1; index += 1) {
+      const lower = column[index]
+      const upper = column[index + 1]
+      if (!lower || !upper || lower.rank !== upper.rank + 1) return false
+    }
+    return true
+  })
+}
+
+/** 自动完成过程中的下一步回收：返回可回收入口，没有则 null。 */
+export function nextAutoMove(state: FreeCellState): { source: 'tableau' | 'freeCell'; index: number } | null {
+  for (let index = 0; index < state.freeCells.length; index += 1) {
+    const card = state.freeCells[index]
+    if (card && state.foundations[card.suit] + 1 === card.rank) return { source: 'freeCell', index }
+  }
+  for (let index = 0; index < state.tableau.length; index += 1) {
+    const card = state.tableau[index]?.at(-1)
+    if (card && state.foundations[card.suit] + 1 === card.rank) return { source: 'tableau', index }
+  }
+  return null
+}
+
 export function restoreGame(value: unknown): FreeCellState | null {
   if (!value || typeof value !== 'object') return null
   const candidate = value as Partial<FreeCellState>
