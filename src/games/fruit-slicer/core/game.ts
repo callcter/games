@@ -18,11 +18,17 @@ export interface SliceState {
   cut: number
   elapsedMs: number
   spawnIn: number
+  swipeCount: number
 }
 
 export function newGame(mode = 1, random: RandomSource = Math.random): SliceState {
   if (![0, 1, 2].includes(mode)) throw new Error('无效难度')
-  return { mode, fruits: [], score: 0, cut: 0, elapsedMs: 0, spawnIn: 260 + value(random) * 400 }
+  return { mode, fruits: [], score: 0, cut: 0, elapsedMs: 0, spawnIn: 260 + value(random) * 400, swipeCount: 0 }
+}
+
+/** 抬手或离开游戏区域结束一次挥刀，分数与水果保持不变。 */
+export function endSwipe(state: SliceState): SliceState {
+  return state.swipeCount ? { ...state, swipeCount: 0 } : state
 }
 
 const value = (random: RandomSource): number => {
@@ -77,6 +83,9 @@ export interface SliceResult {
 
 /** 用滑动线段切水果：命中的普通水果每个 1 分，一刀 3 个起 +3 奖励；炸弹计数由场景扣时。 */
 export function slice(state: SliceState, x1: number, y1: number, x2: number, y2: number): SliceResult {
+  if (![x1,y1,x2,y2].every(Number.isFinite) || (x1 === x2 && y1 === y2)) {
+    return { state, cutFruits: [], bombs: 0, bonus: 0 }
+  }
   const hits: number[] = []
   state.fruits.forEach((fruit, index) => {
     if (segmentDistance(fruit.x, fruit.y, x1, y1, x2, y2) <= FRUIT_RADIUS) hits.push(index)
@@ -85,10 +94,11 @@ export function slice(state: SliceState, x1: number, y1: number, x2: number, y2:
   const cutFruits = hits.map(index => state.fruits[index]!)
   const bombs = cutFruits.filter(fruit => fruit.bomb).length
   const normals = cutFruits.length - bombs
-  const bonus = normals >= 3 ? 3 : 0
+  const swipeCount = state.swipeCount + normals
+  const bonus = state.swipeCount < 3 && swipeCount >= 3 ? 3 : 0
   const remains = state.fruits.filter((_, index) => !hits.includes(index))
   return {
-    state: { ...state, fruits: remains, score: state.score + normals + bonus, cut: state.cut + normals },
+    state: { ...state, fruits: remains, score: state.score + normals + bonus, cut: state.cut + normals, swipeCount },
     cutFruits,
     bombs,
     bonus

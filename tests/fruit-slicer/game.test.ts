@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { FRUITS, newGame, slice, step } from '../../src/games/fruit-slicer/core/game'
+import { endSwipe, FRUITS, newGame, slice, step } from '../../src/games/fruit-slicer/core/game'
 
 it('throws fruits upward along a parabola and recycles them below the screen', () => {
   let state = { ...newGame(0, () => 0.5), fruits: [{ x: 384, y: 900, vx: 0, vy: -1000, kind: 0, bomb: false }], spawnIn: 100000 }
@@ -67,4 +67,25 @@ it('awards multi-fruit bonus and reports bombs for time penalties', () => {
   expect(result.bonus).toBe(3)
   expect(result.state.score).toBe(6)
   expect(result.state.cut).toBe(3)
+})
+
+it('counts a continuous swipe across multiple input events and rewards only once', () => {
+  let state = { ...newGame(0), fruits: [150,300,450,600].map(x => ({x,y:500,vx:0,vy:0,kind:0,bomb:false})) }
+  for (let i=0;i<4;i++) state = slice(state,100+i*150,500,175+i*150,500).state
+  expect(state.cut).toBe(4)
+  expect(state.score).toBe(7)
+  expect(state.swipeCount).toBe(4)
+  const reset = endSwipe(state)
+  expect(reset.swipeCount).toBe(0)
+  expect(state.swipeCount).toBe(4)
+  expect(reset.score).toBe(7)
+})
+
+it('does not combine separate gestures or treat taps and invalid coordinates as slices', () => {
+  const state = { ...newGame(0), fruits: [150,300,450].map(x => ({x,y:500,vx:0,vy:0,kind:0,bomb:false})) }
+  expect(slice(state,150,500,150,500).state).toBe(state)
+  expect(slice(state,NaN,500,450,500).state).toBe(state)
+  let next = state
+  for (let i=0;i<3;i++) next = endSwipe(slice(next,100+i*150,500,175+i*150,500).state)
+  expect(next.score).toBe(3)
 })
