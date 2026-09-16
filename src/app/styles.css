@@ -75,23 +75,24 @@ button { font: inherit; }
 
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 18px;
 }
 
 .game-card {
   display: flex;
-  min-height: 210px;
-  padding: 24px;
+  min-height: 176px;
+  padding: 20px 12px;
   border: 0;
-  border-radius: 30px;
+  border-radius: 26px;
   color: #173f35;
   background: #fffdf6;
   box-shadow: 0 14px 35px rgb(56 72 49 / 10%);
   cursor: pointer;
   flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
@@ -112,9 +113,61 @@ button { font: inherit; }
 }
 .game-categories [aria-pressed="true"] { background: #173f35; color: #fffdf6; }
 .game-card:disabled { cursor: default; opacity: 0.58; }
-.game-card__symbol { font-size: 3.2rem; line-height: 1; }
-.game-card__title { margin-top: auto; font-size: 1.55rem; font-weight: 800; }
-.game-card__status { margin-top: 4px; color: #698379; font-size: 1rem; }
+.game-card__symbol { font-size: 3.4rem; line-height: 1; }
+.game-card__title { margin-top: 12px; font-size: 1.3rem; font-weight: 800; }
+.game-card__status { margin-top: 4px; color: #698379; font-size: 0.92rem; }
+
+/* 图标排序编辑模式：抖动提示可拖、拖起克隆跟随手指、其余图标让位。 */
+.edit-order {
+  border: 1px solid rgb(23 63 53 / 18%);
+  border-radius: 999px;
+  padding: 10px 18px;
+  color: #527267;
+  background: rgb(255 253 246 / 82%);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.order-editor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+  padding: 12px 18px;
+  border-radius: 18px;
+  background: #eef3e6;
+  color: #173f35;
+  font-weight: 700;
+}
+.order-editor button {
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 14px;
+  background: #173f35;
+  color: #fffdf6;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.order-editor [data-order-reset] { background: #fffdf6; color: #527267; border: 1px solid #d8cdbb; }
+.game-grid--editable { touch-action: none; }
+.game-card--editing { animation: card-wiggle 0.4s ease-in-out infinite; cursor: grab; }
+.game-grid.dragging .game-card--editing { animation: none; }
+.game-card--lifted { opacity: 0.35; }
+.game-card--ghost {
+  position: fixed;
+  z-index: 90;
+  margin: 0;
+  pointer-events: none;
+  transform: scale(1.06);
+  box-shadow: 0 22px 46px rgb(56 72 49 / 24%);
+  animation: none;
+}
+@keyframes card-wiggle {
+  0%, 100% { transform: rotate(-1.1deg); }
+  50% { transform: rotate(1.1deg); }
+}
 
 .update-toast,
 .updated-toast,
@@ -281,7 +334,5 @@ button { font: inherit; }
   .app-shell { padding-top: calc(28px + env(safe-area-inset-top)); }
   .hero { margin-bottom: 24px; }
   .hero h1 { font-size: 3.25rem; }
-  /* 7 张卡在 4 列下会剩 4+3，用 flex 居中让末行 3 张不悬在左侧 */
-  .game-grid { display: flex; flex-wrap: wrap; justify-content: center; }
-  .game-card { width: calc((100% - 3 * 18px) / 4); min-height: 174px; padding: 20px; border-radius: 25px; }
+  .game-card { min-height: 174px; }
 }

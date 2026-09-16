@@ -1,6 +1,6 @@
 import { puzzles } from './puzzles'
 import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
-import { CATEGORIES, categoryOf, readRecent, rememberRecent, type Category } from './library'
+import { CATEGORIES, categoryOf, clearOrder, orderedIds, readRecent, rememberRecent, writeOrder, type Category } from './library'
 
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
@@ -56,6 +56,7 @@ export function renderApp(root: HTMLDivElement | null): void {
   let showUpdatedConfirmation = window.sessionStorage.getItem('family-game-room-updated') === '1'
   let exitInProgress = false
   let selectedCategory: Category = 'all'
+  let editingOrder = false
 
   window.sessionStorage.removeItem('family-game-room-updated')
 
@@ -129,7 +130,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     activeGame?.destroy()
     activeGame = null
     currentView = 'home'
-    const recent = readRecent(games.map(game => game.id)).flatMap(id => games.find(game => game.id === id) ?? [])
+    const gameIds = games.map(game => game.id)
+    const ordered = orderedIds(gameIds, gameIds).flatMap(id => games.find(game => game.id === id) ?? [])
+    const recent = readRecent(gameIds).flatMap(id => games.find(game => game.id === id) ?? [])
 
     root.innerHTML = `
     <main class="app-shell">
@@ -138,15 +141,22 @@ export function renderApp(root: HTMLDivElement | null): void {
         <h1>小树游戏屋</h1>
         <p>选一个小游戏，开心玩一会儿吧。</p>
         <div class="app-actions">
-          <button class="check-update" type="button">检查更新</button>
+          ${editingOrder ? '' : '<button class="check-update" type="button">检查更新</button>'}
+          <button class="edit-order" type="button">${editingOrder ? '' : '整理图标'}</button>
           <span class="update-status" role="status"></span>
         </div>
       </header>
+      ${editingOrder ? `
+      <div class="order-editor" role="status">
+        <span>按住图标拖到喜欢的位置</span>
+        <button type="button" data-order-reset>恢复默认</button>
+        <button type="button" data-order-done>完成</button>
+      </div>` : `
       ${recent.length ? `<section class="recent-games" aria-label="最近玩过"><h2>最近玩过</h2><div>${recent.map(game => `<button type="button" data-game="${game.id}"><span aria-hidden="true">${game.symbol}</span> ${game.title}</button>`).join('')}</div></section>` : ''}
-      <nav class="game-categories" aria-label="游戏分类">${CATEGORIES.map(category => `<button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">${category.title}</button>`).join('')}</nav>
-      <section class="game-grid" aria-label="游戏列表">
-        ${games.map((game) => `
-          <button class="game-card" data-game="${game.id}" ${selectedCategory === 'all' || categoryOf(game.id) === selectedCategory ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
+      <nav class="game-categories" aria-label="游戏分类">${CATEGORIES.map(category => `<button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">${category.title}</button>`).join('')}</nav>`}
+      <section class="game-grid${editingOrder ? ' game-grid--editable' : ''}" aria-label="游戏列表">
+        ${ordered.map((game) => `
+          <button class="game-card${editingOrder ? ' game-card--editing' : ''}" data-game="${game.id}" ${editingOrder || selectedCategory === 'all' || categoryOf(game.id) === selectedCategory ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
             <span class="game-card__symbol" aria-hidden="true">${game.symbol}</span>
             <span class="game-card__title">${game.title}</span>
             <span class="game-card__status">${game.ready ? '开始游戏' : '正在准备'}</span>
@@ -173,6 +183,7 @@ export function renderApp(root: HTMLDivElement | null): void {
     `
 
     root.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => button.addEventListener('click', () => {
+      if (editingOrder) return
       const game = games.find(game => game.id === button.dataset.game)
       if (game) openGame(game.id)
     }))
@@ -181,6 +192,22 @@ export function renderApp(root: HTMLDivElement | null): void {
       root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button)))
       root.querySelectorAll<HTMLButtonElement>('.game-card').forEach(card => { card.hidden = selectedCategory !== 'all' && categoryOf(card.dataset.game!) !== selectedCategory })
     }))
+
+    // 图标排序：进入编辑、拖动重排（FLIP 过渡）、完成或恢复默认。
+    root.querySelector<HTMLButtonElement>('.edit-order')?.addEventListener('click', () => {
+      editingOrder = true
+      showHome()
+    })
+    root.querySelector<HTMLButtonElement>('[data-order-done]')?.addEventListener('click', () => {
+      editingOrder = false
+      showHome()
+    })
+    root.querySelector<HTMLButtonElement>('[data-order-reset]')?.addEventListener('click', () => {
+      clearOrder()
+      editingOrder = false
+      showHome()
+    })
+    if (editingOrder) setupOrderDragging()
 
     // 各益智游戏的最好成绩加载完成后填进卡片副标题；导航离开后丢弃过期结果。
     void loadProgress().then(progress => {
@@ -247,6 +274,85 @@ export function renderApp(root: HTMLDivElement | null): void {
         window.setTimeout(() => { toast.hidden = true }, 3200)
       }
     }
+  }
+
+  /** 编辑模式下的拖拽排序：拖起克隆、目标格实时让位（FLIP 过渡）、松手即保存顺序。 */
+  const setupOrderDragging = (): void => {
+    const grid = root.querySelector<HTMLElement>('.game-grid')
+    if (!grid) return
+    grid.addEventListener('pointerdown', (event: PointerEvent) => {
+      const card = (event.target as HTMLElement).closest<HTMLElement>('.game-card')
+      if (!card || !grid.contains(card)) return
+      event.preventDefault()
+      const rect = card.getBoundingClientRect()
+      const grabX = event.clientX - rect.left
+      const grabY = event.clientY - rect.top
+      const ghost = card.cloneNode(true) as HTMLElement
+      ghost.classList.add('game-card--ghost')
+      ghost.style.width = `${rect.width}px`
+      ghost.style.height = `${rect.height}px`
+      ghost.style.left = `${rect.left}px`
+      ghost.style.top = `${rect.top}px`
+      document.body.appendChild(ghost)
+      card.classList.add('game-card--lifted')
+      grid.classList.add('dragging')
+      let lastTarget: Element | null = null
+
+      const flip = (mutate: () => void): void => {
+        const cards = [...grid.querySelectorAll<HTMLElement>('.game-card')]
+        const before = new Map(cards.map(item => {
+          const box = item.getBoundingClientRect()
+          return [item, `${box.left} ${box.top}`]
+        }))
+        mutate()
+        for (const item of cards) {
+          const [oldLeft = 0, oldTop = 0] = (before.get(item) ?? '0 0').split(' ').map(Number)
+          const box = item.getBoundingClientRect()
+          const dx = oldLeft - box.left
+          const dy = oldTop - box.top
+          if (!dx && !dy) continue
+          item.style.transition = 'none'
+          item.style.transform = `translate(${dx}px, ${dy}px)`
+          requestAnimationFrame(() => {
+            item.style.transition = 'transform 220ms ease'
+            item.style.transform = ''
+          })
+        }
+      }
+
+      // move/up 挂 window：指针事件的 target 可能是其他卡片（部分环境 pointer
+      // capture 不可用），只有 window 能稳定收到整段拖拽。
+      const onMove = (moveEvent: PointerEvent): void => {
+        ghost.style.left = `${moveEvent.clientX - grabX}px`
+        ghost.style.top = `${moveEvent.clientY - grabY}px`
+        const center = { x: moveEvent.clientX, y: moveEvent.clientY }
+        let target: HTMLElement | null = null
+        for (const item of [...grid.querySelectorAll<HTMLElement>('.game-card')]) {
+          if (item === card) continue
+          const box = item.getBoundingClientRect()
+          if (center.x >= box.left && center.x <= box.right && center.y >= box.top && center.y <= box.bottom) { target = item; break }
+        }
+        if (!target || target === lastTarget) return
+        lastTarget = target
+        const box = target.getBoundingClientRect()
+        const beforeHalf = center.x < box.left + box.width / 2
+        flip(() => { grid.insertBefore(card, beforeHalf ? target : target!.nextSibling) })
+      }
+
+      const onDrop = (): void => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onDrop)
+        window.removeEventListener('pointercancel', onDrop)
+        ghost.remove()
+        card.classList.remove('game-card--lifted')
+        grid.classList.remove('dragging')
+        writeOrder([...grid.querySelectorAll<HTMLElement>('.game-card')].map(item => item.dataset.game ?? '').filter(Boolean))
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onDrop)
+      window.addEventListener('pointercancel', onDrop)
+    })
   }
 
   const show2048 = async (): Promise<void> => {
