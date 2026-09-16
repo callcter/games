@@ -11,10 +11,10 @@ it('rejects invalid modes and starts empty with deterministic first spawn', () =
 it('bubbles rise, grow and disappear past the top', () => {
   let state = { ...newGame(0, () => 0.5), bubbles: [{ x: 384, y: 700, radius: 20, golden: false }], spawnIn: 100000 }
   for (let i = 0; i < 20; i++) state = step(state, 100, () => 0.5)
-  // 2 秒内：上升 58*2=116px、半径 +12，未到顶则仍存在
+  // 2 秒内：上升 58*2=116px、半径 +16（悠闲档 grow=8），未到顶则仍存在
   if (state.bubbles.length) {
     expect(state.bubbles[0]!.y).toBeLessThan(700)
-    expect(state.bubbles[0]!.radius).toBeCloseTo(32, 1)
+    expect(state.bubbles[0]!.radius).toBeCloseTo(36, 1)
   }
   state = { ...state, bubbles: [{ x: 384, y: 230, radius: 20, golden: false }] }
   state = step(state, 1000, () => 0.5)

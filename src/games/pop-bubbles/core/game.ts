@@ -1,12 +1,12 @@
 import type { RandomSource } from '../../cards/core/cards'
 
 export const MODES: readonly { label: string; interval: number; speed: number; grow: number; startRadius: number; golden: number }[] = [
-  { label: '悠闲', interval: 760, speed: 58, grow: 6, startRadius: 22, golden: 0.08 },
-  { label: '标准', interval: 520, speed: 88, grow: 10, startRadius: 18, golden: 0.1 },
-  { label: '挑战', interval: 380, speed: 125, grow: 15, startRadius: 15, golden: 0.12 }
+  { label: '悠闲', interval: 760, speed: 58, grow: 8, startRadius: 26, golden: 0.08 },
+  { label: '标准', interval: 520, speed: 88, grow: 13, startRadius: 22, golden: 0.1 },
+  { label: '挑战', interval: 380, speed: 125, grow: 18, startRadius: 18, golden: 0.12 }
 ]
 const FIELD = { top: 228, bottom: 880, left: 80, right: 688 }
-const MAX_RADIUS = 46
+const MAX_RADIUS = 50
 
 export interface Bubble { x: number; y: number; radius: number; golden: boolean }
 export interface PopState {
@@ -43,7 +43,7 @@ export function step(state: PopState, deltaMs: number, random: RandomSource = Ma
   let elapsedMs = state.elapsedMs + deltaMs
   if (spawnIn <= 0) {
     const golden = value(random) < config.golden
-    bubbles.push({ x: FIELD.left + value(random) * (FIELD.right - FIELD.left), y: FIELD.bottom, radius: golden ? Math.max(16, config.startRadius - 4) : config.startRadius, golden })
+    bubbles.push({ x: FIELD.left + value(random) * (FIELD.right - FIELD.left), y: FIELD.bottom, radius: golden ? Math.max(20, config.startRadius - 4) : config.startRadius, golden })
     spawnIn += config.interval * (0.72 + value(random) * 0.56)
   }
   return { ...state, bubbles, elapsedMs, spawnIn }
@@ -65,7 +65,7 @@ export function hitTest(state: PopState, x: number, y: number): number {
 export function pop(state: PopState, index: number): PopState {
   const bubble = state.bubbles[index]
   if (!bubble) return state
-  const base = bubble.radius <= 24 ? 3 : bubble.radius <= 34 ? 2 : 1
+  const base = bubble.radius <= 26 ? 3 : bubble.radius <= 36 ? 2 : 1
   const gained = bubble.golden ? base * 3 : base
   return { ...state, bubbles: state.bubbles.filter((_, i) => i !== index), score: state.score + gained, popped: state.popped + 1 }
 }
