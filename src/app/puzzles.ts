@@ -1,4 +1,5 @@
 export const puzzles = [
+  { id: 'tangram', title: '七巧板', symbol: '◩', ready: true, load: () => import('../games/tangram') },
   { id: 'untangle', title: '解绳结', symbol: '✳', ready: true, load: () => import('../games/untangle') },
   { id: 'sokoban', title: '推箱子', symbol: '📦', ready: true, load: () => import('../games/sokoban') },
   { id: 'nonogram', title: '数织', symbol: '▧', ready: true, load: () => import('../games/nonogram') },
