@@ -39,7 +39,8 @@ export class TangramScene extends PuzzleScene {
       this.text(0,0,String(i+1),22,node)
       if(!piece.placed){
         if(piece.y>=600)node.setScale(0.6)
-        node.setData('piece',i).setInteractive(new Phaser.Geom.Polygon(points),Phaser.Geom.Polygon.Contains)
+        node.setData('piece',i).setInteractive(new Phaser.Geom.Polygon(points),
+          (shape: Phaser.Geom.Polygon, x: number, y: number) => Phaser.Geom.Polygon.Contains(shape,x,y) || Math.hypot(x,y)<54)
         node.on('pointerdown',()=>{this.selected=i;this.say(`已选第 ${i+1} 块 · 可拖动、旋转或翻面`)})
         this.input.setDraggable(node)
       }
