@@ -22,15 +22,16 @@ export class SokobanScene extends PuzzleScene {
   private draw(): void {
     this.resetView(`第 ${this.level + 1} / ${LEVELS.length} 关 · 把箱子推到圆点上 · ${this.state.moves} 步`)
     this.text(384, 165, '只能推，不能拉；推错了可以撤销', 21, this.content)
-    const cell = 76, left = 118, top = 225
+    const cell = Math.min(76, 470 / this.state.height, 660 / this.state.width)
+    const left = (768 - this.state.width * cell) / 2, top = 225
     for (let i = 0; i < this.state.width * this.state.height; i++) {
       const x = left + i % this.state.width * cell + cell / 2, y = top + Math.floor(i / this.state.width) * cell + cell / 2
       const wall = this.state.walls.includes(i)
       const tile = this.add.rectangle(x, y, cell - 3, cell - 3, wall ? 0x527267 : 0xe9dfca)
       this.content.add(tile)
-      if (this.state.goals.includes(i)) { const dot = this.add.circle(x, y, 15, 0xe6b84d); this.content.add(dot) }
-      if (this.state.boxes.includes(i)) this.text(x, y, this.state.goals.includes(i) ? '✅' : '📦', 44, this.content)
-      if (i === this.state.player) this.text(x, y, '🐱', 44, this.content)
+      if (this.state.goals.includes(i)) { const dot = this.add.circle(x, y, Math.min(15, cell * 0.22), 0xe6b84d); this.content.add(dot) }
+      if (this.state.boxes.includes(i)) this.text(x, y, this.state.goals.includes(i) ? '✅' : '📦', Math.min(44, cell * 0.6), this.content)
+      if (i === this.state.player) this.text(x, y, '🐱', Math.min(44, cell * 0.6), this.content)
       tile.setInteractive().on('pointerup', () => {
         const d = [-this.state.width, 1, this.state.width, -1].findIndex(offset => this.state.player + offset === i)
         if (d >= 0) this.step(d)
