@@ -166,13 +166,131 @@ export class MergeFruitScene extends Phaser.Scene {
     graphics.fillCircle(67, 67, TEXTURE_RADIUS)
     graphics.fillStyle(color, 1)
     graphics.fillCircle(64, 64, TEXTURE_RADIUS)
+    // 各级别专属纹路：只靠颜色难区分大小相近的水果，特征形状让孩子一眼认出。
+    if (level === 2) this.drawGrapeDetail(graphics)
+    else if (level === 3) this.drawTangerineDetail(graphics)
+    else if (level === 4) this.drawPersimmonDetail(graphics)
+    else if (level === 5) this.drawAppleDetail(graphics)
+    else if (level === 6) this.drawPearDetail(graphics)
+    else if (level === 7) this.drawPeachDetail(graphics)
+    else if (level === 8) this.drawPineappleDetail(graphics)
+    else if (level === 9) this.drawMelonDetail(graphics)
+    else if (level === 10) this.drawWatermelonDetail(graphics)
     graphics.fillStyle(accent, 0.68)
     graphics.fillCircle(46, 43, 17)
-    if (level !== 2 && level !== 7) {
-      graphics.fillStyle(0x4f8d55, 1)
-      graphics.fillEllipse(72, 9, 29, 13)
-    }
     this.drawFruitFace(graphics, 63, 67)
+  }
+
+  /** 葡萄：果梗加放射颗粒分界线。 */
+  private drawGrapeDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(3, 0x6a44a0, 0.6)
+    for (const spread of [-0.55, 0, 0.55]) {
+      graphics.beginPath()
+      graphics.moveTo(64, 16)
+      graphics.lineTo(64 + Math.sin(spread) * 46, 62 + Math.cos(spread) * 46)
+      graphics.strokePath()
+    }
+    graphics.fillStyle(0x7a4a2b, 1)
+    graphics.fillRoundedRect(60, 4, 8, 16, 3)
+  }
+
+  /** 凸顶柑：顶部小凸起与表面油胞点。 */
+  private drawTangerineDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.fillStyle(0xf39a48, 1)
+    graphics.fillCircle(64, 16, 10)
+    graphics.fillStyle(0xc4722b, 0.4)
+    for (const [x, y] of [[42, 62], [58, 88], [84, 58], [88, 86], [50, 40], [76, 100]] as const) graphics.fillCircle(x, y, 3)
+  }
+
+  /** 柿子：顶部四片绿色萼片托住。 */
+  private drawPersimmonDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.fillStyle(0x4f7d3f, 1)
+    graphics.fillEllipse(64, 14, 30, 13)
+    graphics.fillEllipse(48, 20, 15, 11)
+    graphics.fillEllipse(80, 20, 15, 11)
+    graphics.fillEllipse(64, 24, 12, 9)
+    graphics.fillStyle(0x6b9b53, 1)
+    graphics.fillCircle(64, 16, 4)
+  }
+
+  /** 苹果：顶部凹陷、果梗和一片叶子。 */
+  private drawAppleDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(4, 0xb0453c, 0.85)
+    graphics.beginPath()
+    graphics.arc(64, 34, 14, Math.PI, Math.PI * 2)
+    graphics.strokePath()
+    graphics.lineStyle(6, 0x7a4a2b, 1)
+    graphics.beginPath()
+    graphics.moveTo(64, 26)
+    graphics.lineTo(70, 6)
+    graphics.strokePath()
+    graphics.fillStyle(0x4f8d55, 1)
+    graphics.fillEllipse(81, 13, 25, 11)
+  }
+
+  /** 梨：长果梗与棕色锈斑点。 */
+  private drawPearDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(6, 0x7a4a2b, 1)
+    graphics.beginPath()
+    graphics.moveTo(64, 30)
+    graphics.lineTo(58, 4)
+    graphics.strokePath()
+    graphics.fillStyle(0xb08a3e, 0.35)
+    for (const [x, y] of [[44, 58], [86, 52], [56, 92], [82, 96], [40, 84], [96, 76], [68, 44]] as const) graphics.fillCircle(x, y, 4)
+  }
+
+  /** 桃子：从顶贯穿的浅色果沟和顶尖小叶。 */
+  private drawPeachDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(4, 0xf7c9b8, 0.9)
+    graphics.beginPath()
+    graphics.moveTo(66, 18)
+    graphics.lineTo(60, 52)
+    graphics.lineTo(68, 84)
+    graphics.strokePath()
+    graphics.fillStyle(0x5d9c52, 1)
+    graphics.fillTriangle(64, 10, 84, 6, 72, 22)
+  }
+
+  /** 菠萝：菱形网格纹与锯齿冠叶。 */
+  private drawPineappleDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(3, 0xb8862f, 0.55)
+    for (const offset of [-40, -20, 0, 20, 40]) {
+      const halfWidth = Math.sqrt(Math.max(0, 50 * 50 - offset * offset))
+      graphics.beginPath()
+      graphics.moveTo(64 - halfWidth, 64 + offset)
+      graphics.lineTo(64 + halfWidth, 64 + offset)
+      graphics.moveTo(64 + offset, 64 - halfWidth)
+      graphics.lineTo(64 + offset, 64 + halfWidth)
+      graphics.strokePath()
+    }
+    graphics.fillStyle(0x3f7d3a, 1)
+    graphics.fillTriangle(48, 20, 64, -6, 60, 24)
+    graphics.fillTriangle(62, 22, 76, 2, 74, 26)
+  }
+
+  /** 蜜瓜：奶白网纹交叉覆盖。 */
+  private drawMelonDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(2.5, 0xe9f2d9, 0.85)
+    for (const [x1, y1, x2, y2] of [
+      [34, 40, 72, 28], [70, 30, 96, 54], [30, 70, 52, 46], [50, 48, 86, 68],
+      [76, 70, 96, 92], [36, 96, 60, 74], [62, 76, 92, 104], [40, 56, 28, 88],
+      [70, 100, 44, 108], [84, 44, 104, 72]
+    ] as const) {
+      graphics.beginPath()
+      graphics.moveTo(x1, y1)
+      graphics.lineTo(x2, y2)
+      graphics.strokePath()
+    }
+  }
+
+  /** 大西瓜：放射状深绿波浪条纹。 */
+  private drawWatermelonDetail(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.lineStyle(13, 0x2e7d4f, 0.9)
+    for (const [start, end] of [[-0.42, 0.42], [Math.PI - 0.42, Math.PI + 0.42], [Math.PI / 2 - 0.4, Math.PI / 2 + 0.4], [Math.PI * 1.5 - 0.4, Math.PI * 1.5 + 0.4]] as const) {
+      graphics.beginPath()
+      graphics.arc(64, 64, 44, start, end)
+      graphics.strokePath()
+    }
   }
 
   private drawFruitFace(graphics: Phaser.GameObjects.Graphics, x: number, y: number): void {
