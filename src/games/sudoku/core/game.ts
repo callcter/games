@@ -61,6 +61,9 @@ function candidatesOf(values: readonly number[], size: number, index: number): n
 
 /** 回溯数解（默认最多 2 个），用于保证生成题面唯一解；不在每次点击时执行。 */
 export function countSolutions(values: readonly number[], size: number, limit = 2): number {
+  if (!SIZES.includes(size as SudokuSize) || values.length !== size * size
+    || values.some(value => !Number.isInteger(value) || value < 0 || value > size)
+    || !Number.isSafeInteger(limit) || limit < 1 || conflicts(values, size).size) return 0
   const grid = [...values]
   let count = 0
   const search = (): boolean => {

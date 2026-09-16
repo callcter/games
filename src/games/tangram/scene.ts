@@ -20,16 +20,16 @@ export class TangramScene extends PuzzleScene {
       if (!this.beforeDrag) return
       const index = Number(object.getData('piece'))
       this.history.push(this.beforeDrag); this.beforeDrag = null
-      this.state = place(this.state,index,{...this.state.pieces[index]!,x:object.x,y:object.y})
+      this.state = place(this.state,index,{...this.state.pieces[index]!,x:object.x,y:object.y},this.silhouette)
       this.audio.playMove(); this.draw()
-      if(this.state.won){ this.audio.playWin(); recordFlag(`tangram-${this.state.level}`) }
+      if(this.state.won) this.complete()
     })
     this.draw()
   }
   private draw(): void {
     this.resetView(this.state.won ? '七块都拼好啦！' : `拖图形到${this.silhouette ? '剪影' : '同色轮廓'} · 已拼 ${this.state.pieces.filter(p=>p.placed).length} / 7 块`)
     this.text(384,153,`${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,20,this.content)
-    this.button(135,210,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.draw()},190,this.content)
+    this.button(135,210,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},190,this.content)
     this.state.targets.forEach((target,i)=>{
       const g=this.add.graphics();this.content.add(g)
       const points=vertices(i,target).map(p=>new Phaser.Math.Vector2(p.x,p.y))
@@ -60,19 +60,31 @@ export class TangramScene extends PuzzleScene {
     this.button(491,210,'翻面',()=>this.transform(true),136,this.content)
     this.button(656,210,'提示一块',()=>{
       const i=this.state.pieces.findIndex(p=>!p.placed);if(i<0)return
-      this.history.push(this.state);this.state=place(this.state,i,this.state.targets[i]!);this.draw()
-      if(this.state.won){this.audio.playWin();recordFlag(`tangram-${this.state.level}`)}
+      this.assisted=true
+      // 剪影可有不同拼法：提示回到标准拼法，保留撤销入口。
+      this.history.push(this.state)
+      const previous=this.state.pieces.filter(p=>p.placed).length
+      this.state=newGame(this.state.level)
+      for(let j=0;j<=previous;j++)this.state=place(this.state,j,this.state.targets[j]!,this.silhouette)
+      this.draw();this.say('提示采用参考拼法；可以撤销恢复刚才的摆法')
+      if(this.state.won)this.complete()
     },160,this.content)
     this.button(160,850,'撤销',()=>{this.state=this.history.pop()??this.state;this.draw()},180,this.content)
-    this.button(384,850,'重开',()=>{this.state=newGame(this.state.level);this.history=[];this.draw()},180,this.content)
-    this.button(608,850,'下一幅',()=>{this.state=newGame((this.state.level+1)%LEVEL_NAMES.length);this.history=[];this.draw()},180,this.content)
+    this.button(384,850,'重开',()=>{this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},180,this.content)
+    this.button(608,850,'下一幅',()=>{this.state=newGame((this.state.level+1)%LEVEL_NAMES.length);this.history=[];this.assisted=false;this.draw()},180,this.content)
   }
   private transform(reflect: boolean): void {
     const piece=this.state.pieces[this.selected]!
     if(piece.placed)return
     this.history.push(this.state)
-    this.state=place(this.state,this.selected,{...piece,rotation:reflect?piece.rotation:(piece.rotation+1)%8,flipped:reflect?!piece.flipped:piece.flipped})
+    this.state=place(this.state,this.selected,{...piece,rotation:reflect?piece.rotation:(piece.rotation+1)%8,flipped:reflect?!piece.flipped:piece.flipped},this.silhouette)
     this.draw()
-    if(this.state.won){this.audio.playWin();recordFlag(`tangram-${this.state.level}`)}
+    if(this.state.won)this.complete()
+  }
+  private assisted=false
+  private complete(): void {
+    this.audio.playWin()
+    recordFlag(`tangram-${this.state.level}:${this.silhouette?'silhouette':'guided'}:${this.assisted?'assisted':'solo'}`)
+    this.say(this.assisted?'提示练习完成啦！':'独立拼好啦！')
   }
 }

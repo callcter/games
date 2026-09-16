@@ -103,7 +103,8 @@ export function summarizeProgress(progress: PuzzleProgress | null): Record<strin
     return count ? `已${verb} ${count} / ${total} 幅` : undefined
   }
   lines.nonogram = flagLine('nonogram-', 9, '画') ?? ''
-  lines.tangram = flagLine('tangram-', 3, '拼') ?? ''
+  const tangramLevels = new Set(progress.flags.flatMap(flag => { const match = /^tangram-([0-4])(?::(?:guided|silhouette):(?:solo|assisted))?$/.exec(flag); return match ? [match[1]] : [] }))
+  lines.tangram = tangramLevels.size ? `已拼 ${tangramLevels.size} / 5 幅` : ''
   const sudokuTiers = [4, 6, 9].filter(size => progress.flags.includes(`sudoku-${size}`)).length
   lines.sudoku = sudokuTiers ? `已完成 ${sudokuTiers} / 3 档难度` : ''
   for (const key of ['nonogram', 'tangram', 'sudoku']) if (!lines[key]) delete lines[key]

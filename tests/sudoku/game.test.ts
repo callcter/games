@@ -50,3 +50,11 @@ it('reports row, column and box conflicts separately', () => {
   expect([...conflicts([1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4)].sort((a, b) => a - b)).toEqual([0, 3])
   expect([...conflicts([1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4)].sort((a, b) => a - b)).toEqual([0, 4])
 })
+it('does not count malformed or conflicting boards as solutions', () => {
+  expect(countSolutions(Array(16).fill(1), 4)).toBe(0)
+  expect(countSolutions(Array(15).fill(0), 4)).toBe(0)
+  expect(countSolutions([5, ...Array(15).fill(0)], 4)).toBe(0)
+  expect(countSolutions([NaN, ...Array(15).fill(0)], 4)).toBe(0)
+  expect(countSolutions(Array(25).fill(0), 5)).toBe(0)
+  expect(countSolutions(Array(16).fill(0), 4, 0)).toBe(0)
+})
