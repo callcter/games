@@ -9,6 +9,7 @@ export class GameAudio {
   private musicTimer: number | null = null
   private melodyIndex = 0
   private started = false
+  private noiseBuffer: AudioBuffer | null = null
   private muted = readMutedPreference()
   private readonly handleVisibilityChange = (): void => {
     if (!this.context) return
@@ -78,6 +79,21 @@ export class GameAudio {
     this.playEffect(frequency, frequency * 0.82, 0.1, 0.14, 'sine')
   }
 
+  /** 泡泡破裂的「啵」声；pitch 越大越清脆，可随泡泡大小映射音阶。 */
+  playPop(pitch = 1): void {
+    this.playNoise(500 * pitch, 2600 * pitch, 0.08, 0.22, 'lowpass')
+  }
+
+  /** 炸弹或炮仗的低沉「砰」声。 */
+  playBurst(): void {
+    this.playNoise(1000, 120, 0.3, 0.3, 'lowpass')
+  }
+
+  /** 刀风「唰」声，用于滑动切水果。 */
+  playWhoosh(): void {
+    this.playNoise(500, 3600, 0.16, 0.16, 'bandpass')
+  }
+
   dispose(): void {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     if (this.musicTimer !== null) window.clearInterval(this.musicTimer)
@@ -131,6 +147,41 @@ export class GameAudio {
   ): void {
     if (!this.context || !this.effectsGain || this.muted) return
     this.scheduleTone(startFrequency, endFrequency, duration, volume, type, this.effectsGain, delay)
+  }
+
+  // 白噪声经滤波器扫频，补足振荡器做不出的「破裂/爆炸/风声」质感。
+  private playNoise(
+    startFrequency: number,
+    endFrequency: number,
+    duration: number,
+    volume: number,
+    filterType: BiquadFilterType
+  ): void {
+    if (!this.context || !this.effectsGain || this.muted) return
+    if (!this.noiseBuffer) {
+      const rate = this.context.sampleRate
+      this.noiseBuffer = this.context.createBuffer(1, rate, rate)
+      const data = this.noiseBuffer.getChannelData(0)
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+    }
+    const start = this.context.currentTime
+    const source = this.context.createBufferSource()
+    source.buffer = this.noiseBuffer
+    source.loop = true
+    const filter = this.context.createBiquadFilter()
+    filter.type = filterType
+    filter.Q.value = filterType === 'bandpass' ? 1.4 : 0.8
+    filter.frequency.setValueAtTime(startFrequency, start)
+    filter.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), start + duration)
+    const envelope = this.context.createGain()
+    envelope.gain.setValueAtTime(0.0001, start)
+    envelope.gain.exponentialRampToValueAtTime(volume, start + 0.012)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration)
+    source.connect(filter)
+    filter.connect(envelope)
+    envelope.connect(this.effectsGain)
+    source.start(start)
+    source.stop(start + duration + 0.02)
   }
 
   private scheduleTone(
