@@ -10,6 +10,15 @@ export const LEVELS = [
   ['########', '#      #', '#  $$  #', '# $..  #', '#  .@  #', '#      #', '########'],
   ['########', '#  #   #', '#  $ . #', '#@ $#  #', '# .$.  #', '#  #   #', '########']
 ] as const
+// 每关最优移动步数，由 solve 的广度优先搜索预计算，测试会逐一校验一致。
+export const PAR = [2, 1, 6, 12, 9, 4, 11, 16, 14, 27] as const
+export function stars(level: number, moves: number): number {
+  const par = PAR[level]
+  if (par === undefined || !Number.isFinite(moves)) return 0
+  if (moves <= par) return 3
+  if (moves <= Math.ceil(par * 1.4)) return 2
+  return 1
+}
 export interface SokobanState { width: number; height: number; walls: number[]; goals: number[]; boxes: number[]; player: number; moves: number; won: boolean }
 export function newGame(level = 0): SokobanState {
   const rows = LEVELS[level]; if (!rows) throw new Error('无效关卡')
