@@ -1,5 +1,6 @@
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
+import { recordBest } from '../puzzle-kit/progress'
 import { connected, DIRECTIONS, newGame, turn, won, type PipesState } from './core/game'
 
 export class PipesScene extends PuzzleScene {
@@ -27,7 +28,7 @@ export class PipesScene extends PuzzleScene {
         const next = turn(this.state, index)
         if (next === this.state) return
         this.history.push(this.state); this.state = next; this.audio.playMove(); this.draw()
-        if (won(next)) this.celebrate('水流通啦，小树喝到水了！')
+        if (won(next)) { this.celebrate('水流通啦，小树喝到水了！'); recordBest(`pipes-${this.size}`, next.moves) }
       })
     })
     this.button(150, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)

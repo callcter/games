@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
+import { recordBest } from '../puzzle-kit/progress'
 import { crossedEdges, move, newGame, won, type UntangleState } from './core/game'
 export class UntangleScene extends PuzzleScene {
   private count = 5
@@ -26,7 +27,7 @@ export class UntangleScene extends PuzzleScene {
       if (!this.dragStart) return
       this.history.push(this.dragStart); this.dragStart = null
       this.audio.playMove()
-      if (won(this.state)) this.celebrate('所有绳子都分开啦！')
+      if (won(this.state)) { this.celebrate('所有绳子都分开啦！'); recordBest(`untangle-${this.count}`, this.state.moves) }
     })
     this.draw()
   }

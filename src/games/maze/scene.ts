@@ -1,5 +1,6 @@
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
+import { recordBest } from '../puzzle-kit/progress'
 import { DIRECTIONS, neighbor } from '../pipes/core/game'
 import { move, newGame, path, undo } from './core/game'
 export class MazeScene extends PuzzleScene {
@@ -18,7 +19,7 @@ export class MazeScene extends PuzzleScene {
     const next = move(this.state, d)
     if (next === this.state) return
     this.state = next; this.hint = -1; this.audio.playMove(); this.draw()
-    if (next.won) this.celebrate('小兔子到家啦！')
+    if (next.won) { this.celebrate('小兔子到家啦！'); recordBest(`maze-${this.size}`, next.trail.length) }
   }
   private draw(): void {
     this.resetView(`点相邻格子或方向按钮 · 帮小兔子回家 · ${this.state.trail.length} 步`)

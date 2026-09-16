@@ -1,4 +1,5 @@
 import { puzzles } from './puzzles'
+import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
 
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
@@ -122,6 +123,7 @@ export function renderApp(root: HTMLDivElement | null): void {
 
   const showHome = (): void => {
     navigationId += 1
+    const homeNavigation = navigationId
     activeGame?.destroy()
     activeGame = null
     currentView = 'home'
@@ -189,6 +191,15 @@ export function renderApp(root: HTMLDivElement | null): void {
     for (const puzzle of puzzles) {
       root.querySelector<HTMLButtonElement>(`[data-game="${puzzle.id}"]`)?.addEventListener('click', () => openGame(puzzle.id))
     }
+
+    // 各益智游戏的最好成绩加载完成后填进卡片副标题；导航离开后丢弃过期结果。
+    void loadProgress().then(progress => {
+      if (currentView !== 'home' || homeNavigation !== navigationId) return
+      for (const [id, line] of Object.entries(summarizeProgress(progress))) {
+        const status = root.querySelector<HTMLElement>(`[data-game="${id}"] .game-card__status`)
+        if (status) status.textContent = line
+      }
+    })
 
     root.querySelector<HTMLButtonElement>('.check-update')?.addEventListener('click', () => {
       const status = root.querySelector<HTMLElement>('.update-status')
