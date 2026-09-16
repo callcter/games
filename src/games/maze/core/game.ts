@@ -2,7 +2,7 @@ import { shuffle, type RandomSource } from '../../cards/core/cards'
 import { DIRECTIONS, OPPOSITE, neighbor } from '../../pipes/core/game'
 export interface MazeState { size: number; passages: number[]; player: number; trail: number[]; won: boolean }
 export function newGame(size = 5, random: RandomSource = Math.random): MazeState {
-  if (![5, 7, 9].includes(size)) throw new Error('无效尺寸')
+  if (![5, 7, 9, 11].includes(size)) throw new Error('无效尺寸')
   const passages = Array<number>(size * size).fill(0), visited = new Set([0]), stack = [0]
   while (stack.length) {
     const current = stack.at(-1)!

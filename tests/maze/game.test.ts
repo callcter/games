@@ -2,7 +2,7 @@ import { expect, it } from 'vitest'
 import { move, newGame, path, undo } from '../../src/games/maze/core/game'
 import { neighbor } from '../../src/games/pipes/core/game'
 it('all sizes have a reproducible traversable route', () => {
-  for (const size of [5, 7, 9]) {
+  for (const size of [5, 7, 9, 11]) {
     let state = newGame(size, () => 0.3)
     expect(state).toEqual(newGame(size, () => 0.3))
     const route = path(state)

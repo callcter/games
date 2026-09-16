@@ -22,7 +22,7 @@ export class MazeScene extends PuzzleScene {
   }
   private draw(): void {
     this.resetView(`点相邻格子或方向按钮 · 帮小兔子回家 · ${this.state.trail.length} 步`)
-    ;[5, 7, 9].forEach((size, i) => this.button(170 + 214 * i, 165, `${this.size === size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 180, this.content))
+    ;[5, 7, 9, 11].forEach((size, i) => this.button(129 + 170 * i, 165, `${this.size === size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 155, this.content))
     const cell = 500 / this.size, left = 134, top = 230
     this.state.passages.forEach((mask, i) => {
       const x = left + i % this.size * cell, y = top + Math.floor(i / this.size) * cell
