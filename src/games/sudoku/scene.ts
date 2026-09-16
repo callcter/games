@@ -12,6 +12,12 @@ export class SudokuScene extends PuzzleScene {
   private assisted = false
   private pencil = false
   private playing = false
+  private drawnSize = 0
+  private savedState?: SudokuState
+  private tiles: Phaser.GameObjects.Rectangle[] = []
+  private digits: Phaser.GameObjects.Text[] = []
+  private notes: Phaser.GameObjects.Text[] = []
+  private pencilButton?: Phaser.GameObjects.Text
   constructor(audio: GameAudio, exit: () => void) { super('sudoku', '数独', audio, exit) }
   protected start(): void {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -26,33 +32,27 @@ export class SudokuScene extends PuzzleScene {
   }
   private draw(): void {
     this.playing = true
-    this.history = this.history.slice(-50)
-    this.remember('sudoku', { state: this.state, history: this.history, assisted: this.assisted })
-    const clash = conflicts(this.state.values, this.state.size)
+    if (this.savedState !== this.state) {
+      this.history = this.history.slice(-50)
+      this.remember('sudoku', { state: this.state, history: this.history, assisted: this.assisted })
+      this.savedState = this.state
+    }
     const size = this.state.size
-    this.resetView(this.state.won ? '全部填对啦，太厉害了！' : this.pencil ? '笔记模式 · 小数字只是候选，再点同一数字可取消' : `每行、每列、每宫数字 ${size} 各一个 · 先点格子再选数字`)
+    if (this.drawnSize === size) { this.updateBoard(); return }
+    this.drawnSize = size
+    this.tiles = []; this.digits = []; this.notes = []
+    this.resetView('')
     SIZES.forEach((option, i) => this.button(200 + i * 184, 165, `${option === this.size ? '✓ ' : ''}${option} × ${option}`, () => { this.size = option; this.restart() }, 168, this.content))
     const cell = Math.min(96, 505 / size), board = cell * size
     const left = (768 - board) / 2, top = 225 + (505 - board) / 2
     for (let i = 0; i < this.state.values.length; i++) {
       const x = left + i % size * cell, y = top + Math.floor(i / size) * cell
-      const given = this.state.puzzle[i] !== 0, wrong = clash.has(i)
-      const same = (this.state.values[this.selected] ?? 0) > 0 && this.state.values[i] === this.state.values[this.selected]
-      const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell - 3, cell - 3,
-        wrong ? 0xf3c9bd : i === this.selected ? 0xffd982 : same ? 0xcce4d1 : given ? 0xe9dfca : 0xfffdf6)
-      tile.setStrokeStyle(i === this.selected ? 4 : 2, i === this.selected ? 0xe6b84d : 0xd8cdbb)
+      const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell - 3, cell - 3, 0xfffdf6)
       this.content.add(tile)
-      if (this.state.values[i]) {
-        this.text(x + cell / 2, y + cell / 2, String(this.state.values[i]), cell * 0.48, this.content)
-          .setColor(wrong ? '#c0392b' : given ? INK : '#2f6f8f')
-      }
-      if (!this.state.values[i]) {
-        const columns = size === 4 ? 2 : 3, rows = Math.ceil(size / columns)
-        for (const value of this.state.notes[i]!) {
-          this.text(x + ((value-1)%columns + 0.5)*cell/columns, y + (Math.floor((value-1)/columns) + 0.5)*cell/rows, String(value), Math.max(13, cell*0.21), this.content).setColor('#527267')
-        }
-      }
-      if (!this.state.won) tile.setInteractive({ useHandCursor: true }).on('pointerup', () => { this.selected = i; this.draw() })
+      this.tiles.push(tile)
+      this.digits.push(this.text(x + cell/2, y + cell/2, '', cell*0.48, this.content))
+      this.notes.push(this.text(x + cell/2, y + cell/2, '', Math.max(13,cell*0.21), this.content).setFontFamily('monospace').setColor('#527267'))
+      tile.setInteractive({ useHandCursor: true }).on('pointerup', () => { if (!this.state.won) { this.selected = i; this.draw() } })
     }
     const boxRows = size === 6 ? 2 : size === 9 ? 3 : 2, boxCols = size === 4 ? 2 : size === 6 ? 3 : 3
     const grid = this.add.graphics()
@@ -65,7 +65,7 @@ export class SudokuScene extends PuzzleScene {
     for (let value = 1; value <= size; value++) {
       this.button(384 + (value - (size + 1) / 2) * step, 780, String(value), () => this.enter(value), step - 12, this.content)
     }
-    this.button(90, 855, this.pencil ? '✓ 笔记' : '笔记', () => { this.pencil = !this.pencil; this.draw() }, 128, this.content)
+    this.pencilButton = this.button(90, 855, this.pencil ? '✓ 笔记' : '笔记', () => { this.pencil = !this.pencil; this.draw() }, 128, this.content)
     this.button(236, 855, '擦除', () => this.enter(0), 128, this.content)
     this.button(382, 855, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 128, this.content)
     this.button(528, 855, '提示', () => {
@@ -73,6 +73,24 @@ export class SudokuScene extends PuzzleScene {
       if (index >= 0) { this.assisted = true; this.apply(place(this.state, index, this.state.solution[index]!)) }
     }, 128, this.content)
     this.button(674, 855, '新一局', () => this.restart(), 128, this.content)
+    this.updateBoard()
+  }
+  private updateBoard(): void {
+    const size = this.state.size, selected = this.state.values[this.selected] ?? 0
+    const clash = conflicts(this.state.values, size), columns = size === 4 ? 2 : 3
+    this.say(this.state.won ? (this.assisted ? '提示练习：全部填对啦！' : '独立完成：全部填对啦！') : this.pencil ? '笔记模式 · 小数字只是候选，再点同一数字可取消' : `每行、每列、每宫数字 ${size} 各一个 · 先点格子再选数字`)
+    this.pencilButton?.setText(this.pencil ? '✓ 笔记' : '笔记')
+    this.state.values.forEach((value,i) => {
+      const given = this.state.puzzle[i] !== 0, wrong = clash.has(i)
+      this.tiles[i]!.setFillStyle(wrong ? 0xf3c9bd : i === this.selected ? 0xffd982 : selected && value === selected ? 0xcce4d1 : given ? 0xe9dfca : 0xfffdf6)
+        .setStrokeStyle(i === this.selected ? 4 : 2, i === this.selected ? 0xe6b84d : 0xd8cdbb)
+      const digit = this.digits[i]!, color = wrong ? '#c0392b' : given ? INK : '#2f6f8f'
+      digit.setText(value ? String(value) : '')
+      if (digit.style.color !== color) digit.setColor(color)
+      const notes = this.state.notes[i]!
+      const lines = Array.from({ length: Math.ceil(size/columns) }, (_,r) => Array.from({ length: columns }, (_,c) => notes.includes(r*columns+c+1) ? String(r*columns+c+1) : ' ').join(' ')).join('\n')
+      this.notes[i]!.setText(!value && notes.length ? lines : '')
+    })
   }
   private enter(value: number): void {
     if (this.state.won) return
