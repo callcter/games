@@ -25,6 +25,7 @@ export class MinesweeperScene extends Phaser.Scene {
   private mode: PlayMode = 'reveal'
   private elapsedSeconds = 0
   private timer?: Phaser.Time.TimerEvent
+  private timerText: Phaser.GameObjects.Text | null = null
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
@@ -43,7 +44,7 @@ export class MinesweeperScene extends Phaser.Scene {
       callback: () => {
         if (this.state.status !== 'playing') return
         this.elapsedSeconds = Math.min(999, this.elapsedSeconds + 1)
-        this.draw()
+        this.refreshTimerText()
       }
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.timer?.destroy())
@@ -52,6 +53,7 @@ export class MinesweeperScene extends Phaser.Scene {
 
   private draw(): void {
     this.children.removeAll(true)
+    this.timerText = null
     this.cameras.main.setBackgroundColor('#e9dfca')
     this.drawHeader()
     this.drawStatus()
@@ -87,10 +89,18 @@ export class MinesweeperScene extends Phaser.Scene {
     this.add.text(384, 158, this.state.status === 'lost' ? '😵' : this.state.status === 'won' ? '😎' : '🙂', {
       color: '#344b43', fontSize: '38px'
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
-    this.add.text(732, 158, `◷ ${String(this.elapsedSeconds).padStart(3, '0')}`, {
+    this.timerText = this.add.text(732, 158, this.timerLabel(), {
       color: '#fffaf0', backgroundColor: '#506b61', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: '28px', fontStyle: 'bold', padding: { x: 16, y: 8 }
     }).setOrigin(1, 0)
+  }
+
+  private refreshTimerText(): void {
+    this.timerText?.setText(this.timerLabel())
+  }
+
+  private timerLabel(): string {
+    return `◷ ${String(this.elapsedSeconds).padStart(3, '0')}`
   }
 
   private drawBoard(): void {

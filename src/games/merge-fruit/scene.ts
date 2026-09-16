@@ -41,6 +41,8 @@ export class MergeFruitScene extends Phaser.Scene {
   private nextText: Phaser.GameObjects.Text | null = null
   private soundText: Phaser.GameObjects.Text | null = null
   private dangerGraphics: Phaser.GameObjects.Graphics | null = null
+  private dangerActive: boolean | null = null
+  private nextDangerCheck = 0
 
   constructor(audio: GameAudio, callbacks: SceneCallbacks) {
     super({ key: 'merge-fruit' })
@@ -75,22 +77,24 @@ export class MergeFruitScene extends Phaser.Scene {
   }
 
   update(time: number): void {
-    if (this.gameOver) return
+    if (this.gameOver || time < this.nextDangerCheck) return
+    this.nextDangerCheck = time + 50
     let danger = false
     for (const fruit of this.fruits) {
       if (!fruit.active) continue
       const level = Number(fruit.getData('fruitLevel'))
       const radius = fruitAt(level).radius
       const aboveLine = fruit.y - radius < DANGER_Y
+      const dangerSince = Number(fruit.getData('dangerSince'))
       if (aboveLine && time - Number(fruit.getData('spawnedAt')) > 900) {
         danger = true
-        const since = Number(fruit.getData('dangerSince')) || time
-        fruit.setData('dangerSince', since)
+        const since = dangerSince || time
+        if (!dangerSince) fruit.setData('dangerSince', since)
         if (time - since > 1700) {
           this.endGame()
           return
         }
-      } else {
+      } else if (dangerSince) {
         fruit.setData('dangerSince', 0)
       }
     }
@@ -321,8 +325,10 @@ export class MergeFruitScene extends Phaser.Scene {
     }
 
     this.score += result.score
-    this.bestScore = Math.max(this.bestScore, this.score)
-    writeBestScore(this.bestScore)
+    if (this.score > this.bestScore) {
+      this.bestScore = this.score
+      writeBestScore(this.bestScore)
+    }
     this.scoreText?.setText(this.scoreLabel())
     this.audio.playMerge()
   }
@@ -388,7 +394,8 @@ export class MergeFruitScene extends Phaser.Scene {
   }
 
   private drawDangerLine(active: boolean): void {
-    if (!this.dangerGraphics) return
+    if (!this.dangerGraphics || this.dangerActive === active) return
+    this.dangerActive = active
     this.dangerGraphics.clear()
     this.dangerGraphics.lineStyle(active ? 5 : 3, active ? 0xe25037 : 0xcb6544, active ? 0.95 : 0.45)
     this.dangerGraphics.lineBetween(BOWL_LEFT + 8, DANGER_Y, BOWL_RIGHT - 8, DANGER_Y)
@@ -446,6 +453,8 @@ export class MergeFruitScene extends Phaser.Scene {
     this.nextText = null
     this.soundText = null
     this.dangerGraphics = null
+    this.dangerActive = null
+    this.nextDangerCheck = 0
     this.scene.restart()
   }
 
