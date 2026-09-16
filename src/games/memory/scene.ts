@@ -18,7 +18,7 @@ export class MemoryScene extends PuzzleScene {
     this.state = newGame(this.pairs, this.players)
     this.draw()
   }
-  private draw(): void {
+  private draw(animatedIndex = -1): void {
     const s = this.state
     this.resetView(`${s.turns} 次尝试 · ${this.players === 2 ? `轮到玩家 ${s.player + 1}　比分 ${s.scores.join(' : ')}` : `找到 ${s.matched.length / 2} / ${this.pairs} 对`}`)
     ;[3, 6, 8].forEach((pairs, i) => this.button(170 + i * 214, 165, `${pairs === this.pairs ? '✓ ' : ''}${pairs} 对`, () => { this.pairs = pairs; this.restart() }, 190, this.content))
@@ -31,13 +31,17 @@ export class MemoryScene extends PuzzleScene {
       const shown = s.open.includes(index) || s.matched.includes(index)
       const tile = this.add.rectangle(x, y, cell, cell, s.matched.includes(index) ? 0xcce4d1 : shown ? 0xfffdf6 : 0x58a897).setStrokeStyle(3, 0xffffff)
       this.content.add(tile)
-      this.text(x, y, shown ? (this.animals ? ANIMALS : FRUITS)[value]! : '✦', cell * 0.46, this.content)
+      const label = this.text(x, y, shown ? (this.animals ? ANIMALS : FRUITS)[value]! : '✦', cell * 0.46, this.content)
+      if (index === animatedIndex) {
+        tile.setScale(0.65, 1); label.setScale(0.65, 1)
+        this.tweens.add({ targets: [tile, label], scaleX: 1, duration: 140, ease: 'Cubic.Out' })
+      }
       tile.setInteractive({ useHandCursor: true }).on('pointerup', () => {
         const next = flip(this.state, index)
         if (next === this.state) return
         this.state = next
         this.audio.playPlace(1)
-        this.draw()
+        this.draw(index)
         if (next.won) this.celebrate(this.players === 2 ? `完成！比分 ${next.scores.join(' : ')}` : `完成！用了 ${next.turns} 次`)
         else if (next.open.length === 2) this.concealTimer = this.time.delayedCall(850, () => { this.state = conceal(this.state); this.draw() })
       })
