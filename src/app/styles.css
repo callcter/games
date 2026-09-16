@@ -96,6 +96,21 @@ button { font: inherit; }
 }
 
 .game-card:not(:disabled):active { transform: scale(0.97); }
+.game-card[hidden] { display: none; }
+.recent-games { margin: 0 0 24px; }
+.recent-games h2 { font-size: 1.1rem; margin: 0 0 12px; }
+.recent-games div, .game-categories { display: flex; gap: 10px; flex-wrap: wrap; }
+.game-categories { margin-bottom: 22px; }
+.recent-games button, .game-categories button {
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid #d8cdbb;
+  border-radius: 16px;
+  color: #173f35;
+  background: #fffdf6;
+  cursor: pointer;
+}
+.game-categories [aria-pressed="true"] { background: #173f35; color: #fffdf6; }
 .game-card:disabled { cursor: default; opacity: 0.58; }
 .game-card__symbol { font-size: 3.2rem; line-height: 1; }
 .game-card__title { margin-top: auto; font-size: 1.55rem; font-weight: 800; }

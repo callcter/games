@@ -1,5 +1,6 @@
 import { puzzles } from './puzzles'
 import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
+import { CATEGORIES, categoryOf, readRecent, rememberRecent, type Category } from './library'
 
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
@@ -54,6 +55,7 @@ export function renderApp(root: HTMLDivElement | null): void {
   let pendingUpdate: (() => Promise<void>) | null = null
   let showUpdatedConfirmation = window.sessionStorage.getItem('family-game-room-updated') === '1'
   let exitInProgress = false
+  let selectedCategory: Category = 'all'
 
   window.sessionStorage.removeItem('family-game-room-updated')
 
@@ -127,6 +129,7 @@ export function renderApp(root: HTMLDivElement | null): void {
     activeGame?.destroy()
     activeGame = null
     currentView = 'home'
+    const recent = readRecent(games.map(game => game.id)).flatMap(id => games.find(game => game.id === id) ?? [])
 
     root.innerHTML = `
     <main class="app-shell">
@@ -139,9 +142,11 @@ export function renderApp(root: HTMLDivElement | null): void {
           <span class="update-status" role="status"></span>
         </div>
       </header>
+      ${recent.length ? `<section class="recent-games" aria-label="最近玩过"><h2>最近玩过</h2><div>${recent.map(game => `<button type="button" data-game="${game.id}"><span aria-hidden="true">${game.symbol}</span> ${game.title}</button>`).join('')}</div></section>` : ''}
+      <nav class="game-categories" aria-label="游戏分类">${CATEGORIES.map(category => `<button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">${category.title}</button>`).join('')}</nav>
       <section class="game-grid" aria-label="游戏列表">
         ${games.map((game) => `
-          <button class="game-card" data-game="${game.id}" ${game.ready ? '' : 'disabled'}>
+          <button class="game-card" data-game="${game.id}" ${selectedCategory === 'all' || categoryOf(game.id) === selectedCategory ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
             <span class="game-card__symbol" aria-hidden="true">${game.symbol}</span>
             <span class="game-card__title">${game.title}</span>
             <span class="game-card__status">${game.ready ? '开始游戏' : '正在准备'}</span>
@@ -167,30 +172,15 @@ export function renderApp(root: HTMLDivElement | null): void {
     <aside class="exit-help" role="status" hidden>请从屏幕底部上滑，关闭游戏屋。</aside>
     `
 
-    root.querySelector<HTMLButtonElement>('[data-game="2048"]')?.addEventListener('click', () => {
-      openGame('2048')
-    })
-    root.querySelector<HTMLButtonElement>('[data-game="gomoku"]')?.addEventListener('click', () => {
-      openGame('gomoku')
-    })
-    root.querySelector<HTMLButtonElement>('[data-game="tetris"]')?.addEventListener('click', () => {
-      openGame('tetris')
-    })
-    root.querySelector<HTMLButtonElement>('[data-game="merge-fruit"]')?.addEventListener('click', () => {
-      openGame('merge-fruit')
-    })
-    root.querySelector<HTMLButtonElement>('[data-game="freecell"]')?.addEventListener('click', () => {
-      openGame('freecell')
-    })
-    root.querySelector<HTMLButtonElement>('[data-game="spider"]')?.addEventListener('click', () => {
-      openGame('spider')
-    })
-    root.querySelector<HTMLButtonElement>('[data-game="minesweeper"]')?.addEventListener('click', () => {
-      openGame('minesweeper')
-    })
-    for (const puzzle of puzzles) {
-      root.querySelector<HTMLButtonElement>(`[data-game="${puzzle.id}"]`)?.addEventListener('click', () => openGame(puzzle.id))
-    }
+    root.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => button.addEventListener('click', () => {
+      const game = games.find(game => game.id === button.dataset.game)
+      if (game) openGame(game.id)
+    }))
+    root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(button => button.addEventListener('click', () => {
+      selectedCategory = button.dataset.category as Category
+      root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button)))
+      root.querySelectorAll<HTMLButtonElement>('.game-card').forEach(card => { card.hidden = selectedCategory !== 'all' && categoryOf(card.dataset.game!) !== selectedCategory })
+    }))
 
     // 各益智游戏的最好成绩加载完成后填进卡片副标题；导航离开后丢弃过期结果。
     void loadProgress().then(progress => {
@@ -415,6 +405,8 @@ export function renderApp(root: HTMLDivElement | null): void {
   }
 
   const route = (): void => {
+    const id = gameFromHash(window.location.hash)
+    if (id) rememberRecent(id, games.map(game => game.id))
     const puzzle = puzzles.find(item => `#/${item.id}` === window.location.hash)
     if (puzzle) { void showPuzzle(puzzle); return }
     if (window.location.hash === '#/2048') void show2048()
