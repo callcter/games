@@ -6,7 +6,7 @@ it('detects crossings, overlaps and touching unrelated segments', () => {
   expect(intersects({x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1})).toBe(false)
 })
 it('starts tangled with a valid solution and keeps points inside the board', () => {
-  for (const count of [5,6,7]) {
+  for (const count of [5,6,7,8,9]) {
     const state = newGame(count, () => 0.5)
     expect(won(state)).toBe(false)
     expect(won({ ...state, points: state.target })).toBe(true)

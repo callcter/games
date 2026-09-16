@@ -32,7 +32,7 @@ export class UntangleScene extends PuzzleScene {
   }
   private draw(): void {
     this.resetView('拖动圆点，把红色交叉线分开')
-    ;[5,6,7].forEach((count,i) => this.button(170 + i*214,165,`${this.count === count ? '✓ ' : ''}${count} 个点`, () => { this.count = count; this.restart() },180,this.content))
+    ;[5,6,7,8,9].forEach((count,i) => this.button(116 + i*134,165,`${this.count === count ? '✓ ' : ''}${count} 个点`, () => { this.count = count; this.restart() },126,this.content))
     this.lines = this.add.graphics(); this.content.add(this.lines)
     this.state.points.forEach((point,index) => {
       const node = this.add.container(point.x,point.y); this.content.add(node)

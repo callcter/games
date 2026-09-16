@@ -19,7 +19,7 @@ export function won(state: UntangleState): boolean {
   return crossedEdges(state).size === 0 && state.points.every((p,i) => state.points.every((q,j) => i === j || Math.hypot(p.x-q.x,p.y-q.y) >= 45))
 }
 export function newGame(count = 5, random: RandomSource = Math.random): UntangleState {
-  if (![5, 6, 7].includes(count)) throw new Error('无效难度')
+  if (![5, 6, 7, 8, 9].includes(count)) throw new Error('无效难度')
   const target = Array.from({ length: count }, (_, i) => ({ x: 384 + Math.cos(i * Math.PI * 2 / count - Math.PI / 2) * 235, y: 485 + Math.sin(i * Math.PI * 2 / count - Math.PI / 2) * 235 }))
   const edges: Edge[] = Array.from({ length: count }, (_, i) => [i, (i+1)%count] as const)
   for (let i = 2; i < count-1; i++) edges.push([0,i])
