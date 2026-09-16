@@ -2,15 +2,23 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { INK, PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { conflicts, newGame, place, SIZES, type SudokuState } from './core/game'
+import { restoreSudoku } from '../puzzle-kit/core/drafts'
 
 export class SudokuScene extends PuzzleScene {
   private size: SudokuState['size'] = 4
   private state = newGame(4)
   private selected = -1
   private history: SudokuState[] = []
+  private assisted = false
   constructor(audio: GameAudio, exit: () => void) { super('sudoku', '数独', audio, exit) }
-  protected start(): void { this.draw() }
+  protected start(): void {
+    void this.offerResume('sudoku', restoreSudoku, saved => {
+      this.state = saved.state; this.size = saved.state.size; this.history = saved.history; this.assisted = saved.assisted; this.draw()
+    }, saved => { this.size = saved?.state.size ?? this.size; this.restart() })
+  }
   private draw(): void {
+    this.history = this.history.slice(-50)
+    this.remember('sudoku', { state: this.state, history: this.history, assisted: this.assisted })
     const clash = conflicts(this.state.values, this.state.size)
     const size = this.state.size
     this.resetView(this.state.won ? '全部填对啦，太厉害了！' : `每行、每列、每宫数字 ${size} 各一个 · 先点格子再选数字`)
@@ -45,7 +53,7 @@ export class SudokuScene extends PuzzleScene {
     this.button(250, 855, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 140, this.content)
     this.button(452, 855, '提示一格', () => {
       const index = this.state.values.findIndex((value, i) => value !== this.state.solution[i])
-      if (index >= 0) this.apply(place(this.state, index, this.state.solution[index]!))
+      if (index >= 0) { this.assisted = true; this.apply(place(this.state, index, this.state.solution[index]!)) }
     }, 176, this.content)
     this.button(660, 855, '新一局', () => this.restart(), 150, this.content)
   }
@@ -60,7 +68,7 @@ export class SudokuScene extends PuzzleScene {
     this.state = next
     this.audio.playMove()
     this.draw()
-    if (next.won) { this.celebrate('全部填对啦！'); recordFlag(`sudoku-${this.state.size}`) }
+    if (next.won) { this.say(this.assisted ? '提示练习：全部填对啦！' : '独立完成：全部填对啦！'); this.audio.playWin(); recordFlag(`sudoku-${this.state.size}`) }
   }
-  private restart(): void { this.state = newGame(this.size); this.selected = -1; this.history = []; this.draw() }
+  private restart(): void { this.assisted = false; this.state = newGame(this.size); this.selected = -1; this.history = []; this.draw() }
 }

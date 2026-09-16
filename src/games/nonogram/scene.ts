@@ -3,13 +3,21 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { clues, mark, newGame, PATTERNS, patternSize, solution, type Mark, type NonogramState } from './core/game'
+import { restoreNonogram } from '../puzzle-kit/core/drafts'
 export class NonogramScene extends PuzzleScene {
   private state = newGame()
   private mode: Mark = 1
   private history: NonogramState[] = []
+  private assisted = false
   constructor(audio: GameAudio, exit: () => void) { super('nonogram', '数织', audio, exit) }
-  protected start(): void { this.draw() }
+  protected start(): void {
+    void this.offerResume('nonogram', restoreNonogram, saved => {
+      this.state = saved.state; this.history = saved.history; this.assisted = saved.assisted; this.draw()
+    }, saved => { this.state = newGame(saved?.state.level ?? 0); this.history = []; this.assisted = false; this.draw() })
+  }
   private draw(): void {
+    this.history = this.history.slice(-50)
+    this.remember('nonogram', { state: this.state, history: this.history, assisted: this.assisted })
     const level = this.state.level, size = patternSize(level), target = solution(level)
     const cell = size === 5 ? 84 : 52
     const boardLeft = size === 5 ? 225 : 200, boardTop = size === 5 ? 310 : 230
@@ -30,11 +38,11 @@ export class NonogramScene extends PuzzleScene {
     this.button(370, 780, this.mode === -1 ? '✓ 标空' : '标空', () => { this.mode = -1; this.draw() }, 150, this.content)
     this.button(570, 780, '提示一格', () => {
       const i = target.findIndex((v, i) => v === 1 ? this.state.marks[i] !== 1 : this.state.marks[i] === 1)
-      if (i >= 0) this.change(i, target[i] ? 1 : -1)
+      if (i >= 0) { this.assisted = true; this.change(i, target[i] ? 1 : -1) }
     }, 180, this.content)
     this.button(160, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
-    this.button(384, 850, '重开', () => { this.state = newGame(this.state.level); this.history = []; this.draw() }, 180, this.content)
-    this.button(608, 850, '下一幅', () => { this.state = newGame((this.state.level + 1) % PATTERNS.length); this.history = []; this.draw() }, 180, this.content)
+    this.button(384, 850, '重开', () => { this.state = newGame(this.state.level); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
+    this.button(608, 850, '下一幅', () => { this.state = newGame((this.state.level + 1) % PATTERNS.length); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
     if (this.state.won) this.say(`画出来啦：${PATTERNS[level]!.name}！`)
   }
   private change(index: number, value: Mark): void {

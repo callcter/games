@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GameAudio } from '../../platform/audio/game-audio'
+import { flushDraft, loadDraft, saveDraft } from './draft-storage'
 
 export const INK = '#173f35'
 export const COLORS = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x87b65e, 0x58b4d1]
@@ -12,6 +13,7 @@ export abstract class PuzzleScene extends Phaser.Scene {
   protected content!: Phaser.GameObjects.Container
   private status!: Phaser.GameObjects.Text
   protected alive = false
+  private draftId?: string
 
   constructor(key: string, title: string, audio: GameAudio, exit: () => void) {
     super(key)
@@ -23,6 +25,12 @@ export abstract class PuzzleScene extends Phaser.Scene {
   create(): void {
     this.alive = true
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.alive = false })
+    const flush = (): void => { if (this.draftId) flushDraft(this.draftId) }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', flush)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      flush(); window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', flush)
+    })
     this.cameras.main.setBackgroundColor('#f8f1df')
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.keyboard?.on('keydown', () => void this.audio.unlock())
@@ -38,6 +46,20 @@ export abstract class PuzzleScene extends Phaser.Scene {
   }
 
   protected abstract start(): void
+
+  protected async offerResume<T extends { state: { won: boolean } }>(id: string, restore: (value: unknown) => T | null, resume: (saved: T) => void, fresh: (saved?: T) => void): Promise<void> {
+    this.draftId = id
+    this.resetView('正在读取进度…')
+    const saved = await loadDraft(id, restore)
+    if (!this.alive) return
+    if (!saved || saved.state.won) { fresh(); return }
+    this.resetView('找到上次还没完成的一局')
+    this.text(384, 360, '继续上次的挑战吗？', 30, this.content)
+    this.button(260, 480, '继续上次', () => resume(saved), 200, this.content)
+    this.button(510, 480, '重新开始', () => { saveDraft(id, null); fresh(saved) }, 200, this.content)
+  }
+
+  protected remember(id: string, value: unknown): void { this.draftId = id; saveDraft(id, value) }
 
   protected resetView(message: string): void {
     this.message = message

@@ -2,6 +2,7 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { loadProgress, recordRun, recordLevel } from '../puzzle-kit/progress'
 import { LEVELS, move, newGame, PAR, solve, stars, type SokobanState } from './core/game'
+import { restoreSokoban } from '../puzzle-kit/core/drafts'
 export class SokobanScene extends PuzzleScene {
   private level = 0
   private state = newGame()
@@ -25,7 +26,9 @@ export class SokobanScene extends PuzzleScene {
         const practice = /^sokoban-L(\d+)(?::assisted)?$/.exec(key)
         if (practice) this.practice.add(Number(practice[1]))
       }
-      this.showLevels()
+      void this.offerResume('sokoban', restoreSokoban, saved => {
+        this.level = saved.level; this.state = saved.state; this.history = saved.history; this.assisted = saved.assisted; this.draw()
+      }, () => this.showLevels())
     })
   }
   private showLevels(): void {
@@ -53,6 +56,8 @@ export class SokobanScene extends PuzzleScene {
     }
   }
   private draw(): void {
+    this.history = this.history.slice(-50)
+    this.remember('sokoban', { level: this.level, state: this.state, history: this.history, assisted: this.assisted })
     this.view = 'play'
     this.resetView(`第 ${this.level + 1} / ${LEVELS.length} 关 · ${PAR[this.level]} 步内三星 · 已走 ${this.state.moves} 步`)
     this.text(384, 165, '只能推，不能拉；推错了可以撤销', 21, this.content)
