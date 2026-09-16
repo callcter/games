@@ -151,7 +151,12 @@ button { font: inherit; }
   cursor: pointer;
 }
 .order-editor [data-order-reset] { background: #fffdf6; color: #527267; border: 1px solid #d8cdbb; }
-.game-grid--editable { touch-action: none; }
+.game-grid--editable {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 .game-card--editing { animation: card-wiggle 0.4s ease-in-out infinite; cursor: grab; }
 .game-grid.dragging .game-card--editing { animation: none; }
 .game-card--lifted { opacity: 0.35; }
@@ -163,6 +168,8 @@ button { font: inherit; }
   transform: scale(1.06);
   box-shadow: 0 22px 46px rgb(56 72 49 / 24%);
   animation: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 @keyframes card-wiggle {
   0%, 100% { transform: rotate(-1.1deg); }

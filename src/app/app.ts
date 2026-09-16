@@ -159,7 +159,7 @@ export function renderApp(root: HTMLDivElement | null): void {
           <button class="game-card${editingOrder ? ' game-card--editing' : ''}" data-game="${game.id}" ${editingOrder || selectedCategory === 'all' || categoryOf(game.id) === selectedCategory ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
             <span class="game-card__symbol" aria-hidden="true">${game.symbol}</span>
             <span class="game-card__title">${game.title}</span>
-            <span class="game-card__status">${game.ready ? '开始游戏' : '正在准备'}</span>
+            <span class="game-card__status">${game.ready ? '' : '正在准备'}</span>
           </button>
         `).join('')}
       </section>
