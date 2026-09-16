@@ -31,6 +31,8 @@ export class FruitSlicerScene extends ActionScene {
     this.spins = []
     this.trail = []
     JUICE_COLORS.forEach((color, index) => this.makeDotTexture(`juice-${index}`, color, 5))
+    this.makeDotTexture('sparkle-white', 0xffffff, 4)
+    this.makeDotTexture('sparkle-gold', 0xffe08a, 5)
     this.blade = this.add.graphics()
     this.entities.add(this.blade)
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -62,27 +64,50 @@ export class FruitSlicerScene extends ActionScene {
       this.floatText(to.x, to.y - 20, result.bonus ? `+${gained} 一刀多果！` : `+${gained}`, result.bonus ? '#d9a12e' : '#2f6f8f', result.bonus ? 26 : 24)
     }
   }
-  // 切开的两个半果沿切线法线分开下坠，配上按水果颜色染色的果汁。
+  // 切开的水果沿切线裂成两半：emoji 套固定半平面遮罩，半果从切口滑出下坠，
+  // 切口有闪光线加白金双色闪亮粒子和对应颜色的果汁。
   private playCut(fruit: Fruit, from: TrailPoint, to: TrailPoint): void {
     const index = this.views.findIndex(view => Math.abs(view.x - fruit.x) < 1 && Math.abs(view.y - fruit.y) < 1)
     if (index >= 0) { this.views.splice(index, 1)[0]?.destroy(); this.spins.splice(index, 1) }
-    const emoji = fruit.bomb ? '💣' : FRUITS[fruit.kind]!
-    const angle = Math.atan2(to.y - from.y, to.x - from.x) + Math.PI / 2
-    for (const side of [-1, 1]) {
-      const half = this.add.text(fruit.x + Math.cos(angle) * 16 * side, fruit.y + Math.sin(angle) * 16 * side, emoji, { fontSize: '64px' }).setOrigin(0.5)
+    if (fruit.bomb) return
+    const emoji = FRUITS[fruit.kind]!
+    const tx = Math.cos(Math.atan2(to.y - from.y, to.x - from.x))
+    const ty = Math.sin(Math.atan2(to.y - from.y, to.x - from.x))
+    const nx = -ty, ny = tx
+    for (const side of [-1, 1] as const) {
+      const half = this.add.container(fruit.x, fruit.y)
+      half.add(this.add.text(0, 0, emoji, { fontSize: '68px' }).setOrigin(0.5))
       this.entities.add(half)
+      // 固定在世界坐标的半平面遮罩：只显示切线法向 side 一侧，半果移动时从切口滑出。
+      const shape = this.make.graphics()
+      const reach = 160
+      shape.fillStyle(0xffffff)
+      shape.fillPoints([
+        new Phaser.Math.Vector2(fruit.x - tx * reach, fruit.y - ty * reach),
+        new Phaser.Math.Vector2(fruit.x + tx * reach, fruit.y + ty * reach),
+        new Phaser.Math.Vector2(fruit.x + tx * reach + nx * reach * side, fruit.y + ty * reach + ny * reach * side),
+        new Phaser.Math.Vector2(fruit.x - tx * reach + nx * reach * side, fruit.y - ty * reach + ny * reach * side)
+      ], true)
+      half.setMask(shape.createGeometryMask())
       this.tweens.add({
         targets: half,
-        x: half.x + Math.cos(angle) * 90 * side + (side * 40),
-        y: half.y + 300,
-        rotation: side * 1.5,
+        x: fruit.x + nx * 120 * side,
+        y: fruit.y + 330,
+        rotation: side * 1.4,
         alpha: 0,
-        duration: 620,
+        duration: 640,
         ease: 'Cubic.In',
-        onComplete: () => half.destroy()
+        onComplete: () => { half.destroy(); shape.destroy() }
       })
     }
-    if (!fruit.bomb) this.spray(`juice-${fruit.kind}`, fruit.x, fruit.y, 12, 230)
+    const flash = this.add.graphics()
+    flash.lineStyle(6, 0xfff3c4, 0.95)
+    flash.lineBetween(fruit.x - tx * 44, fruit.y - ty * 44, fruit.x + tx * 44, fruit.y + ty * 44)
+    this.entities.add(flash)
+    this.tweens.add({ targets: flash, alpha: 0, duration: 220, onComplete: () => flash.destroy() })
+    this.spray('sparkle-white', fruit.x, fruit.y, 8, 340, 380)
+    this.spray('sparkle-gold', fruit.x, fruit.y, 6, 260, 460)
+    this.spray(`juice-${fruit.kind}`, fruit.x, fruit.y, 12, 230)
   }
   protected tick(delta: number): void {
     this.state = step(this.state, delta)
