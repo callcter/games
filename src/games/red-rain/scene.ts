@@ -41,8 +41,7 @@ export class RedRainScene extends ActionScene {
       }
       this.audio.playPop(1.4)
       this.spray('gold-coin', drop.x, drop.y, 11, 210)
-      this.blessing(drop.x, drop.y)
-      this.floatText(drop.x, drop.y - 10, `+${this.state.score - before}`, '#d9a12e')
+      this.blessing(drop.x, drop.y, this.state.score - before)
     })
   }
   protected tick(delta: number): void {
@@ -92,9 +91,9 @@ export class RedRainScene extends ActionScene {
     graphics.generateTexture('firecracker', 46, 78)
     graphics.destroy()
   }
-  // 开包的「福」字小弹跳，替代红包撕裂动画。
-  private blessing(x: number, y: number): void {
-    const label = this.text(x, Math.max(FIELD.top + 24, y - 24), '福', 30, this.entities).setColor('#d9a12e')
+  // 开包只出一组金色文字（福 +N）+ 一组金币粒子，避免两个错位特效像 bug。
+  private blessing(x: number, y: number, gained: number): void {
+    const label = this.text(x, Math.max(FIELD.top + 24, y - 24), `福 +${gained}`, 30, this.entities).setColor('#d9a12e')
     label.setScale(0.4)
     this.tweens.add({ targets: label, y: label.y - 56, alpha: 0, scale: 1, duration: 560, ease: 'Back.Out', onComplete: () => label.destroy() })
   }
