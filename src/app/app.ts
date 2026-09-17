@@ -1,5 +1,6 @@
 import { puzzles } from './puzzles'
 import { gameIcon } from './icons'
+import { installIconArt } from './icon-art'
 import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
 import { CATEGORIES, categoryOf, clearOrder, orderedIds, readRecent, rememberRecent, writeOrder, type Category } from './library'
 
@@ -188,6 +189,8 @@ export function renderApp(root: HTMLDivElement | null): void {
       const game = games.find(game => game.id === button.dataset.game)
       if (game) openGame(game.id)
     }))
+    // 精灵图图标异步替换 SVG 兜底；素材缺失时保持原样。
+    void installIconArt(root)
     root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(button => button.addEventListener('click', () => {
       selectedCategory = button.dataset.category as Category
       root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button)))

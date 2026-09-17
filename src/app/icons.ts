@@ -35,5 +35,7 @@ const art: Record<string, string> = {
 
 export const GAME_ICON_IDS = Object.keys(art)
 export function gameIcon(id: string): string {
-  return `<svg class="game-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><g stroke="#36594b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${art[id] ?? path('M20 32h24m-12-12v24')}</g></svg>`
+  // data-icon 供精灵图管线定位替换，id 只保留安全字符防止属性注入。
+  const safeId = id.replace(/[^a-z0-9-]/gi, '')
+  return `<svg class="game-icon" data-icon="${safeId}" viewBox="0 0 64 64" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><g stroke="#36594b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${art[id] ?? path('M20 32h24m-12-12v24')}</g></svg>`
 }
