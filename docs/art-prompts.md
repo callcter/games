@@ -1,274 +1,140 @@
-# 定制美术素材清单与生成提示词
+# 大厅图标生成指南（GPT-Image 2.5）
 
-给 GPT Image（ChatGPT 网页版或 gpt-image-1 API）生成游戏素材用的规格与提示词。
-目标：一套统一的卡通风格，替代当前程序化绘制的图形，解决高倍屏幕上发糊的问题。
+替换大厅手写 SVG 图标用的精灵图提示词。
+依据 OpenAI 官方 Image Prompting Guide（GPT Image 2.5）整理。
 
-## 生成参数建议
+## 模型与参数（与提示词正文分开设置）
 
-| 项 | 建议 |
-| --- | --- |
-| 尺寸 | 全部 1024×1024（精灵图网格能整除切割） |
-| 背景 | **纯白背景**即可（提示词已写明）；透明背景生成的边缘容易有杂色，白底由我统一去底 |
-| 质量 | 选最高质量档；一次不满意就整张重生成，不要局部修（会破坏网格对齐） |
-| 风格锚 | 所有提示词共享同一段风格描述，保证 20 张图风格一致 |
+| 参数 | 取值 | 本项目建议 |
+| --- | --- | --- |
+| model | `gpt-image-2.5-sunburst`（基础，质量高）/ `gpt-image-2.5-flare`（小模型，快） | 用 sunburst，图标质量优先 |
+| size | `auto` 或自定义 `宽x高`（gpt-image-2 起支持任意分辨率：最长边 ≤3840、两边均为 16 的倍数；官方指南另有 1024×1024 / 1536×1024 / 1024×1536 等常用档） | 见下表 |
+| quality | `auto` / `low` / `medium` / `high` / `xhigh` / `max` | `high`（含数字格） |
+| background | `auto` / `opaque` / `transparent`（透明为 API 预览能力，输出 PNG） | `transparent`；若输出画了棋盘格伪影（假透明），退回 `opaque` 白底，接入端有洪水填充去白兜底 |
 
-## 素材总览
+各精灵图尺寸（格子必须正方，方便逐帧切割）：
 
-| 精灵图 | 内容 | 网格 | 帧数 | 服务游戏 |
-| --- | --- | --- | --- | --- |
-| fruits-small.png / fruits-big.png | 带表情脸的水果 11 种 + 炸弹 | 各 3 列 × 2 行 | 各 6 | 已接入：合成水果、切水果 |
-| half-fruits.png | 半果切面（D 形平边朝左）6 种 | 3 列 × 2 行 | 6 | 切水果（另一半代码镜像） |
-| packets.png | 红包、金色炮仗 | 2 列 × 1 行 | 2 | 红包雨 |
-| moles.png | 棕色地鼠、睡觉地鼠 | 2 列 × 1 行 | 2 | 打地鼠 |
-| bubbles.png | 蓝色泡泡、金色泡泡 | 2 列 × 1 行 | 2 | 点泡泡 |
-| lobby-a/b/c.png | 大厅图标（每张 6 个游戏） | 各 3 列 × 2 行 | 各 6 | 大厅 |
-| lobby-d.png | 大厅图标（剩余 2 个游戏） | 2 列 × 1 行 | 2 | 大厅 |
+| 文件 | 网格 | size 参数 | 单格 |
+| --- | --- | --- | --- |
+| lobby-a.png | 3 列 × 2 行 | `1536x1024` | 512×512 |
+| lobby-b.png | 3 列 × 2 行 | `1536x1024` | 512×512 |
+| lobby-c.png | 3 列 × 2 行 | `1536x1024` | 512×512 |
+| lobby-d.png | 2 列 × 1 行 | `1536x768` | 768×768 |
 
-游戏内精灵图帧切割规格（我接入时按此切）：
-fruits 每帧 256×341；packets / moles / bubbles 每帧 512×512。
+## 官方提示词要点（写法依据）
 
-## 提示词 A：fruits.png（水果 + 炸弹，合成水果与切水果共用）
+1. **分节结构**：复杂请求按 Task / Grid / Icons / Style / Constraints
+   分节描述，不堆长句；
+2. **图标导向**：官方 logo 范例要求 clean vector-like shapes、strong
+   silhouette、simplicity over detail、小尺寸可读、平面无渐变；
+3. **精确文字**：需要数字的格子把数字写进引号、说明位置与次数，
+   其余格子明确「无文字」；
+4. **负面清单**：明确排除 watermark、grid lines、drop shadows、
+   extra text；
+5. **一次只改一个变量**：四张图同会话连生成、Style 节一字不改，
+   保持风格统一；某张不满意只重生成那张。
 
-```text
-Sprite sheet for a children's game, 4 columns and 3 rows grid of 12 equal
-rectangular cells on a plain solid white background. One object per cell,
-consistent kawaii flat cartoon style across all cells: thick smooth dark
-outlines, soft cel shading, glossy highlights, cheerful bright colors.
-Every object is a whole round fruit with a cute happy face (two dot eyes
-and a small smile), all objects the same size, centered in their own cell,
-occupying about 70% of the cell, perfectly aligned to the grid.
-Row 1: two shiny red cherries joined by green stems with one leaf; a red
-strawberry with tiny yellow seeds and a green leafy top; a purple grape
-cluster with a short brown stem; a round orange mandarin with a small bump
-on top and one green leaf.
-Row 2: a round orange persimmon with a green four-petal calyx on top; a
-red apple with a short brown stem and one green leaf; a golden-yellow pear
-with a long brown stem and light speckles; a soft pink peach with a gentle
-vertical crease and one small pointed leaf.
-Row 3: a golden pineapple with diamond crosshatch skin and a green spiky
-crown; a round pale-green melon covered in fine cream netting; a big whole
-watermelon with dark green wavy stripes on light green rind; a round black
-cartoon bomb with a short rope fuse and a small orange spark.
-No text, no numbers, no letters, no watermark, no borders, no grid lines,
-no drop shadows outside the objects. Flat 2D front view, vector style.
-```
-
-## 提示词 A2：half-fruits.png（切水果的半果切面）
-
-背景说明：当前切开效果是整果遮罩模拟，切面没有果肉。这张图让切开
-的两半露出真实果肉；另一半在代码里水平镜像，不必画两份。
-
-```text
-Sprite sheet for a fruit-slicing arcade game. Plain white background,
-3 columns × 2 rows grid of 6 equal square cells.
-
-Scene context: in the game, a blade slices a whole fruit vertically
-down the middle, and the fruit splits into two identical halves that
-fly apart. Each cell shows the LEFT half of a fruit right after that
-slice, as if the right half has just been carried away by the blade:
-a D-shaped half fruit in SIDE VIEW, with the FLAT CUT FACE on the left
-showing the juicy interior (flesh, seeds, pit) and the rounded outer
-skin on the right. It must NOT be a full round cross-section viewed
-from above, NOT a whole fruit — only the left half.
-
-Style: kawaii flat cartoon, thick smooth outlines, soft cel shading,
-glossy highlights. All halves exactly the same size, centered,
-occupying about 60% of the cell, clear white gaps between cells.
-Cell 1: half watermelon — light green striped rind, red flesh with
-black seeds on the cut face.
-Cell 2: half strawberry — red skin, pale pink flesh with tiny seeds.
-Cell 3: half mandarin orange — orange skin, segmented juicy flesh.
-Cell 4: half apple — red skin, cream flesh, two small brown seeds.
-Cell 5: half peach — pink skin, golden flesh, wrinkled pit on the cut.
-Cell 6: half pineapple — golden diamond-pattern skin, yellow flesh.
-No cute faces. No text, no numbers, no watermark, no borders, no grid
-lines, no drop shadows. Flat 2D, vector style.
-```
-
-注意「No cute faces」：切面是果肉特写，不需要表情（整果保留表情）。
-
-### A2 的替代做法：用「图片编辑」而不是从零生成（推荐）
-
-文字凭空生成"侧视半果"成功率低（模型见过的多是横截面圆图）。改用
-GPT-Image 的编辑功能：**上传 `public/art/fruits-big.png` / `fruits-small.png`
-中合格的整果格**（或直接上传整图），用下面这段指令，让它在已有水果上改：
-
-```text
-Edit this sprite sheet: for each fruit in the grid, cut it vertically
-in half and KEEP ONLY THE LEFT HALF. The left half must keep its
-rounded skin on the right side and show the flat cut face on the left
-with juicy flesh, seeds and pit visible on that flat side (watermelon:
-red flesh with black seeds; strawberry: pale pink flesh; mandarin:
-segmented orange flesh; apple: cream flesh with two brown seeds;
-peach: golden flesh with a wrinkled pit; pineapple: yellow flesh).
-Do not change anything else: keep the same grid positions, same sizes,
-same style, same white background. No whole fruits, no round top-view
-cross-sections, no faces, no text.
-```
-
-编辑模式继承了原图的布局与风格，只需要它执行"切掉右半"这一个动作，
-这是它擅长的。## 提示词 B：packets.png（红包雨）
-
-```text
-Sprite sheet with exactly 2 equal square cells side by side (1 row,
-2 columns) on a plain solid white background. Kawaii flat cartoon style,
-thick smooth outlines, soft cel shading, glossy highlights. One object
-per cell, centered, occupying about 70% of the cell, same size.
-Left cell: a red Chinese New Year money envelope standing upright, warm
-red paper with a golden border and a round golden seal on the flap.
-Right cell: a festive red-and-gold firecracker stick tilted slightly,
-with golden bands and a lit golden fuse ending in a small orange spark.
-No text, no numbers, no letters, no watermark, no borders, no grid lines,
-no drop shadows. Flat 2D, vector style.
-```
-
-## 提示词 C：moles.png（打地鼠）
-
-```text
-Sprite sheet with exactly 2 equal square cells side by side (1 row,
-2 columns) on a plain solid white background. Kawaii flat cartoon style,
-thick smooth outlines, soft cel shading. One object per cell, centered,
-occupying about 70% of the cell, same size: two cute chubby moles shown
-from the chest up, as if peeking out of a hole.
-Left cell: a warm brown mole with a big pink nose, rosy cheeks, wide happy
-eyes and tiny white paws waving.
-Right cell: a gray mole wearing a blue striped nightcap with a white pom,
-eyes peacefully closed, gentle sleeping smile, tiny "zzz" is NOT allowed.
-No text, no numbers, no letters, no watermark, no borders, no grid lines,
-no drop shadows. Flat 2D, vector style.
-```
-
-## 提示词 D：bubbles.png（点泡泡）
-
-```text
-Sprite sheet with exactly 2 equal square cells side by side (1 row,
-2 columns) on a plain solid white background. Glossy cartoon style with
-smooth outlines and bright highlights. One object per cell, centered,
-occupying about 80% of the cell, same size.
-Left cell: a large translucent sky-blue soap bubble with a soft gradient,
-a bright white crescent highlight in the upper left and a thin rainbow
-sheen at the bottom edge.
-Right cell: the same bubble shape but glowing golden — warm amber gradient,
-sparkling star highlights, a few tiny golden sparkles around it.
-No text, no numbers, no letters, no watermark, no borders, no grid lines.
-Flat 2D, vector style.
-```
-
-## 提示词 E：大厅图标精灵图（4 张，替换手写 SVG）
-
-> 为什么要精灵图而不是逐张生成：逐张生成 20 次风格必然漂移、
-> 大厅看起来像拼贴；一张图内的 6 个图标风格天然统一。管线与
-> fruits-small/big.png 完全相同（白底、洪水填充去白、逐帧裁剪）。
-
-风格统一是第一优先级——四张图请**在同一次对话里连续生成**，
-每张提示词的样式段落（Kawaii flat cartoon style...white background）
-一字不改。
+## 提示词（四张，覆盖 20 个游戏）
 
 ### lobby-a.png（2048 / 俄罗斯方块 / 五子棋 / 扫雷 / 蜘蛛纸牌 / 空当接龙）
 
 ```text
-Sprite sheet with exactly 6 equal square cells in a 3 by 2 grid
-(3 columns, 2 rows) on a plain solid white background. Kawaii flat
-cartoon style, thick smooth outlines, soft cel shading, glossy
-highlights, cheerful pastel colors. One icon per cell, centered,
-occupying about 72% of the cell, same size in every cell, simple
-bold shapes readable at small size.
-
-Row 1: 1) two rounded game number tiles, one coral tile showing "4"
-and one gold tile showing "8", slightly overlapping;
-2) colorful tetromino blocks, one L-shape and one T-shape, mid-fall
-with tiny motion lines;
-3) a wooden go board corner with one black and one white glossy
-round stone.
-Row 2: 4) a round cartoon landmine with a cute worried face and a
-small red flag planted next to it;
-5) a friendly little spider sitting on a playing card;
-6) a single playing card showing a big golden spade ace.
-
-No text outside the two tiles, no watermark, no grid lines, no drop
-shadows, flat 2D vector style.
+Task: icon sprite sheet for a children's game collection.
+Grid: exactly 6 equal square cells, 3 columns by 2 rows, one icon per
+cell, centered, each icon filling about 70% of its cell, same scale
+in every cell.
+Icons:
+Row 1 — 1) two overlapping rounded game tiles: a coral tile showing
+"4" and a gold tile showing "8"; 2) two colorful tetromino blocks,
+one L-shape and one T-shape, mid-fall; 3) a wooden go-board corner
+with one black and one white glossy round stone.
+Row 2 — 4) a round cartoon landmine with a cute worried face and a
+small red flag planted beside it; 5) a friendly little spider sitting
+on a playing card; 6) a single playing card showing a large golden
+spade ace.
+Style: rounded flat vector icons for young children, thick smooth
+outlines, soft limited pastel palette, simple bold silhouettes that
+stay readable at 48 px.
+Constraints: the digits "4" and "8" appear only on the two tiles in
+cell 1; no other text anywhere; no watermark, no grid lines between
+cells, no drop shadows, no gradients.
 ```
 
 ### lobby-b.png（合成水果 / 切水果 / 泡泡龙 / 点泡泡 / 红包雨 / 打地鼠）
 
 ```text
-Sprite sheet with exactly 6 equal square cells in a 3 by 2 grid
-(3 columns, 2 rows) on a plain solid white background. Kawaii flat
-cartoon style, thick smooth outlines, soft cel shading, glossy
-highlights, cheerful pastel colors. One icon per cell, centered,
-occupying about 72% of the cell, same size in every cell, simple
-bold shapes readable at small size.
-
-Row 1: 1) a happy watermelon with a cute smiling face;
-2) a watermelon slice with a white slash line and juice droplets;
-3) a cluster of three glossy bubbles, pink, blue and yellow.
-Row 2: 4) a golden bubble being popped with a tiny star burst;
+Task: icon sprite sheet for a children's game collection.
+Grid: exactly 6 equal square cells, 3 columns by 2 rows, one icon per
+cell, centered, each icon filling about 70% of its cell, same scale
+in every cell.
+Icons:
+Row 1 — 1) a happy watermelon with a cute smiling face; 2) a
+watermelon slice with a white slash line and a few juice droplets;
+3) a cluster of three glossy bubbles in pink, blue and yellow.
+Row 2 — 4) a golden bubble being popped with a small star burst;
 5) a red Chinese money envelope with a golden seal and two gold
-coins beside it;
-6) a happy brown mole peeking out of a green hole.
-
-No text, no watermark, no grid lines, no drop shadows, flat 2D
-vector style.
+coins beside it; 6) a happy brown mole peeking out of a green hole.
+Style: rounded flat vector icons for young children, thick smooth
+outlines, soft limited pastel palette, simple bold silhouettes that
+stay readable at 48 px.
+Constraints: no text, no watermark, no grid lines between cells,
+no drop shadows, no gradients.
 ```
 
 ### lobby-c.png（记忆翻牌 / 七巧板 / 接水管 / 推箱子 / 解绳结 / 迷宫）
 
 ```text
-Sprite sheet with exactly 6 equal square cells in a 3 by 2 grid
-(3 columns, 2 rows) on a plain solid white background. Kawaii flat
-cartoon style, thick smooth outlines, soft cel shading, glossy
-highlights, cheerful pastel colors. One icon per cell, centered,
-occupying about 72% of the cell, same size in every cell, simple
-bold shapes readable at small size.
-
-Row 1: 1) two rounded playing-style cards, one face up with a golden
-star, one face down with a question-mark-free swirl pattern;
-2) colorful tangram triangles forming a little house;
-3) two chunky pipe pieces, one elbow and one straight, in mint green.
-Row 2: 4) a small wooden crate with a smiling face on a tile floor;
-5) a smooth tangled rope loop with one loose end lifted;
-6) a top-view simple maze path with a small flag at the exit.
-
-No text, no watermark, no grid lines, no drop shadows, flat 2D
-vector style.
+Task: icon sprite sheet for a children's game collection.
+Grid: exactly 6 equal square cells, 3 columns by 2 rows, one icon per
+cell, centered, each icon filling about 70% of its cell, same scale
+in every cell.
+Icons:
+Row 1 — 1) two rounded playing-style cards, one face up showing a
+golden star, one face down; 2) colorful tangram triangles forming a
+little house; 3) two chunky mint-green pipe pieces, one elbow and
+one straight.
+Row 2 — 4) a small wooden crate with a smiling face on a tile floor;
+5) a smooth tangled rope loop with one loose end lifted; 6) a
+top-view simple maze path with a small flag at the exit.
+Style: rounded flat vector icons for young children, thick smooth
+outlines, soft limited pastel palette, simple bold silhouettes that
+stay readable at 48 px.
+Constraints: no text, no watermark, no grid lines between cells,
+no drop shadows, no gradients.
 ```
 
-### lobby-d.png（数独 / 数织，2 格收尾）
+### lobby-d.png（数独 / 数织）
 
 ```text
-Sprite sheet with exactly 2 equal square cells side by side (1 row,
-2 columns) on a plain solid white background. Kawaii flat cartoon
-style, thick smooth outlines, soft cel shading, glossy highlights,
-cheerful pastel colors. One icon per cell, centered, occupying
-about 72% of the cell, same size, simple bold shapes readable at
-small size.
-
-Left cell: a 3 by 3 mini sudoku grid tile with a few soft number
-tiles (numbers are allowed in this icon only).
-Right cell: a grid of dark and light rounded squares forming a heart
+Task: icon sprite sheet for a children's game collection.
+Grid: exactly 2 equal square cells side by side, 1 row by 2 columns,
+one icon per cell, centered, each icon filling about 70% of its cell,
+same scale in both cells.
+Icons:
+Left — a rounded 3 by 3 sudoku grid tile with the digits "1", "2"
+and "3" on three soft tiles.
+Right — a grid of dark and light rounded squares forming a heart
 pixel pattern.
-
-No other text, no watermark, no grid lines outside the icons,
-no drop shadows, flat 2D vector style.
+Style: rounded flat vector icons for young children, thick smooth
+outlines, soft limited pastel palette, simple bold silhouettes that
+stay readable at 48 px.
+Constraints: the digits appear only inside the left sudoku icon; no
+other text anywhere; no watermark, no grid lines between cells,
+no drop shadows, no gradients.
 ```
 
-> 注意：lobby-a 第 1 格（2048 的数字瓷砖）和 lobby-d 左格（数独）
-> 是仅有的允许出现数字的格子；其余图标一律无文字。
+## 交付与验收
 
-## 生成后怎么交付
+1. 四张 PNG 命名 lobby-a/b/c/d.png 发我即可；
+2. 我负责：检查 alpha 通道是否真透明（棋盘格伪影退回白底重生成）、
+   逐帧切割校验网格对齐、放进 `public/art/`、替换 `icons.ts` 手写
+   SVG、Workbox 离线预缓存与 iPad 高分屏验证；
+3. 某张网格切歪或某格画错，只重生成那一张。
 
-1. 文件按上表命名（fruits*.png、packets.png、moles.png、bubbles.png、
-   lobby-a/b/c/d.png），发给我即可；
-2. 我负责：去白底（近白像素转透明）、按网格切割校验、放进 `public/art/`、
-   接入各游戏替换程序化纹理、Workbox 离线预缓存（png 已在
-   `globPatterns` 中）与 iPad 高分屏验证；
-3. 如果某张精灵图网格切歪（AI 偶尔会把格子画得大小不一），我会指出具体
-   哪几格不对，单独重生成那一张即可，不必全部重来。
-
-## 网格不齐时的补救提示词（追加到原提示词末尾重生成）
+## 网格不齐时的补救（追加到原提示词末尾重生成）
 
 ```text
-Important: keep all 12 cells exactly the same size and perfectly aligned
-to an invisible grid, with equal gaps between cells; do not let any object
-touch or overflow its cell.
+Important: keep all cells exactly the same size and perfectly
+aligned to an invisible grid, with equal gaps between cells; do not
+let any object cross a cell boundary.
 ```
