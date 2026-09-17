@@ -201,12 +201,14 @@ export class SpiderScene extends Phaser.Scene {
       column.forEach((item, cardIndex) => {
         const y = TABLEAU_Y + cardIndex * overlap
         const selected = this.selection?.column === columnIndex && cardIndex >= this.selection.start
+        // 可拖的明牌不绑 pointerdown 选择（拖动不重绘）；不可拖的保留点选提示路径。
+        const draggable = item.faceUp && movableSequenceLength(column, cardIndex) > 0
         const view = createCardView(this, x + (selected ? 5 : 0), y, CARD_WIDTH, CARD_HEIGHT, item.card, {
           faceUp: item.faceUp,
           selected,
-          onSelect: () => this.selectCard(columnIndex, cardIndex)
+          onSelect: draggable ? undefined : () => this.selectCard(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
-        if (item.faceUp && movableSequenceLength(column, cardIndex) > 0) {
+        if (draggable) {
           view.setData('cardSource', { column: columnIndex, start: cardIndex })
           this.input.setDraggable(view)
         }

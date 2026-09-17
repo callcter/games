@@ -2388,8 +2388,8 @@ README 与实际路由不一致
 | --- | --- | --- | --- | --- |
 | E2-000 | 建立 Experience 2.0 baseline | `DONE` | 无 | 截图、行为记录、测试基线完成（2026-09-17，commit 2300f50，基线文档 docs/experience-2-baseline.md，192 测试） |
 | E2-010 | 建立最小 motion primitive | `DONE` | E2-000 | press/pickup/snap/bump/pop 可复用（commit 0bc53b7） |
-| E2-011 | 建立 floating text primitive | `DONE` | E2-000 | 不泄漏、不遮挡主交互（commit 0bc53b7，尚未接入游戏） |
-| E2-012 | 建立轻量 particle primitive / pool | `DONE` | E2-000 | 生命周期、池化与上限明确（commit 0bc53b7，存活上限 80，尚未接入游戏） |
+| E2-011 | 建立 floating text primitive | `DONE` | E2-000 | 不泄漏、不遮挡主交互（已接入合成水果与 2048） |
+| E2-012 | 建立轻量 particle primitive / pool | `DONE` | E2-000 | 生命周期、池化与上限明确（已接入合成水果与停车场驶出尾迹） |
 | E2-013 | 建立 axis drag primitive | `DONE` | E2-000 | clamp / nearest stop / shouldCommitStop 可测试（14 项纯计算单测） |
 | E2-100 | 停车场直接拖车 | `PLAYTEST` | E2-013 | 单指拖车可完整通关（commit 8306049，工程验收见 Changelog，等待孩子试玩） |
 | E2-101 | 停车场触觉式反馈 polish | `PLAYTEST` | E2-100 | pickup/snap/blocked/victory 成立（commit f1ce362，驶出尾迹+箭头+结果卡） |
@@ -4492,6 +4492,19 @@ Do not change:
 ---
 
 # 92. Experience 2.0 Changelog
+
+## 2026-09-17 — v0.7（独立验收退回修复：A1~A6）
+
+独立验收（docs/experience-2-acceptance-2026-09-17.md）判定不通过，本轮按报告全部修复：
+
+- A1 数织旧档：PATTERNS 重排为「原图 0-8 保持原索引 + 变体统一追加」，旧 v1 存档（level=5/8 的 10×10）原样恢复、nonogram-N 完成记录身份不变；新增真实旧档兼容测试（25 格错档仍拒绝）。
+- A2 纸牌拖动跟手：三款可拖牌不再绑 pointerdown 选择——此前 pointerdown 触发整盘重绘，拖的是已销毁的旧对象（可见牌不跟手、moves 变化是假通过）；轻点语义由 dragend 分支承担，不可拖明牌保留点选提示。CDP 复验：三款按住期间 dragGroup[0] 均在显示列表且坐标跟随指针。
+- A3 停车场竞态：snap 完成回调改经 requestRedraw 协调——有拖动会话时挂起重绘，会话结束 flushRedraw 消费，吸附动画不再销毁新会话（消除永久输入锁）。
+- A4 监听器累积：AxisDragController 的 SHUTDOWN 生命周期回调具名保存并在 destroy 注销；实测 30 次 draw 后 shutdown listenerCount 19→19 稳定。
+- A5 内容入口：数织默认从第 1 幅开始、「下一幅」循环全部 50 幅；推箱子选关页列全部 30 关（PAR≥8 挑战关带 ☆ 标记）、「下一关」按顺序推进——原 CHALLENGE_LEVELS 过滤使第 11-18 学习关无入口。
+- A6 回归脚本：browser-smoke 更新切水果新 intro 入口 (384,508)、结算卡「再来一次」坐标 (384,592) 并等待滑入动画；全量正式回归跑绿（横竖屏益智/音频/续玩/退出/监听器/动作四款）。
+- AGENTS 产品表推箱子/数织行同步实际内容；E2-011/012「尚未接入」过时描述更正。
+- 测试 215→216（数织旧档兼容 +1）；`pnpm check`、`git diff --check`、`pnpm test:browser` 全部通过。
 
 ## 2026-09-17 — v0.6（Phase 1/2 Stabilization）
 

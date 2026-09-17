@@ -28,6 +28,8 @@ export class ParkingScene extends PuzzleScene {
   private selected = -1
   private moving = false
   private draggingId = -1
+  /** 有拖动进行时挂起重绘请求，待会话结束再执行，避免吸附回调销毁新会话。 */
+  private redrawPending = false
   private carViews = new Map<number, Phaser.GameObjects.Container>()
   private drags: AxisDragController[] = []
   private spots: Phaser.GameObjects.Rectangle[] = []
@@ -165,16 +167,31 @@ export class ParkingScene extends PuzzleScene {
         this.audio.playMove()
       },
       onBlocked: () => { this.audio.playPlace(1) },
-      onCommit: stop => this.commitDrag(car.id, stop),
+      onCommit: stop => { this.commitDrag(car.id, stop); this.flushRedraw() },
       onCancel: () => {
         this.draggingId = -1
         releaseMotion(this, view)
         // 原地轻点：退回旧点选路径，亮出目标格帮助孩子理解规则。
         this.select(car.id)
+        this.flushRedraw()
       },
       rubberBand: PARKING_FEEL.rubberBand
     })
     this.drags.push(drag)
+  }
+
+  /** 拖动进行中挂起重绘；无会话时立即重绘。 */
+  private requestRedraw(): void {
+    if (!this.alive) return
+    if (this.draggingId >= 0) { this.redrawPending = true; return }
+    this.draw()
+  }
+
+  /** 拖动会话结束后消费挂起的重绘。 */
+  private flushRedraw(): void {
+    if (!this.redrawPending) return
+    this.redrawPending = false
+    this.requestRedraw()
   }
 
   private clearSpots(): void {
@@ -232,7 +249,9 @@ export class ParkingScene extends PuzzleScene {
     if (view) {
       snapMotion(this, view, tx, ty, {
         duration: PARKING_FEEL.snapMs, settle: false,
-        onComplete: () => { if (this.alive) this.draw() }
+        // 吸附动画完成时孩子可能已开始拖另一辆车：此时不能整盘重绘
+        // （会销毁新会话的 view/controller 并留下无法解除的输入锁）。
+        onComplete: () => this.requestRedraw()
       })
     } else {
       this.draw()

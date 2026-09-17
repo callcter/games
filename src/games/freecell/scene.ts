@@ -182,9 +182,9 @@ export class FreeCellScene extends Phaser.Scene {
       const x = 40 + index * 112
       const card = this.state.freeCells[index]
       if (card) {
+        // 空当牌可拖：不绑 pointerdown 选择，避免拖动开始即重绘；轻点由 dragend 处理。
         const view = createCardView(this, x, 92, CARD_WIDTH, CARD_HEIGHT * 0.82, card, {
-          selected: this.selection?.kind === 'freecell' && this.selection.index === index,
-          onSelect: () => this.selectFreeCell(index)
+          selected: this.selection?.kind === 'freecell' && this.selection.index === index
         })
         view.setData('cardSource', { kind: 'freecell', index, column: -1, start: -1 })
         this.input.setDraggable(view)
@@ -225,12 +225,14 @@ export class FreeCellScene extends Phaser.Scene {
         const selected = this.selection?.kind === 'tableau'
           && this.selection.column === columnIndex
           && cardIndex >= this.selection.start
+        // 可拖的牌不绑 pointerdown 选择（拖动不重绘）；不可拖的保留点选提示路径。
+        const draggable = movableSequenceLength(column, cardIndex) > 0
         const view = createCardView(this, x + (selected ? 6 : 0), TABLEAU_Y + cardIndex * overlap, CARD_WIDTH, CARD_HEIGHT, card, {
           selected,
-          onSelect: () => this.selectTableau(columnIndex, cardIndex)
+          onSelect: draggable ? undefined : () => this.selectTableau(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
         view.setData('cardSource', { kind: 'tableau' as const, index: -1, column: columnIndex, start: cardIndex })
-        if (movableSequenceLength(column, cardIndex) > 0) this.input.setDraggable(view)
+        if (draggable) this.input.setDraggable(view)
         upViews.push(view)
       })
       this.columnViews.set(`${columnIndex}`, upViews)

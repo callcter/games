@@ -235,9 +235,12 @@ try {
   for (const [width,height] of [[768,1024],[1024,768]]) {
     await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:Number(process.env.DEVICE_SCALE ?? 1),mobile:false})
     for (const id of ['pop-bubbles','red-rain','whack-mole','fruit-slicer']) {
-      await open(id); await click(160,400)
+      await open(id)
+      if (id === 'fruit-slicer') await click(384, 508)
+      else await click(160, 400)
       const listeners = await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')")
-      for(let i=0;i<3;i++) { await evaluate('__scene.endRound()'); await click(240,640) }
+      // 结算卡从底部滑入有 340ms 动画，等卡片就位再点「再来一次」。
+      for(let i=0;i<3;i++) { await evaluate('__scene.endRound()'); await pause(600); await click(384,592) }
       assert.equal(await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')"),listeners, `${id}: 重玩不能累积输入监听器`)
       await pause(1400)
       if(id==='pop-bubbles') {

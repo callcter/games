@@ -194,9 +194,9 @@ export class KlondikeScene extends Phaser.Scene {
     }
     const wasteTop = this.state.waste[this.state.waste.length - 1]
     if (wasteTop) {
+      // 废牌顶可拖：不绑 pointerdown 选择，避免拖动开始即全量重绘（拖到的是已销毁的旧对象）；轻点由 dragend 处理。
       const wasteView = createCardView(this, 157, TOP_Y, CARD_WIDTH, CARD_HEIGHT * 0.82, wasteTop, {
-        selected: this.selection?.kind === 'waste',
-        onSelect: () => this.selectWaste()
+        selected: this.selection?.kind === 'waste'
       })
       wasteView.setData('cardSource', { kind: 'waste', column: -1, start: -1, suit: wasteTop.suit })
       this.input.setDraggable(wasteView)
@@ -208,8 +208,7 @@ export class KlondikeScene extends Phaser.Scene {
       const rank = this.state.foundations[suit]
       if (rank > 0) {
         const view = createCardView(this, x, TOP_Y, 90, CARD_HEIGHT * 0.82, { id: `f-${suit}-${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black' }, {
-          selected: this.selection?.kind === 'foundation' && this.selection.suit === suit,
-          onSelect: () => this.selectFoundation(suit)
+          selected: this.selection?.kind === 'foundation' && this.selection.suit === suit
         })
         view.setData('cardSource', { kind: 'foundation', column: -1, start: -1, suit })
         this.input.setDraggable(view)
@@ -237,12 +236,14 @@ export class KlondikeScene extends Phaser.Scene {
       const upViews: Phaser.GameObjects.Container[] = []
       column.up.forEach((card, cardIndex) => {
         const selected = this.selection?.kind === 'column' && this.selection.column === columnIndex && cardIndex >= this.selection.start
+        // 可拖的牌不绑 pointerdown 选择（拖动不重绘）；不可拖的明牌保留点选提示路径。
+        const draggable = this.canDragFrom('column', columnIndex, cardIndex)
         const view = createCardView(this, x + (selected ? 6 : 0), y, CARD_WIDTH, CARD_HEIGHT, card, {
           selected,
-          onSelect: () => this.selectColumn(columnIndex, cardIndex)
+          onSelect: draggable ? undefined : () => this.selectColumn(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
         view.setData('cardSource', { kind: 'column' as const, column: columnIndex, start: cardIndex, suit: card.suit })
-        if (this.canDragFrom('column', columnIndex, cardIndex)) this.input.setDraggable(view)
+        if (draggable) this.input.setDraggable(view)
         upViews.push(view)
         y += overlap
       })

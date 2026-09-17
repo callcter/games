@@ -1,7 +1,7 @@
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { loadProgress, recordRun, recordLevel } from '../puzzle-kit/progress'
-import { CHALLENGE_LEVELS, LEVELS, move, newGame, PAR, solve, stars, type SokobanState } from './core/game'
+import { LEVELS, move, newGame, PAR, solve, stars, type SokobanState } from './core/game'
 import { restoreSokoban } from '../puzzle-kit/core/drafts'
 export class SokobanScene extends PuzzleScene {
   private level = 0
@@ -33,12 +33,15 @@ export class SokobanScene extends PuzzleScene {
   }
   private showLevels(): void {
     this.view = 'levels'
-    this.resetView(`独立完成 ${CHALLENGE_LEVELS.filter(level=>this.bestMoves[level]!==undefined).length} / ${CHALLENGE_LEVELS.length} 关 · 点一个关卡开始`)
-    this.text(384, 170, '用的步数越少，星星越多', 20, this.content)
-    CHALLENGE_LEVELS.forEach((level, index) => {
+    // 全部关卡可选（Wave 4 扩容后学习关与挑战关都应有入口），挑战关带 ☆ 前缀。
+    const cleared = LEVELS.filter((_, level) => this.bestMoves[level] !== undefined).length
+    this.resetView(`独立完成 ${cleared} / ${LEVELS.length} 关 · 点一个关卡开始`)
+    this.text(384, 170, '☆ 是挑战关 · 用的步数越少星星越多', 20, this.content)
+    LEVELS.forEach((_, level) => {
       const best = this.bestMoves[level]
-      const label = best === undefined ? `${level + 1}${this.practice.has(level) ? ' ✓' : ''}` : `${level + 1} ${'★'.repeat(stars(level, best))}`
-      this.button(128 + index % 5 * 128, 300 + Math.floor(index / 5) * 150, label, () => { this.level = level; this.restart() }, 108, this.content)
+      const challenge = (PAR[level] ?? 0) >= 8 ? '☆' : ''
+      const label = best === undefined ? `${challenge}${level + 1}${this.practice.has(level) ? ' ✓' : ''}` : `${challenge}${level + 1} ${'★'.repeat(stars(level, best))}`
+      this.button(128 + level % 5 * 128, 240 + Math.floor(level / 5) * 130, label, () => { this.level = level; this.restart() }, 108, this.content)
     })
   }
   private step(d: number): void {
@@ -52,7 +55,7 @@ export class SokobanScene extends PuzzleScene {
       if (this.assisted) this.practice.add(this.level)
       else if (this.bestMoves[this.level] === undefined || next.moves < this.bestMoves[this.level]!) this.bestMoves[this.level] = next.moves
       recordRun(`sokoban-L${this.level}`, next.moves, this.assisted)
-      recordLevel('sokoban', CHALLENGE_LEVELS.find(level=>level>this.level) ?? LEVELS.length-1)
+      recordLevel('sokoban', Math.min(this.level + 1, LEVELS.length - 1))
     }
   }
   private draw(): void {
@@ -85,7 +88,7 @@ export class SokobanScene extends PuzzleScene {
     }, 150, this.content)
     this.button(430, 850, '重开', () => this.restart(), 110, this.content)
     this.button(588, 850, '选关', () => this.showLevels(), 132, this.content)
-    if (this.state.won && this.level < LEVELS.length - 1) this.button(384, 700, '下一关 →', () => { this.level = CHALLENGE_LEVELS.find(level=>level>this.level) ?? LEVELS.length-1; this.restart() }, 220, this.content)
+    if (this.state.won && this.level < LEVELS.length - 1) this.button(384, 700, '下一关 →', () => { this.level = this.level + 1; this.restart() }, 220, this.content)
     if (this.state.won && this.level === LEVELS.length - 1) this.text(384, 700, '全部通关啦，去选关页刷新纪录吧！', 24, this.content)
   }
   private restart(): void { this.assisted = false; this.state = newGame(this.level); this.history = []; this.draw() }

@@ -41,6 +41,7 @@ export class AxisDragController {
   private startPixel = 0
   private lastBlocked: -1 | 0 | 1 = 0
   private destroyed = false
+  private readonly handleShutdown = (): void => this.destroy()
 
   constructor(scene: Phaser.Scene, target: DragTarget, config: AxisDragConfig) {
     this.scene = scene
@@ -53,7 +54,7 @@ export class AxisDragController {
     ]
     for (const [event, handler] of this.handlers) scene.input.on(event as never, handler as never)
     scene.input.setDraggable(target)
-    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy())
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown)
   }
 
   private position(): number {
@@ -98,11 +99,12 @@ export class AxisDragController {
     }
   }
 
-  /** 幂等销毁：解绑输入事件并撤销 draggable 标记。 */
+  /** 幂等销毁：解绑输入事件、注销生命周期回调并撤销 draggable 标记。 */
   destroy(): void {
     if (this.destroyed) return
     this.destroyed = true
     for (const [event, handler] of this.handlers) this.scene.input.off(event as never, handler as never)
+    this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown)
     this.scene.input.setDraggable(this.target, false)
     this.handlers.length = 0
   }

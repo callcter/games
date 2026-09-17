@@ -29,12 +29,12 @@ const VARIANTS: Array<{ suffix: string; flip: (rows: readonly string[]) => reado
   { suffix: '·夜转', flip: rows => invert(flipV(flipH(rows))) },
   { suffix: '·夜斜', flip: rows => invert(flipT(rows)) }
 ]
+// 原图 0-8 保持既有顺序与索引（旧存档 level 和 nonogram-N 完成记录的身份不变，
+// 旧 10×10 棋盘可直接恢复）；变体统一追加在 9 之后，5×5 变体段先于 10×10 变体段。
 const seen = new Set<string>()
-const expanded: Array<{ name: string; rows: readonly string[] }> = []
+const expanded: Array<{ name: string; rows: readonly string[] }> = [...BASE_PATTERNS]
+for (const pattern of BASE_PATTERNS) seen.add(pattern.rows.join('/'))
 for (const pattern of BASE_PATTERNS) {
-  seen.add(pattern.rows.join('/'))
-  expanded.push(pattern)
-  // 原图与其变体连续排列：5×5 组天然在前、10×10 组在后。
   for (const variant of VARIANTS) {
     const rows = variant.flip(pattern.rows)
     const key = rows.join('/')
