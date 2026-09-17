@@ -2386,12 +2386,12 @@ README 与实际路由不一致
 
 | ID | 工作项 | 状态 | 依赖 | 退出条件 |
 | --- | --- | --- | --- | --- |
-| E2-000 | 建立 Experience 2.0 baseline | `READY` | 无 | 截图、行为记录、测试基线完成 |
-| E2-010 | 建立最小 motion primitive | `BACKLOG` | E2-000 | press/pickup/snap/bump/pop 可复用 |
-| E2-011 | 建立 floating text primitive | `BACKLOG` | E2-000 | 不泄漏、不遮挡主交互 |
-| E2-012 | 建立轻量 particle primitive / pool | `BACKLOG` | E2-000 | 生命周期、池化与上限明确 |
-| E2-013 | 建立 axis drag primitive | `BACKLOG` | E2-000 | clamp / nearest stop 可测试 |
-| E2-100 | 停车场直接拖车 | `BACKLOG` | E2-013 | 单指拖车可完整通关 |
+| E2-000 | 建立 Experience 2.0 baseline | `DONE` | 无 | 截图、行为记录、测试基线完成（2026-09-17，commit 2300f50，基线文档 docs/experience-2-baseline.md，192 测试） |
+| E2-010 | 建立最小 motion primitive | `DONE` | E2-000 | press/pickup/snap/bump/pop 可复用（commit 0bc53b7） |
+| E2-011 | 建立 floating text primitive | `DONE` | E2-000 | 不泄漏、不遮挡主交互（commit 0bc53b7，尚未接入游戏） |
+| E2-012 | 建立轻量 particle primitive / pool | `DONE` | E2-000 | 生命周期、池化与上限明确（commit 0bc53b7，存活上限 80，尚未接入游戏） |
+| E2-013 | 建立 axis drag primitive | `DONE` | E2-000 | clamp / nearest stop / shouldCommitStop 可测试（14 项纯计算单测） |
+| E2-100 | 停车场直接拖车 | `PLAYTEST` | E2-013 | 单指拖车可完整通关（commit 8306049，工程验收见 Changelog，等待孩子试玩） |
 | E2-101 | 停车场触觉式反馈 polish | `BACKLOG` | E2-100 | pickup/snap/blocked/victory 成立 |
 | E2-102 | 停车场孩子 Playtest | `BACKLOG` | E2-101 | 得到继续/调整/回退决策 |
 | E2-200 | 合成水果跟手投放 | `BACKLOG` | E2-010 | preview → release → drop 连贯 |
@@ -4492,6 +4492,20 @@ Do not change:
 ---
 
 # 92. Experience 2.0 Changelog
+
+## 2026-09-17 — v0.3（Sprint 0/1/2 落地）
+
+- E2-000 基线：`docs/experience-2-baseline.md`（大厅/停车场/合成水果/切水果 CDP 实拍与行为实录，192 测试）。
+- E2-010~013 primitive：新增 `src/experience/`（feedback/motion、floating-text、particles；input/axis-drag-core 纯计算 + axis-drag 控制器）。无新依赖、无游戏行为改变。
+- E2-100 停车场直接拖车（commit 8306049）：
+  - 主操作 = 按住车轴向拖动（pickup 放大置顶、8px 橡皮筋阻挡、松手半程滞回吸附后仅此刻 `slide()` 提交）；
+  - 拖动期间零 draw / 零存档 / 零求解；轻点退回旧点选路径作辅助；
+  - 修复体验层两处缺陷：拖动包络并入当前位置（静止指针不再被拉向停靠点）、`shouldCommitStop` 滞回（轻扫不误提交）。
+  - 工程验收：206 测试全绿；CDP 竖屏 768×1024 与横屏 1024×768 实测拖车、跨多格一次一步、横车竖拖不动、
+    越界吸附不穿车、undo、草稿落盘、退出重进续玩一致、BFS 三步通关（红车 80ms 停顿后加速驶出 + 庆祝）。
+  - 状态：`PLAYTEST`，等待真实孩子按 §82 验收卡试玩。
+- 已知限制：CDP 无法模拟 Safari 真机触摸（touch-action / pointer capture 需 iPad 确认）；
+  拖动中的多点触控用 draggingId 互斥，未做双指场景测试。
 
 ## 2026-09-17 — v0.2
 
