@@ -32,11 +32,12 @@ export class TileMatchScene extends PuzzleScene {
       this.mode = index; this.restart()
     }, 190, this.content))
 
-    // 层次范围与居中
+    // 堆叠区约束在难度按钮（底 195）与槽位（顶 726）之间的安全带内并垂直居中，
+    // 层数越多的难度偏移越大，必须夹住上界避免压到按钮。
     const maxX = Math.max(...this.state.tiles.map(tile => tile.gx + tile.layer * 0.34))
     const maxY = Math.max(...this.state.tiles.map(tile => tile.gy + tile.layer * 0.34))
     const left = 384 - (maxX * SPACING + TILE) / 2
-    const top = 246 - (maxY * SPACING + TILE) / 2 + 120
+    const top = Math.max(210, 210 + (516 - (maxY * SPACING + TILE)) / 2)
     const screen = (tile: MatchState['tiles'][number]): [number, number] =>
       [left + (tile.gx + tile.layer * 0.34) * SPACING + TILE / 2, top + (tile.gy + tile.layer * 0.34) * SPACING + TILE / 2]
 
