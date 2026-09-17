@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { canPour, greedySolves, MODES, newGame, pour, solvable, topRun, TUBE_CAPACITY, type WaterState } from '../../src/games/water-sort/core/game'
+import { restoreWaterSort } from '../../src/games/puzzle-kit/core/drafts'
 
 describe('水排序规则', () => {
+  it('旧四色进阶和五色挑战存档保留原棋盘及撤销历史', () => {
+    for (const [mode, colors] of [[1, 4], [2, 5]] as const) {
+      const tubes = Array.from({ length: colors }, (_, c) => [c, c, c, c])
+      tubes.push([], [])
+      tubes[0]![3] = 1
+      tubes[1]![3] = 0
+      const state = { tubes, colors, moves: 4, won: false }
+      expect(restoreWaterSort({ state, history: [state], mode })).toMatchObject({ mode, state: { colors, tubes }, history: [{ colors, tubes }] })
+      expect(restoreWaterSort({ state: { ...state, colors: 99 }, mode })).toBeNull()
+    }
+  })
   it('顶部连续同色段统计正确', () => {
     expect(topRun([])).toBe(0)
     expect(topRun([1, 2, 2])).toBe(2)

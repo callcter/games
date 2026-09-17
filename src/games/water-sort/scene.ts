@@ -5,8 +5,8 @@ import { canPour, MODES, newGame, pour, topRun, TUBE_CAPACITY, type WaterState }
 import { restoreWaterSort } from '../puzzle-kit/core/drafts'
 
 // 颜色与符号双重标识，色弱也能分辨；顺序与颜色索引一致。
-const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf]
-const SYMBOLS = ['●', '▲', '■', '◆', '★']
+const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x3689b0]
+const SYMBOLS = ['●', '▲', '■', '◆', '★', '✚']
 
 const TUBE_W = 66, TUBE_H = 204, LAYER_H = 46
 

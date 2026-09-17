@@ -108,10 +108,14 @@ export function restoreWaterSort(value: unknown): WaterSortDraft | null {
   const mode = saved.mode
   if (!Number.isInteger(mode) || (mode as number) < 0 || (mode as number) >= waterModes.length) return null
   const config = waterModes[mode as number]!
-  const state = waterState(saved.state, config.colors)
+  // v1 同一模式曾使用 3/4/5 色；续玩保留原题，新开局才使用 3/5/6 色。
+  const colors = object(saved.state).colors
+  const legacyColors = [3, 4, 5][mode as number]
+  if (colors !== config.colors && colors !== legacyColors) return null
+  const state = waterState(saved.state, colors as number)
   if (!state) return null
   const history = (Array.isArray(saved.history) ? saved.history.slice(-50) : [])
-    .map((entry: unknown) => waterState(entry, config.colors))
+    .map((entry: unknown) => waterState(entry, colors as number))
     .flatMap((entry): WaterState[] => entry ? [entry] : [])
   return { state, history, mode: mode as number }
 }
