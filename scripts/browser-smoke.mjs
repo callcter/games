@@ -92,7 +92,7 @@ try {
     await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:Number(process.env.DEVICE_SCALE ?? 1),mobile:false})
     await pause()
     await evaluate("document.querySelector('[data-category=logic]').click()")
-    assert.equal(await evaluate("document.querySelectorAll('.game-card:not([hidden])').length"),5)
+    assert.equal(await evaluate("document.querySelectorAll('.game-card:not([hidden])').length"),6)
     await open('sudoku'); await resumeOrFresh(); await click(568,165)
     const cell = await evaluate('(()=>{const i=__scene.state.puzzle.indexOf(0),c=505/9;return {i,x:131.5+(i%9+.5)*c,y:225+(Math.floor(i/9)+.5)*c}})()')
     await click(cell.x,cell.y);await click(90,855);await click(77.333,780)

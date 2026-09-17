@@ -20,6 +20,7 @@
 | lobby-b.png | 3 列 × 2 行 | `1536x1024` | 512×512 |
 | lobby-c.png | 3 列 × 2 行 | `1536x1024` | 512×512 |
 | lobby-d.png | 2 列 × 1 行 | `1536x768` | 768×768 |
+| lobby-e.png | 3 列 × 1 行 | `1536x512` | 512×512 |
 
 ## 官方提示词要点（写法依据）
 
@@ -122,6 +123,32 @@ Constraints: the digits appear only inside the left sudoku icon; no
 other text anywhere; no watermark, no grid lines between cells,
 no drop shadows, no gradients.
 ```
+
+### lobby-e.png（水排序 / 停车场 / 叠叠消，新三款 3×1 收尾）
+
+```text
+Task: icon sprite sheet for a children's game collection.
+Grid: exactly 3 equal square cells side by side, 1 row by 3 columns,
+one icon per cell, centered, each icon filling about 70% of its cell,
+same scale in every cell.
+Icons:
+Left — two glass test tubes standing side by side, each filled with
+two layers of colorful liquid (coral on top of teal in one, gold on
+top of coral in the other).
+Middle — a cheerful red car with a golden star on its hood, seen
+slightly from above on a parking lot, blocked by a small mint-green
+truck behind it.
+Right — three rounded square tiles stacked in overlapping layers,
+showing a strawberry, a banana and a watermelon slice.
+Style: rounded flat vector icons for young children, thick smooth
+outlines, soft limited pastel palette, simple bold silhouettes that
+stay readable at 48 px.
+Constraints: no text, no watermark, no grid lines between cells,
+no drop shadows, no gradients.
+```
+
+参数：size `1536x512`（单格 512×512）、quality `high`、background
+`transparent`（假透明则 `opaque` 白底）。
 
 ## 交付与验收
 
