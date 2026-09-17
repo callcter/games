@@ -10,10 +10,13 @@ const bubbles = circle(23, 34, 13, '#a8dbeb') + circle(42, 23, 11, '#b9abde') + 
 const flag = path('M17 52V14m1 0h27l-7 9 7 9H18', coral)
 const mole = path('M14 45V32a18 18 0 0 1 36 0v13', '#bb896a') + circle(16, 22, 6, '#bb896a') + circle(48, 22, 6, '#bb896a') + circle(25, 31, 2, '#173f35') + circle(39, 31, 2, '#173f35') + circle(32, 38, 5, '#eea1a0') + path('M8 47q24 12 48 0', green)
 
+const parkingCar = rect(8, 22, 42, 22, coral, 8) + rect(16, 14, 22, 12, '#a8dbeb', 5) + circle(16, 46, 4, '#36594b') + circle(42, 46, 4, '#36594b') + path('M52 14l8 6m-8 0l8-6', 'none')
+
 const testTube = path('M24 10h16v30a12 12 0 0 1-8 11 8 8 0 0 1-8-11Z', '#cfe8ef') + rect(24, 26, 16, 10, coral) + rect(24, 38, 16, 8, gold)
 
 const art: Record<string, string> = {
   'water-sort': testTube,
+  parking: parkingCar,
   '2048': rect(8, 15, 30, 34, '#f2cf79') + rect(30, 23, 27, 31, coral) + label(23, 39, '4') + label(44, 46, '8'),
   gomoku: rect(8, 8, 48, 48, '#efd5a2') + path('M20 9v46M33 9v46M46 9v46M9 20h46M9 33h46M9 46h46') + circle(20, 20, 7, '#25493e') + circle(33, 33, 7, cream) + circle(46, 46, 7, '#25493e'),
   tetris: [[10,10,blue],[26,10,blue],[42,10,blue],[26,26,blue],[10,42,gold],[26,42,gold],[42,42,coral],[42,26,coral]].map(([x,y,c]) => rect(Number(x),Number(y),14,14,String(c),2)).join(''),

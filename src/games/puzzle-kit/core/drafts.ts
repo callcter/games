@@ -2,10 +2,12 @@ import { conflicts, countSolutions, SIZES, type SudokuState, type SudokuSize } f
 import { newGame as nonogram, PATTERNS, solution, type NonogramState, type Mark } from '../../nonogram/core/game'
 import { newGame as sokoban, LEVELS, type SokobanState } from '../../sokoban/core/game'
 import { MODES as waterModes, TUBE_CAPACITY, topRun, type WaterState } from '../../water-sort/core/game'
+import { MODES as parkingModes, SIZE as PARK_SIZE, EXIT_ROW, type ParkState } from '../../parking/core/game'
 
 export interface Draft<T> { state: T; history: T[]; assisted: boolean }
 export interface SokobanDraft extends Draft<SokobanState> { level: number }
 export interface WaterSortDraft { state: WaterState; history: WaterState[]; mode: number }
+export interface ParkingDraft { state: ParkState; history: ParkState[]; mode: number }
 const object = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const numbers = (value: unknown, length: number, min: number, max: number): value is number[] => Array.isArray(value) && value.length === length && value.every(n => Number.isInteger(n) && n >= min && n <= max)
 const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
@@ -70,6 +72,37 @@ function waterState(value: unknown, colors: number): WaterState | null {
   const uniform = (tube: number[]): boolean => tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY
   return { tubes: tubes as number[][], colors, moves, won: (tubes as number[][]).every(tube => !tube.length || uniform(tube)) }
 }
+function parkState(value: unknown, carCount: number): ParkState | null {
+  const s = object(value)
+  if (!Array.isArray(s.cars) || s.cars.length !== carCount) return null
+  const cars = (s.cars as unknown[]).flatMap((raw): ParkState['cars'] => {
+    const car = object(raw)
+    const len = car.len === 2 || car.len === 3 ? car.len : 0
+    if (!len || !Number.isInteger(car.id) || !Number.isInteger(car.x) || !Number.isInteger(car.y)
+      || (car.x as number) < 0 || (car.x as number) >= PARK_SIZE || (car.y as number) < 0 || (car.y as number) >= PARK_SIZE
+      || typeof car.horizontal !== 'boolean') return []
+    return [{ id: car.id as number, x: car.x as number, y: car.y as number, len, horizontal: car.horizontal }]
+  })
+  if (cars.length !== carCount) return null
+  const cells = cars.flatMap(car => Array.from({ length: car.len }, (_, i) => car.horizontal ? car.y * PARK_SIZE + car.x + i : (car.y + i) * PARK_SIZE + car.x))
+  if (new Set(cells).size !== cells.length) return null
+  if (cars[0]!.y !== EXIT_ROW || !cars[0]!.horizontal) return null
+  const moves = Number.isSafeInteger(s.moves) && (s.moves as number) >= 0 ? s.moves as number : 0
+  return { cars, moves, won: s.won === true }
+}
+export function restoreParking(value: unknown): ParkingDraft | null {
+  const saved = object(value)
+  const mode = saved.mode
+  if (!Number.isInteger(mode) || (mode as number) < 0 || (mode as number) >= parkingModes.length) return null
+  const config = parkingModes[mode as number]!
+  const state = parkState(saved.state, config.cars)
+  if (!state) return null
+  const history = (Array.isArray(saved.history) ? saved.history.slice(-50) : [])
+    .map((entry: unknown) => parkState(entry, config.cars))
+    .flatMap((entry): ParkState[] => entry ? [entry] : [])
+  return { state, history, mode: mode as number }
+}
+
 export function restoreWaterSort(value: unknown): WaterSortDraft | null {
   const saved = object(value)
   const mode = saved.mode

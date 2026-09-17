@@ -12,5 +12,6 @@ export const puzzles = [
   { id: 'red-rain', title: '红包雨', symbol: '🧧', ready: true, load: () => import('../games/red-rain') },
   { id: 'whack-mole', title: '打地鼠', symbol: '🐹', ready: true, load: () => import('../games/whack-mole') },
   { id: 'fruit-slicer', title: '切水果', symbol: '🍉', ready: true, load: () => import('../games/fruit-slicer') },
-  { id: 'water-sort', title: '水排序', symbol: '🧪', ready: true, load: () => import('../games/water-sort') }
+  { id: 'water-sort', title: '水排序', symbol: '🧪', ready: true, load: () => import('../games/water-sort') },
+  { id: 'parking', title: '停车场', symbol: '🚗', ready: true, load: () => import('../games/parking') }
 ] as const
