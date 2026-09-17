@@ -2,11 +2,21 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
+import { AxisDragController, type DragStop } from '../../experience/input/axis-drag'
+import { pickup as pickupMotion, release as releaseMotion, snap as snapMotion } from '../../experience/feedback/motion'
 import { EXIT_ROW, heroExit, legalTargets, MODES, newGame, slide, solve, type ParkState } from './core/game'
 import { restoreParking } from '../puzzle-kit/core/drafts'
 
 const CELL = 92, LEFT = 110, TOP = 235
 const CAR_COLORS = [0xd94f43, 0x7e8dcd, 0xe6b84d, 0x58a897, 0xc47faf, 0x87b65e, 0x58b4d1, 0xe88065, 0xa3a3c2, 0x8f7ecf, 0xb98b63]
+
+// 停车场手感参数集中在此，Playtest 后只调这里（EXPERIENCE-2 §59）。
+const PARKING_FEEL = {
+  rubberBand: 8,
+  snapMs: 160,
+  exitPauseMs: 80,
+  exitMs: 440
+} as const
 
 const cellCenter = (x: number, y: number): [number, number] => [LEFT + x * CELL + CELL / 2, TOP + y * CELL + CELL / 2]
 
@@ -16,7 +26,10 @@ export class ParkingScene extends PuzzleScene {
   private history: ParkState[] = []
   private selected = -1
   private moving = false
+  private draggingId = -1
   private carViews = new Map<number, Phaser.GameObjects.Container>()
+  private drags: AxisDragController[] = []
+  private spots: Phaser.GameObjects.Rectangle[] = []
 
   constructor(audio: GameAudio, exit: () => void) { super('parking', '停车场', audio, exit) }
 
@@ -30,6 +43,7 @@ export class ParkingScene extends PuzzleScene {
   }
 
   private restart(): void {
+    if (this.draggingId >= 0) return
     this.selected = -1
     this.say('正在出题…')
     // 生成器最坏要重试上百次，推迟一帧让提示先画出来。
@@ -44,10 +58,13 @@ export class ParkingScene extends PuzzleScene {
     if (!keepSelection) this.selected = -1
     this.moving = false
     this.carViews.clear()
+    for (const drag of this.drags) drag.destroy()
+    this.drags = []
+    this.spots = [] // spot 随 resetView 一并销毁，这里只清引用。
     const par = solve(this.state, 8000)
     this.resetView(`把红车开出右边的出口 · ${this.state.moves} 步${par > 0 ? ` · 最少 ${par} 步` : ''}`)
     MODES.forEach((entry, index) => this.button(160 + 224 * index, 165, `${this.mode === index ? '✓ ' : ''}${entry.label}`, () => {
-      if (index === this.mode) return
+      if (index === this.mode || this.draggingId >= 0) return
       this.mode = index; this.restart()
     }, 190, this.content))
 
@@ -68,11 +85,11 @@ export class ParkingScene extends PuzzleScene {
 
     this.state.cars.forEach(car => this.car(car))
     this.button(160, 850, '撤销', () => {
-      if (!this.history.length) return
+      if (!this.history.length || this.draggingId >= 0) return
       this.state = this.history.pop()!
       this.draw()
     }, 180, this.content)
-    this.button(384, 850, '怎么玩', () => this.say('点一辆车，再点亮起的空格；只有红车能开出出口'), 180, this.content)
+    this.button(384, 850, '怎么玩', () => this.say('按住车直接拖到想停的格子；只有红车能开出右边出口'), 180, this.content)
     this.button(608, 850, '换一局', () => this.restart(), 180, this.content)
   }
 
@@ -104,10 +121,9 @@ export class ParkingScene extends PuzzleScene {
       const star = this.add.text(0, 0, '★', { fontSize: '24px', color: '#fffdf6', fontStyle: 'bold' }).setOrigin(0.5)
       group.add(star)
     }
-    const hit = this.add.rectangle(cx, cy, width + 10, height + 10, 0xffffff, 0.001)
-    this.content.add(hit)
-    hit.setInteractive({ useHandCursor: true })
-    hit.on('pointerdown', () => this.select(car.id))
+    // 车体即拖拽目标：按住直接拖（Experience 2.0 主操作）。
+    group.setInteractive(new Phaser.Geom.Rectangle(-width / 2 - 5, -height / 2 - 5, width + 10, height + 10), Phaser.Geom.Rectangle.Contains)
+    this.attachDrag(car, group, horizontal)
 
     if (selected) {
       for (const target of legalTargets(this.state, car.id)) {
@@ -117,10 +133,49 @@ export class ParkingScene extends PuzzleScene {
         const [tx, ty] = cellCenter(gx, gy)
         const spot = this.add.rectangle(tx, ty, CELL - 16, CELL - 16, isExit ? 0xf2b8b2 : 0xbfe3cf, 0.9)
         this.content.add(spot)
+        this.spots.push(spot)
         spot.setInteractive({ useHandCursor: true })
+        // 辅助路径：点目标格移动（默认主操作是拖车）。
         spot.on('pointerdown', () => this.move(car.id, target))
       }
     }
+  }
+
+  /** 给一辆车挂上轴向拖动：松手吸附最近合法格后才提交 core。 */
+  private attachDrag(car: ParkState['cars'][number], view: Phaser.GameObjects.Container, horizontal: boolean): void {
+    const stopsOf = (): DragStop[] => legalTargets(this.state, car.id).map(logical => ({
+      logical,
+      pixel: (horizontal ? LEFT : TOP) + (logical + car.len / 2) * CELL
+    }))
+    const drag = new AxisDragController(this, view, {
+      axis: horizontal ? 'x' : 'y',
+      getStops: stopsOf,
+      isEnabled: () => !this.moving && !this.state.won && this.draggingId < 0,
+      onPickup: () => {
+        this.draggingId = car.id
+        this.clearSpots()
+        this.selected = -1
+        this.content.bringToTop(view)
+        this.tweens.killTweensOf(view)
+        pickupMotion(this, view)
+        this.audio.playMove()
+      },
+      onBlocked: () => { this.audio.playPlace(1) },
+      onCommit: stop => this.commitDrag(car.id, stop),
+      onCancel: () => {
+        this.draggingId = -1
+        releaseMotion(this, view)
+        // 原地轻点：退回旧点选路径，亮出目标格帮助孩子理解规则。
+        this.select(car.id)
+      },
+      rubberBand: PARKING_FEEL.rubberBand
+    })
+    this.drags.push(drag)
+  }
+
+  private clearSpots(): void {
+    for (const spot of this.spots) spot.destroy()
+    this.spots = []
   }
 
   private select(id: number): void {
@@ -140,17 +195,7 @@ export class ParkingScene extends PuzzleScene {
     this.state = result
     this.audio.playPlace(1)
     if (result.won) {
-      this.draw()
-      const car = this.state.cars[0]!
-      const view = this.carViews.get(0)
-      if (view) {
-        const [ex] = cellCenter(6 + car.len / 2, car.y)
-        this.tweens.add({ targets: view, x: ex, duration: 480, ease: 'Cubic.In', onComplete: () => {
-          recordFlag('parking-clear')
-          this.celebrate('红车开出去啦！')
-          this.remember('parking', null)
-        } })
-      }
+      this.celebrateExit()
       return
     }
     this.draw()
@@ -161,5 +206,50 @@ export class ParkingScene extends PuzzleScene {
       this.tweens.add({ targets: view, scale: 1, duration: 180, ease: 'Back.Out' })
     }
     this.remember('parking', { state: this.state, history: this.history, mode: this.mode })
+  }
+
+  /** 拖动松手：吸附动画只动 view，完成后再整盘重绘。 */
+  private commitDrag(id: number, stop: DragStop): void {
+    this.draggingId = -1
+    const result = slide(this.state, id, stop.logical)
+    if (!result) { this.draw(); return } // 拖动期间状态被撤销等改变，防御性回绘。
+    this.history.push(this.state)
+    if (this.history.length > 50) this.history.shift()
+    this.state = result
+    this.audio.playPlace(1)
+    if (result.won) {
+      this.celebrateExit()
+      return
+    }
+    this.remember('parking', { state: this.state, history: this.history, mode: this.mode })
+    const view = this.carViews.get(id)
+    const car = this.state.cars.find(entry => entry.id === id)!
+    const [tx, ty] = cellCenter(car.x + (car.horizontal ? car.len / 2 - 0.5 : 0), car.y + (car.horizontal ? 0 : car.len / 2 - 0.5))
+    if (view) {
+      snapMotion(this, view, tx, ty, {
+        duration: PARKING_FEEL.snapMs, settle: false,
+        onComplete: () => { if (this.alive) this.draw() }
+      })
+    } else {
+      this.draw()
+    }
+  }
+
+  /** 红车到出口：短暂停顿后加速驶出（EXPERIENCE-2 §6.3）。 */
+  private celebrateExit(): void {
+    this.draw()
+    const hero = this.state.cars[0]!
+    const view = this.carViews.get(0)
+    if (!view) return
+    const [ex] = cellCenter(6 + hero.len / 2, hero.y)
+    this.moving = true
+    this.time.delayedCall(PARKING_FEEL.exitPauseMs, () => {
+      if (!this.alive) return
+      this.tweens.add({ targets: view, x: ex, duration: PARKING_FEEL.exitMs, ease: 'Cubic.In', onComplete: () => {
+        recordFlag('parking-clear')
+        this.celebrate('红车开出去啦！')
+        this.remember('parking', null)
+      } })
+    })
   }
 }

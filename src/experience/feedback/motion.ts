@@ -66,14 +66,18 @@ export interface SnapOptions {
   /** 落定时附带一个轻微回弹，默认开。 */
   settle?: boolean
   ease?: string
+  onComplete?: () => void
 }
 
 /** 吸附：把对象 tween 到 (x, y)，可选落定回弹。 */
 export function snap(scene: Phaser.Scene, target: Transform, x: number, y: number, options: SnapOptions = {}): Tween {
-  const { duration = MOTION_FEEL.snapMs, settle = true, ease = 'Cubic.Out' } = options
+  const { duration = MOTION_FEEL.snapMs, settle = true, ease = 'Cubic.Out', onComplete } = options
   const tween = scene.tweens.add({
     targets: target, x, y, duration, ease,
-    onComplete: () => { if (settle) release(scene, target, MOTION_FEEL.pressMs) }
+    onComplete: () => {
+      if (settle) release(scene, target, MOTION_FEEL.pressMs)
+      onComplete?.()
+    }
   })
   return tween
 }

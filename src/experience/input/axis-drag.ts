@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
-import { blockedDirection, clampWithRubberBand, dragExtent, nearestStop, type DragStop } from './axis-drag-core'
+import { blockedDirection, clampWithRubberBand, dragExtent, nearestStop, shouldCommitStop, type DragStop } from './axis-drag-core'
 
 export type { DragStop } from './axis-drag-core'
-export { blockedDirection, clampWithRubberBand, dragExtent, nearestStop } from './axis-drag-core'
+export { blockedDirection, clampWithRubberBand, dragExtent, nearestStop, shouldCommitStop } from './axis-drag-core'
 
 export interface AxisDragConfig {
   axis: 'x' | 'y'
@@ -66,6 +66,12 @@ export class AxisDragController {
     this.lastBlocked = 0
     this.stops = this.config.getStops()
     this.extent = dragExtent(this.stops)
+    // 合法停靠点不含当前位置（原地不是移动目标），但可拖包络必须覆盖当前位置，
+    // 否则静止的指针会被橡皮筋钳制拉向停靠点、把「没拖动」误判成移动。
+    if (this.extent) {
+      const current = this.position()
+      this.extent = { min: Math.min(this.extent.min, current), max: Math.max(this.extent.max, current) }
+    }
     this.startPixel = this.position()
     this.config.onPickup?.(this.stops.length ? nearestStop(this.startPixel, this.stops) : null)
   }
@@ -84,8 +90,8 @@ export class AxisDragController {
 
   private end(): void {
     this.active = false
-    const stop = nearestStop(this.position(), this.stops)
-    if (stop && Math.abs(stop.pixel - this.startPixel) > 2) {
+    const stop = shouldCommitStop(this.position(), this.startPixel, this.stops)
+    if (stop) {
       this.config.onCommit(stop)
     } else {
       this.config.onCancel?.()

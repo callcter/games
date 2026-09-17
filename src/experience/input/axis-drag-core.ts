@@ -44,3 +44,13 @@ export function blockedDirection(position: number, min: number, max: number): -1
   if (position >= max) return 1
   return 0
 }
+
+/** 松手吸附判定（带半程滞回）：位移超过「到最近停靠点距离的一半」才提交该停靠点，
+ * 静止或轻扫一律返回 null（调用方走取消回弹）。 */
+export function shouldCommitStop(position: number, startPixel: number, stops: readonly DragStop[]): DragStop | null {
+  const stop = nearestStop(position, stops)
+  if (!stop) return null
+  const displacement = Math.abs(position - startPixel)
+  const stopDistance = Math.abs(stop.pixel - startPixel)
+  return displacement > stopDistance / 2 ? stop : null
+}

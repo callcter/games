@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockedDirection, clampWithRubberBand, dragExtent, nearestStop, type DragStop } from '../../src/experience/input/axis-drag-core'
+import { blockedDirection, clampWithRubberBand, dragExtent, nearestStop, shouldCommitStop, type DragStop } from '../../src/experience/input/axis-drag-core'
 
 const stops = (pixels: number[]): DragStop[] => pixels.map((pixel, index) => ({ logical: index, pixel }))
 
@@ -67,5 +67,24 @@ describe('blockedDirection', () => {
     expect(blockedDirection(150, 100, 300)).toBe(0)
     expect(blockedDirection(300, 100, 300)).toBe(1)
     expect(blockedDirection(310, 100, 300)).toBe(1)
+  })
+})
+
+describe('shouldCommitStop', () => {
+  const side = stops([100, 200, 300])
+
+  it('静止/轻扫（位移未过半程）返回 null', () => {
+    expect(shouldCommitStop(294, 294, side)).toBeNull()   // 原地不动（横车竖拖的场景）
+    expect(shouldCommitStop(248, 294, side)).toBeNull()   // 只拖了 46px，未到 200 的一半距离
+  })
+
+  it('拖过半程提交最近停靠点', () => {
+    expect(shouldCommitStop(202, 294, side)?.pixel).toBe(200)
+    expect(shouldCommitStop(150, 294, side)?.pixel).toBe(100)
+    expect(shouldCommitStop(100, 294, side)?.pixel).toBe(100)
+  })
+
+  it('无停靠点返回 null', () => {
+    expect(shouldCommitStop(294, 294, [])).toBeNull()
   })
 })
