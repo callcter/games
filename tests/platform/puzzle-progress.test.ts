@@ -37,6 +37,25 @@ it('keeps assisted runs separate and summarizes modes without double counting', 
   expect(summarizeProgress(progress).pipes).toContain('20步 · 独立')
   expect(summarizeProgress(progress).sokoban).toBe('已过 1 关')
 })
+it('counts sokoban levels beyond the old 10-level cap and filters invalid keys', async () => {
+  // Wave 4 扩到 30 关后的 stabilization：>10 关必须计入，越界/非法 key 不计。
+  const { summarizeProgress } = await import('../../src/games/puzzle-kit/progress')
+  const summary = summarizeProgress({
+    best: { 'sokoban-L0': 2, 'sokoban-L9': 4, 'sokoban-L10': 6, 'sokoban-L11': 8, 'sokoban-L29': 12, 'sokoban-L30': 3, 'sokoban-L99': 1, 'sokoban-Lx': 1, 'sokoban-nope': 1 },
+    flags: [], levels: {}
+  })
+  expect(summary.sokoban).toBe('已过 5 关')   // L0/L9/L10/L11/L29
+})
+it('shows the nonogram total from the live pattern library, not the old 9', async () => {
+  const { summarizeProgress } = await import('../../src/games/puzzle-kit/progress')
+  const { PATTERNS } = await import('../../src/games/nonogram/core/game')
+  expect(PATTERNS.length).toBeGreaterThanOrEqual(30)
+  const line = (count: number): string | undefined => summarizeProgress({ best: {}, flags: Array.from({ length: count }, (_, i) => `nonogram-${i}`), levels: {} }).nonogram
+  expect(line(0)).toBeUndefined()
+  expect(line(1)).toBe(`已画 1 / ${PATTERNS.length} 幅`)
+  expect(line(17)).toBe(`已画 17 / ${PATTERNS.length} 幅`)
+  expect(line(PATTERNS.length)).toBe(`已画 ${PATTERNS.length} / ${PATTERNS.length} 幅`)
+})
 it('labels old action records and separates the new difficulty tiers', async () => {
   const { summarizeProgress } = await import('../../src/games/puzzle-kit/progress')
   expect(summarizeProgress({best:{'pop-bubbles':999},flags:[],levels:{}})['pop-bubbles']).toContain('历史')

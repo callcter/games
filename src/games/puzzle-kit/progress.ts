@@ -1,5 +1,7 @@
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
 import { awardLeaf } from '../../app/tree'
+import { PATTERNS as NONOGRAM_PATTERNS } from '../nonogram/core/game'
+import { LEVELS as SOKOBAN_LEVELS } from '../sokoban/core/game'
 
 // 新增益智游戏共用的跨会话进度：best 记数值型最好成绩，flags 记完成标记，
 // levels 记关卡进度。结构变更时换新版本键并提供兼容迁移。
@@ -105,13 +107,15 @@ export function summarizeProgress(progress: PuzzleProgress | null): Record<strin
     if (mode!==undefined) lines[id]=`${['基础','进阶','挑战'][mode]}最高 ${progress.best[`${id}:v2:${mode}`]} 分`
     else if (progress.best[id] !== undefined) lines[id] = `历史最高 ${progress.best[id]} 分（旧节奏）`
   }
-  const solvedLevels = new Set(Object.keys(progress.best).flatMap(key => { const match = /^sokoban-L(\d+)(?::(?:solo|assisted))?$/.exec(key); return match && Number(match[1]) < 10 ? [match[1]] : [] }))
+  // 关卡总量以当前 LEVELS 为准（Wave 4 已扩到 30 关），越界或损坏的旧 key 仍被过滤。
+  const solvedLevels = new Set(Object.keys(progress.best).flatMap(key => { const match = /^sokoban-L(\d+)(?::(?:solo|assisted))?$/.exec(key); return match && Number(match[1]) < SOKOBAN_LEVELS.length ? [match[1]] : [] }))
   if (solvedLevels.size) lines.sokoban = `已过 ${solvedLevels.size} 关`
   const flagLine = (prefix: string, total: number, verb: string): string | undefined => {
     const count = progress.flags.filter(flag => flag.startsWith(prefix)).length
     return count ? `已${verb} ${count} / ${total} 幅` : undefined
   }
-  lines.nonogram = flagLine('nonogram-', 9, '画') ?? ''
+  // 图案总数以当前 PATTERNS 为唯一来源（Wave 4 已扩到 50 幅），不再写死。
+  lines.nonogram = flagLine('nonogram-', NONOGRAM_PATTERNS.length, '画') ?? ''
   const tangramLevels = new Set(progress.flags.flatMap(flag => { const match = /^tangram-([0-4])(?::(?:guided|silhouette):(?:solo|assisted))?$/.exec(flag); return match ? [match[1]] : [] }))
   lines.tangram = tangramLevels.size ? `已拼 ${tangramLevels.size} / 5 幅` : ''
   const sudokuTiers = [4, 6, 9].filter(size => progress.flags.includes(`sudoku-${size}`)).length

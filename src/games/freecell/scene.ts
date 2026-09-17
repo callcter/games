@@ -72,7 +72,7 @@ export class FreeCellScene extends Phaser.Scene {
   private beginCardDrag(object: unknown): void {
     if (this.autoFinishing || this.state.won || this.dragGroup.length) return
     if (!(object instanceof Phaser.GameObjects.Container)) return
-    const source = object.getData('cardSource') as { kind: 'freecell' | 'foundation' | 'tableau'; index: number; column: number; start: number } | undefined
+    const source = object.getData('cardSource') as { kind: 'freecell' | 'tableau'; index: number; column: number; start: number } | undefined
     if (!source) return
     const group = source.kind === 'tableau'
       ? (this.columnViews.get(`${source.column}`) ?? [object]).slice(source.start)
@@ -98,7 +98,7 @@ export class FreeCellScene extends Phaser.Scene {
   private endCardDrag(object: unknown): void {
     if (!this.dragGroup.length || object !== this.dragGroup[0]) return
     const group = this.dragGroup
-    const source = (object as Phaser.GameObjects.Container).getData('cardSource') as { kind: 'freecell' | 'foundation' | 'tableau'; index: number; column: number; start: number }
+    const source = (object as Phaser.GameObjects.Container).getData('cardSource') as { kind: 'freecell' | 'tableau'; index: number; column: number; start: number }
     const head = group[0]!
     this.dragGroup = []
     // 轻点退回点选路径。
@@ -198,9 +198,8 @@ export class FreeCellScene extends Phaser.Scene {
       const rank = this.state.foundations[suit]
       if (rank > 0) {
         const card = { id: `foundation-${suit}-${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' as const : 'black' as const }
-        const view = createCardView(this, x, 92, 90, CARD_HEIGHT * 0.82, card, { onSelect: () => this.targetFoundation(suit) })
-        view.setData('cardSource', { kind: 'foundation', index: -1, column: -1, start: -1 })
-        this.input.setDraggable(view)
+        // Foundation 只是回收终点（drop target），规则不支持取回，因此不可作为拖动源。
+        createCardView(this, x, 92, 90, CARD_HEIGHT * 0.82, card, { onSelect: () => this.targetFoundation(suit) })
       } else {
         createCardSlot(this, x, 92, 90, CARD_HEIGHT * 0.82, suitSymbol(suit), () => this.targetFoundation(suit))
       }
