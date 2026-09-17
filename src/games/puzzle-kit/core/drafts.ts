@@ -1,9 +1,11 @@
 import { conflicts, countSolutions, SIZES, type SudokuState, type SudokuSize } from '../../sudoku/core/game'
 import { newGame as nonogram, PATTERNS, solution, type NonogramState, type Mark } from '../../nonogram/core/game'
 import { newGame as sokoban, LEVELS, type SokobanState } from '../../sokoban/core/game'
+import { MODES as waterModes, TUBE_CAPACITY, topRun, type WaterState } from '../../water-sort/core/game'
 
 export interface Draft<T> { state: T; history: T[]; assisted: boolean }
 export interface SokobanDraft extends Draft<SokobanState> { level: number }
+export interface WaterSortDraft { state: WaterState; history: WaterState[]; mode: number }
 const object = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const numbers = (value: unknown, length: number, min: number, max: number): value is number[] => Array.isArray(value) && value.length === length && value.every(n => Number.isInteger(n) && n >= min && n <= max)
 const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
@@ -52,6 +54,34 @@ export function restoreSudoku(value: unknown): Draft<SudokuState> | null {
   return restore({ ...saved, state }, value => sudokuState(value, false), (a,b) => a.size === b.size && equal(a.puzzle,b.puzzle) && equal(a.solution,b.solution))
 }
 export const restoreNonogram = (value: unknown): Draft<NonogramState> | null => restore(value, nonogramState, (a,b) => a.level === b.level)
+
+function waterState(value: unknown, colors: number): WaterState | null {
+  const s = object(value)
+  if (!Array.isArray(s.tubes)) return null
+  const tubes = (s.tubes as unknown[]).map((tube): number[] | null => {
+    if (!Array.isArray(tube) || tube.length > TUBE_CAPACITY) return null
+    return tube.every((layer): layer is number => Number.isInteger(layer) && layer >= 0 && layer < colors) ? tube : null
+  })
+  if (tubes.some(tube => tube === null)) return null
+  const layers = tubes.flat()
+  if (layers.length !== colors * TUBE_CAPACITY) return null
+  for (let color = 0; color < colors; color++) if (layers.filter(layer => layer === color).length !== TUBE_CAPACITY) return null
+  const moves = Number.isSafeInteger(s.moves) && (s.moves as number) >= 0 ? s.moves as number : 0
+  const uniform = (tube: number[]): boolean => tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY
+  return { tubes: tubes as number[][], colors, moves, won: (tubes as number[][]).every(tube => !tube.length || uniform(tube)) }
+}
+export function restoreWaterSort(value: unknown): WaterSortDraft | null {
+  const saved = object(value)
+  const mode = saved.mode
+  if (!Number.isInteger(mode) || (mode as number) < 0 || (mode as number) >= waterModes.length) return null
+  const config = waterModes[mode as number]!
+  const state = waterState(saved.state, config.colors)
+  if (!state) return null
+  const history = (Array.isArray(saved.history) ? saved.history.slice(-50) : [])
+    .map((entry: unknown) => waterState(entry, config.colors))
+    .flatMap((entry): WaterState[] => entry ? [entry] : [])
+  return { state, history, mode: mode as number }
+}
 export function restoreSokoban(value: unknown): SokobanDraft | null {
   const saved = object(value), level = saved.level as number
   if (!Number.isInteger(level) || level < 0 || level >= LEVELS.length) return null

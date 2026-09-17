@@ -11,5 +11,6 @@ export const puzzles = [
   { id: 'pop-bubbles', title: '点泡泡', symbol: '◯', ready: true, load: () => import('../games/pop-bubbles') },
   { id: 'red-rain', title: '红包雨', symbol: '🧧', ready: true, load: () => import('../games/red-rain') },
   { id: 'whack-mole', title: '打地鼠', symbol: '🐹', ready: true, load: () => import('../games/whack-mole') },
-  { id: 'fruit-slicer', title: '切水果', symbol: '🍉', ready: true, load: () => import('../games/fruit-slicer') }
+  { id: 'fruit-slicer', title: '切水果', symbol: '🍉', ready: true, load: () => import('../games/fruit-slicer') },
+  { id: 'water-sort', title: '水排序', symbol: '🧪', ready: true, load: () => import('../games/water-sort') }
 ] as const
