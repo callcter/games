@@ -1,9 +1,9 @@
 import type { RandomSource } from '../../cards/core/cards'
 
 export const MODES: readonly { label: string; interval: number; speed: number; bomb: number; doubleChance: number }[] = [
-  { label: '悠闲', interval: 1300, speed: 640, bomb: 0.08, doubleChance: 0.3 },
-  { label: '标准', interval: 950, speed: 800, bomb: 0.12, doubleChance: 0.4 },
-  { label: '挑战', interval: 720, speed: 960, bomb: 0.15, doubleChance: 0.5 }
+  { label: '基础', interval: 900, speed: 820, bomb: 0.10, doubleChance: 0.4 },
+  { label: '进阶', interval: 650, speed: 900, bomb: 0.14, doubleChance: 0.5 },
+  { label: '挑战', interval: 500, speed: 980, bomb: 0.18, doubleChance: 0.65 }
 ]
 const GRAVITY = 1350
 export const FRUIT_RADIUS = 46

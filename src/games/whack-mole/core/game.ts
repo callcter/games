@@ -1,9 +1,9 @@
 import type { RandomSource } from '../../cards/core/cards'
 
 export const MODES: readonly { label: string; stayMs: number; popInterval: number; sleeper: number }[] = [
-  { label: '悠闲', stayMs: 2000, popInterval: 1250, sleeper: 0.12 },
-  { label: '标准', stayMs: 1400, popInterval: 950, sleeper: 0.18 },
-  { label: '挑战', stayMs: 900, popInterval: 700, sleeper: 0.22 }
+  { label: '基础', stayMs: 1400, popInterval: 850, sleeper: 0.15 },
+  { label: '进阶', stayMs: 1100, popInterval: 650, sleeper: 0.20 },
+  { label: '挑战', stayMs: 850, popInterval: 480, sleeper: 0.25 }
 ]
 export const HOLE_COUNT = 9
 const COMBO_WINDOW_MS = 700

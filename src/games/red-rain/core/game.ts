@@ -1,9 +1,9 @@
 import type { RandomSource } from '../../cards/core/cards'
 
 export const MODES: readonly { label: string; interval: number; speed: number; cracker: number }[] = [
-  { label: '悠闲', interval: 820, speed: 150, cracker: 0.06 },
-  { label: '标准', interval: 600, speed: 215, cracker: 0.1 },
-  { label: '挑战', interval: 470, speed: 285, cracker: 0.14 }
+  { label: '基础', interval: 460, speed: 260, cracker: 0.14 },
+  { label: '进阶', interval: 350, speed: 330, cracker: 0.20 },
+  { label: '挑战', interval: 260, speed: 420, cracker: 0.25 }
 ]
 const FIELD = { top: 218, bottom: 852, left: 84, right: 684 }
 const COMBO_WINDOW_MS = 800
@@ -40,12 +40,13 @@ export function step(state: RedState, deltaMs: number, random: RandomSource = Ma
   if (!(deltaMs > 0)) return state
   const config = MODES[state.mode]!
   const seconds = deltaMs / 1000
-  const drops = state.drops.map(drop => ({ ...drop, y: drop.y + config.speed * seconds })).filter(drop => drop.y < FIELD.bottom + 40)
+  const pace = 1 + Math.min(0.35, state.elapsedMs / 60000 * 0.35)
+  const drops = state.drops.map(drop => ({ ...drop, y: drop.y + config.speed * pace * seconds })).filter(drop => drop.y < FIELD.bottom + 40)
   let spawnIn = state.spawnIn - deltaMs
   const elapsedMs = state.elapsedMs + deltaMs
   if (spawnIn <= 0) {
     drops.push({ x: FIELD.left + value(random) * (FIELD.right - FIELD.left), y: FIELD.top - 30, cracker: value(random) < config.cracker })
-    spawnIn += config.interval * (0.72 + value(random) * 0.56)
+    spawnIn += config.interval * (0.72 + value(random) * 0.56) / pace
   }
   return { ...state, drops, elapsedMs, spawnIn }
 }

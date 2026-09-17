@@ -1,9 +1,9 @@
 import type { RandomSource } from '../../cards/core/cards'
 
 export const MODES: readonly { label: string; interval: number; speed: number; grow: number; startRadius: number; golden: number }[] = [
-  { label: '悠闲', interval: 760, speed: 58, grow: 8, startRadius: 26, golden: 0.08 },
-  { label: '标准', interval: 520, speed: 88, grow: 13, startRadius: 22, golden: 0.1 },
-  { label: '挑战', interval: 380, speed: 125, grow: 18, startRadius: 18, golden: 0.12 }
+  { label: '基础', interval: 480, speed: 150, grow: 8, startRadius: 26, golden: 0.08 },
+  { label: '进阶', interval: 350, speed: 210, grow: 10, startRadius: 26, golden: 0.1 },
+  { label: '挑战', interval: 260, speed: 280, grow: 12, startRadius: 26, golden: 0.12 }
 ]
 const FIELD = { top: 228, bottom: 880, left: 80, right: 688 }
 const MAX_RADIUS = 50
@@ -33,10 +33,11 @@ export function step(state: PopState, deltaMs: number, random: RandomSource = Ma
   if (!(deltaMs > 0)) return state
   const config = MODES[state.mode]!
   const seconds = deltaMs / 1000
+  const pace = 1 + Math.min(0.35, state.elapsedMs / 60000 * 0.35)
   const bubbles: Bubble[] = []
   for (const bubble of state.bubbles) {
     const radius = Math.min(MAX_RADIUS, bubble.radius + config.grow * seconds)
-    const y = bubble.y - config.speed * seconds
+    const y = bubble.y - config.speed * pace * seconds
     if (y + radius > FIELD.top) bubbles.push({ ...bubble, y, radius })
   }
   let spawnIn = state.spawnIn - deltaMs
@@ -44,7 +45,7 @@ export function step(state: PopState, deltaMs: number, random: RandomSource = Ma
   if (spawnIn <= 0) {
     const golden = value(random) < config.golden
     bubbles.push({ x: FIELD.left + value(random) * (FIELD.right - FIELD.left), y: FIELD.bottom, radius: golden ? Math.max(20, config.startRadius - 4) : config.startRadius, golden })
-    spawnIn += config.interval * (0.72 + value(random) * 0.56)
+    spawnIn += config.interval * (0.72 + value(random) * 0.56) / pace
   }
   return { ...state, bubbles, elapsedMs, spawnIn }
 }

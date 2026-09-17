@@ -70,7 +70,7 @@ export function recordRun(id: string, value: number, assisted: boolean, lowerIsB
 }
 
 const HALLWAY_TIERS: [id: string, label: (tier: number) => string, tiers: number[]][] = [
-  ['memory', tier => `${tier} 对最少尝试`, [24, 16, 8]],
+  ['memory', tier => `${tier} 对最少尝试`, [24, 16, 12, 8]],
   ['pipes', tier => `${tier}×${tier} 最少`, [6, 5, 4, 3]],
   ['maze', tier => `${tier}×${tier} 最少多走`, [11, 9, 7, 5]],
   ['untangle', tier => `${tier} 点最少`, [9, 8, 7, 6, 5]]
@@ -93,12 +93,14 @@ export function summarizeProgress(progress: PuzzleProgress | null): Record<strin
       if (old !== undefined) lines[id] = `历史记录 ${progress.best[`${id}-${old}`]}（未分模式）`
     }
   }
-  const bubbleMode = [4, 3].find(mode => progress.best[`bubbles-${mode}`] !== undefined)
+  const bubbleMode = [5, 4, 3].find(mode => progress.best[`bubbles-${mode}`] !== undefined)
   if (bubbleMode) lines.bubbles = `${bubbleMode} 色最高 ${progress.best[`bubbles-${bubbleMode}`]} 分`
   else if (progress.best.bubbles !== undefined) lines.bubbles = `历史最高 ${progress.best.bubbles} 分（未分难度）`
-  // 动作游戏统一存裸键最高分（action-kit 的 ActionScene 记录）
+  // 新节奏按版本和难度分别记分，旧成绩保留但不冒充新难度。
   for (const id of ['pop-bubbles', 'red-rain', 'whack-mole', 'fruit-slicer']) {
-    if (progress.best[id] !== undefined) lines[id] = `最高 ${progress.best[id]} 分`
+    const mode=[2,1,0].find(mode=>progress.best[`${id}:v2:${mode}`]!==undefined)
+    if (mode!==undefined) lines[id]=`${['基础','进阶','挑战'][mode]}最高 ${progress.best[`${id}:v2:${mode}`]} 分`
+    else if (progress.best[id] !== undefined) lines[id] = `历史最高 ${progress.best[id]} 分（旧节奏）`
   }
   const solvedLevels = new Set(Object.keys(progress.best).flatMap(key => { const match = /^sokoban-L(\d+)(?::(?:solo|assisted))?$/.exec(key); return match && Number(match[1]) < 10 ? [match[1]] : [] }))
   if (solvedLevels.size) lines.sokoban = `已过 ${solvedLevels.size} 关`

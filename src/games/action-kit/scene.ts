@@ -38,12 +38,14 @@ export abstract class ActionScene extends PuzzleScene {
   constructor(key: string, title: string, audio: GameAudio, exit: () => void) {
     super(key, title, audio, exit)
     this.gameId = key
-    this.bestKey = `family-game-room-${key}-best`
+    this.bestKey = `family-game-room-${key}-v2-best`
+  }
+
+  private readBest(mode: number): number {
     try {
-      this.best = Number(window.localStorage.getItem(this.bestKey)) || 0
-    } catch {
-      // 隐私模式下没有历史纪录，直接从 0 开始。
-    }
+      const value=Number(window.localStorage.getItem(`${this.bestKey}-${mode}`))
+      return Number.isFinite(value) && value>=0 ? value : 0
+    } catch { return 0 }
   }
 
   /** 难度档位文案，下标即 mode。 */
@@ -86,6 +88,7 @@ export abstract class ActionScene extends PuzzleScene {
 
   protected showIntro(): void {
     this.running = false
+    this.best=Math.max(...[0,1,2].map(mode=>this.readBest(mode)))
     this.resetView('选一个难度开始')
     this.text(384, 268, this.headline(), 23, this.content).setWordWrapWidth(660)
     this.modes().forEach((entry, index) => {
@@ -96,6 +99,7 @@ export abstract class ActionScene extends PuzzleScene {
 
   protected launch(mode: number, seconds: number): void {
     this.mode = mode
+    this.best=this.readBest(mode)
     this.remainingMs = seconds * 1000
     this.resetView('')
     this.entities = this.add.container(0, 0)
@@ -111,11 +115,11 @@ export abstract class ActionScene extends PuzzleScene {
     if (isBest) {
       this.best = score
       try {
-        window.localStorage.setItem(this.bestKey, String(score))
+        window.localStorage.setItem(`${this.bestKey}-${this.mode}`, String(score))
       } catch {
         // 保存失败不影响本局体验。
       }
-      recordBest(this.gameId, score, false)
+      recordBest(`${this.gameId}:v2:${this.mode}`, score, false)
     }
     this.audio.playWin()
     this.resetView(isBest ? `新纪录 ${score} 分！` : `时间到！本局 ${score} 分`)

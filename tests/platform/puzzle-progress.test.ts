@@ -37,3 +37,8 @@ it('keeps assisted runs separate and summarizes modes without double counting', 
   expect(summarizeProgress(progress).pipes).toContain('20步 · 独立')
   expect(summarizeProgress(progress).sokoban).toBe('已过 1 关')
 })
+it('labels old action records and separates the new difficulty tiers', async () => {
+  const { summarizeProgress } = await import('../../src/games/puzzle-kit/progress')
+  expect(summarizeProgress({best:{'pop-bubbles':999},flags:[],levels:{}})['pop-bubbles']).toContain('历史')
+  expect(summarizeProgress({best:{'pop-bubbles':999,'pop-bubbles:v2:1':40},flags:[],levels:{}})['pop-bubbles']).toBe('进阶最高 40 分')
+})
