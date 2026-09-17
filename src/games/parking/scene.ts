@@ -81,7 +81,7 @@ export class ParkingScene extends PuzzleScene {
     // 车身与格线、邻车间各留 20px 以上呼吸空隙，避免挤成一团。
     const width = horizontal ? car.len * CELL - 22 : CELL - 24
     const height = horizontal ? CELL - 24 : car.len * CELL - 22
-    const [cx, cy] = cellCenter(car.x + (horizontal ? car.len / 2 - 0.5 : 0.5), car.y + (horizontal ? 0.5 : car.len / 2 - 0.5))
+    const [cx, cy] = cellCenter(car.x + (horizontal ? car.len / 2 - 0.5 : 0), car.y + (horizontal ? 0 : car.len / 2 - 0.5))
     const group = this.add.container(cx, cy)
     this.content.add(group)
     this.carViews.set(car.id, group)

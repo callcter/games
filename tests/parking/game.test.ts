@@ -64,6 +64,14 @@ describe('停车场规则', () => {
 })
 
 describe('停车场生成器', () => {
+  it('恒定随机源也不能让挑战档退化为两步局', { timeout: 60000 }, () => {
+    for (const [mode, config] of MODES.entries()) {
+      const state = newGame(mode, () => 0.5)
+      const steps = solve(state)
+      expect(steps).toBeGreaterThanOrEqual(config.min)
+      expect(steps).toBeLessThanOrEqual(config.max)
+    }
+  })
   it('固定随机下三档都能生成合法、可解且步数在带内的关卡', { timeout: 60000 }, () => {
     for (const [mode, config] of MODES.entries()) {
       let seed = 31 + mode * 977
@@ -83,8 +91,8 @@ describe('停车场生成器', () => {
         expect(cells.every(cell => cell >= 0 && cell < SIZE * SIZE)).toBe(true)
         expect(state.won).toBe(false)
         const steps = solve(state)
-        expect(steps).toBeGreaterThan(0) // 永远给可解关
-        if (mode === 0) expect(steps).toBeLessThanOrEqual(config.max) // 轻松档步数上界稳定可断言
+        expect(steps).toBeGreaterThanOrEqual(config.min)
+        expect(steps).toBeLessThanOrEqual(config.max)
       }
     }
   })

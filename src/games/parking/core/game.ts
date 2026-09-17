@@ -114,7 +114,7 @@ export function solve(state: ParkState, nodeLimit = 60000, maxDepth = Infinity):
 /** 随机布局 + BFS 步数带过滤生成；主车必在出口行且初始未开出。 */
 export function newGame(mode: number, random: RandomSource = Math.random): ParkState {
   const config = MODES[mode] ?? MODES[0]!
-  for (let attempt = 0; attempt < 150; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const cars: Car[] = []
     const taken = new Set<number>()
     const place = (car: Car): boolean => {
@@ -148,27 +148,19 @@ export function newGame(mode: number, random: RandomSource = Math.random): ParkS
     }
     if (cars.length < config.cars) continue
     const state: ParkState = { cars, moves: 0, won: false }
-    const steps = solve(state, 20000, config.max + 2)
-    // 前半程严格带内；后半程放宽上界，宁可偏难也不落到手工兜底局。
-    if (steps >= config.min && (steps <= config.max || attempt >= 100)) return state
+    const steps = solve(state, 2000, config.max)
+    if (steps >= config.min && steps <= config.max) return state
   }
-  return fallback(config)
+  return reserve(MODES.indexOf(config))
 }
 
-function fallback(config: { cars: number }): ParkState {
-  // 手工可解布局：主车前的竖车下移一步后主车开出（2 步），全部界内互不重叠。
-  const cars: Car[] = [
-    { id: 0, x: 1, y: EXIT_ROW, len: 2, horizontal: true },
-    { id: 1, x: 4, y: 0, len: 3, horizontal: false },
-    { id: 2, x: 0, y: 0, len: 2, horizontal: true },
-    { id: 3, x: 0, y: 3, len: 3, horizontal: false },
-    { id: 4, x: 5, y: 3, len: 3, horizontal: false },
-    { id: 5, x: 2, y: 3, len: 2, horizontal: true },
-    { id: 6, x: 2, y: 4, len: 2, horizontal: true },
-    { id: 7, x: 2, y: 5, len: 2, horizontal: true },
-    { id: 8, x: 5, y: 0, len: 2, horizontal: false },
-    { id: 9, x: 2, y: 0, len: 2, horizontal: true },
-    { id: 10, x: 4, y: 3, len: 2, horizontal: false }
+function reserve(mode: number): ParkState {
+  // BFS 回归验证为 5 / 8 / 17 步。随机搜索预算耗尽时保持所选难度，
+  // 每次新建车辆，避免调用方修改备用题库。元组为 x/y/长度/横向标记。
+  const layouts: number[][][] = [
+    [[1,2,2,1],[5,0,3,0],[3,3,2,0],[0,2,2,0],[4,3,2,1],[4,1,2,0]],
+    [[1,2,2,1],[5,2,3,0],[3,2,3,0],[5,0,2,0],[4,5,2,1],[2,3,3,0],[3,0,2,0],[0,1,2,0]],
+    [[1,2,2,1],[5,2,3,0],[5,0,2,0],[1,4,2,0],[0,3,2,1],[4,1,3,0],[4,5,2,1],[3,3,2,0],[3,0,2,0],[2,3,3,0]]
   ]
-  return { cars: cars.slice(0, config.cars), moves: 0, won: false }
+  return { cars: layouts[mode]!.map((row, id) => ({ id, x: row[0]!, y: row[1]!, len: row[2]!, horizontal: row[3] === 1 })), moves: 0, won: false }
 }
