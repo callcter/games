@@ -24,6 +24,25 @@ export function move(state: MazeState, direction: number): MazeState {
 export function undo(state: MazeState): MazeState {
   return state.trail.length ? { ...state, player: state.trail.at(-1)!, trail: state.trail.slice(0, -1), won: false } : state
 }
+
+/** 输入是以格为单位的指尖坐标；沿实际线段逐格走，碰墙/斜穿角落立即停止。 */
+export function dragAlong(state: MazeState, x1: number, y1: number, x2: number, y2: number): MazeState {
+  if (state.won || ![x1,y1,x2,y2].every(v => Number.isFinite(v) && v >= 0 && v < state.size)) return state
+  if (Math.floor(y1) * state.size + Math.floor(x1) !== state.player) return state
+  const samples = Math.ceil(Math.max(Math.abs(x2-x1),Math.abs(y2-y1)) * 8)
+  let next = state
+  for (let i=1;i<=samples;i++) {
+    const x=Math.floor(x1+(x2-x1)*i/samples), y=Math.floor(y1+(y2-y1)*i/samples)
+    const target=y*state.size+x
+    if (target === next.player) continue
+    const d=[0,1,2,3].find(direction=>neighbor(next.player,direction,state.size)===target)
+    if (d === undefined) break
+    const moved=move(next,d)
+    if (moved === next) break
+    next=moved
+  }
+  return next
+}
 export function path(state: MazeState): number[] {
   const queue = [[state.player]], seen = new Set([state.player])
   for (let i = 0; i < queue.length; i++) {

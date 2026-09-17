@@ -4,8 +4,8 @@ import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordRun } from '../puzzle-kit/progress'
 import { crossedEdges, move, newGame, won, type UntangleState } from './core/game'
 export class UntangleScene extends PuzzleScene {
-  private count = 5
-  private state = newGame()
+  private count = 6
+  private state = newGame(6)
   private history: UntangleState[] = []
   private lines!: Phaser.GameObjects.Graphics
   private dragStart: UntangleState | null = null
@@ -34,7 +34,7 @@ export class UntangleScene extends PuzzleScene {
   }
   private draw(): void {
     this.resetView('拖动圆点，把红色交叉线分开')
-    ;[5,6,7,8,9].forEach((count,i) => this.button(116 + i*134,165,`${this.count === count ? '✓ ' : ''}${count} 个点`, () => { this.count = count; this.restart() },126,this.content))
+    ;[6,7,8,9].forEach((count,i) => this.button(129 + i*170,165,`${this.count === count ? '✓ ' : ''}${count} 个点`, () => { this.count = count; this.restart() },155,this.content))
     this.lines = this.add.graphics(); this.content.add(this.lines)
     this.state.points.forEach((point,index) => {
       const node = this.add.container(point.x,point.y); this.content.add(node)

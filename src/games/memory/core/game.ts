@@ -11,7 +11,7 @@ export interface MemoryState {
 }
 
 export function newGame(pairs = 8, players = 1, random: RandomSource = Math.random): MemoryState {
-  if (![8, 16, 24].includes(pairs) || ![1, 2].includes(players)) throw new Error('无效难度')
+  if (![8, 12, 16, 24].includes(pairs) || ![1, 2].includes(players)) throw new Error('无效难度')
   return { cards: shuffle(Array.from({ length: pairs * 2 }, (_, i) => i % pairs), random), open: [], matched: [], turns: 0, player: 0, scores: Array(players).fill(0), won: false }
 }
 

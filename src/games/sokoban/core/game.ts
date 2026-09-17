@@ -12,6 +12,8 @@ export const LEVELS = [
 ] as const
 // 每关最优移动步数，由 solve 的广度优先搜索预计算，测试会逐一校验一致。
 export const PAR = [2, 1, 6, 12, 9, 4, 11, 16, 14, 27] as const
+// 新游戏从需要规划多个箱子的关卡起步；旧关卡仍能恢复存档。
+export const CHALLENGE_LEVELS = PAR.flatMap((steps, index) => steps >= 8 ? [index] : [])
 export function stars(level: number, moves: number): number {
   const par = PAR[level]
   if (par === undefined || !Number.isFinite(moves)) return 0

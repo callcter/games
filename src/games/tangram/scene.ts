@@ -6,7 +6,7 @@ import { LEVEL_NAMES, newGame, place, vertices, type TangramState } from './core
 export class TangramScene extends PuzzleScene {
   private state = newGame()
   private selected = 0
-  private silhouette = false
+  private silhouette = true
   private history: TangramState[] = []
   private beforeDrag: TangramState | null = null
   constructor(audio: GameAudio, exit: () => void) { super('tangram', '七巧板', audio, exit) }

@@ -1,12 +1,12 @@
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { INK, PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
-import { conflicts, newGame, place, SIZES, toggleNote, type SudokuState } from './core/game'
+import { conflicts, newGame, place, toggleNote, type SudokuState } from './core/game'
 import { restoreSudoku } from '../puzzle-kit/core/drafts'
 
 export class SudokuScene extends PuzzleScene {
-  private size: SudokuState['size'] = 4
-  private state = newGame(4)
+  private size: SudokuState['size'] = 6
+  private state = newGame(6)
   private selected = -1
   private history: SudokuState[] = []
   private assisted = false
@@ -28,7 +28,7 @@ export class SudokuScene extends PuzzleScene {
     })
     void this.offerResume('sudoku', restoreSudoku, saved => {
       this.state = saved.state; this.size = saved.state.size; this.history = saved.history; this.assisted = saved.assisted; this.draw()
-    }, saved => { this.size = saved?.state.size ?? this.size; this.restart() })
+    }, saved => { this.size = saved?.state.size === 9 ? 9 : 6; this.restart() })
   }
   private draw(): void {
     this.playing = true
@@ -42,7 +42,7 @@ export class SudokuScene extends PuzzleScene {
     this.drawnSize = size
     this.tiles = []; this.digits = []; this.notes = []
     this.resetView('')
-    SIZES.forEach((option, i) => this.button(200 + i * 184, 165, `${option === this.size ? '✓ ' : ''}${option} × ${option}`, () => { this.size = option; this.restart() }, 168, this.content))
+    ;([6,9] as const).forEach((option, i) => this.button(200 + i * 368, 165, `${option === this.size ? '✓ ' : ''}${option} × ${option}`, () => { this.size = option; this.restart() }, 220, this.content))
     const cell = Math.min(96, 505 / size), board = cell * size
     const left = (768 - board) / 2, top = 225 + (505 - board) / 2
     for (let i = 0; i < this.state.values.length; i++) {

@@ -5,7 +5,7 @@ import { recordFlag } from '../puzzle-kit/progress'
 import { clues, lineCells, mark, newGame, PATTERNS, patternSize, solution, type Mark, type NonogramState } from './core/game'
 import { restoreNonogram } from '../puzzle-kit/core/drafts'
 export class NonogramScene extends PuzzleScene {
-  private state = newGame()
+  private state = newGame(5)
   private mode: Mark = 1
   private history: NonogramState[] = []
   private assisted = false
@@ -32,7 +32,7 @@ export class NonogramScene extends PuzzleScene {
     this.input.on('gameout', finish)
     void this.offerResume('nonogram', restoreNonogram, saved => {
       this.state = saved.state; this.history = saved.history; this.assisted = saved.assisted; this.draw()
-    }, saved => { this.state = newGame(saved?.state.level ?? 0); this.history = []; this.assisted = false; this.draw() })
+    }, saved => { this.state = newGame(Math.max(5,saved?.state.level ?? 5)); this.history = []; this.assisted = false; this.draw() })
   }
   private draw(): void {
     this.playing = true
@@ -64,7 +64,7 @@ export class NonogramScene extends PuzzleScene {
     }, 180, this.content)
     this.button(160, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
     this.button(384, 850, '重开', () => { this.state = newGame(this.state.level); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
-    this.button(608, 850, '下一幅', () => { this.state = newGame((this.state.level + 1) % PATTERNS.length); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
+    this.button(608, 850, '下一幅', () => { this.state = newGame(this.state.level >= 5 && this.state.level < PATTERNS.length-1 ? this.state.level+1 : 5); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
     this.updateBoard()
   }
   private updateBoard(): void {
