@@ -2392,21 +2392,21 @@ README 与实际路由不一致
 | E2-012 | 建立轻量 particle primitive / pool | `DONE` | E2-000 | 生命周期、池化与上限明确（commit 0bc53b7，存活上限 80，尚未接入游戏） |
 | E2-013 | 建立 axis drag primitive | `DONE` | E2-000 | clamp / nearest stop / shouldCommitStop 可测试（14 项纯计算单测） |
 | E2-100 | 停车场直接拖车 | `PLAYTEST` | E2-013 | 单指拖车可完整通关（commit 8306049，工程验收见 Changelog，等待孩子试玩） |
-| E2-101 | 停车场触觉式反馈 polish | `BACKLOG` | E2-100 | pickup/snap/blocked/victory 成立 |
-| E2-102 | 停车场孩子 Playtest | `BACKLOG` | E2-101 | 得到继续/调整/回退决策 |
-| E2-200 | 合成水果跟手投放 | `BACKLOG` | E2-010 | preview → release → drop 连贯 |
-| E2-201 | 合成水果 merge feedback | `BACKLOG` | E2-010~012 | merge/chain/重量感成立 |
-| E2-202 | 合成水果结果 overlay | `BACKLOG` | E2-201 | 背景保留、Replay 主路径 |
+| E2-101 | 停车场触觉式反馈 polish | `PLAYTEST` | E2-100 | pickup/snap/blocked/victory 成立（commit f1ce362，驶出尾迹+箭头+结果卡） |
+| E2-102 | 停车场孩子 Playtest | `PLAYTEST` | E2-101 | 得到继续/调整/回退决策（等待真实试玩，按 §82 验收卡） |
+| E2-200 | 合成水果跟手投放 | `DONE` | E2-010 | preview → release → drop 连贯（落点线+投影+投放初速，commit acd1c19） |
+| E2-201 | 合成水果 merge feedback | `DONE` | E2-010~012 | merge/chain/重量感成立（涟漪/浮字/粒子/连锁/呼吸危险线，纯表现层不改计分） |
+| E2-202 | 合成水果结果 overlay | `DONE` | E2-201 | 背景保留、Replay 主路径（压暗+底部弹卡+再玩一次主按钮） |
 | E2-203 | 合成水果孩子 Playtest | `BACKLOG` | E2-202 | 记录重复游玩行为 |
-| E2-300 | 切水果 Intro/HUD | `BACKLOG` | E2-000 | 不再依赖统一长句状态栏 |
-| E2-301 | 切水果 Result Overlay | `BACKLOG` | E2-300 | 游戏最后一帧保留 |
-| E2-302 | ActionScene 可覆写 hooks | `BACKLOG` | E2-301 | 旧游戏兼容 |
+| E2-300 | 切水果 Intro/HUD | `DONE` | E2-000 | 不再依赖统一长句状态栏（玩具柜 intro+大数字 HUD，commit 8000a88） |
+| E2-301 | 切水果 Result Overlay | `DONE` | E2-300 | 游戏最后一帧保留（压暗+底部弹卡） |
+| E2-302 | ActionScene 可覆写 hooks | `DONE` | E2-301 | 旧游戏兼容（showHud/showResult 默认旧行为，点泡泡抽查通过） |
 | E2-303 | 切水果孩子 Playtest | `BACKLOG` | E2-301 | 一局后 Replay 路径验证 |
-| E2-400 | Home 2.0 信息架构 | `BACKLOG` | 三旗舰至少 2 个通过 Playtest | 儿童入口清晰 |
-| E2-401 | 家长/管理功能降级 | `BACKLOG` | E2-400 | 更新/整理不抢占首页 |
-| E2-402 | Home 卡片反馈与进入转场 | `BACKLOG` | E2-400 | 快、轻、不阻塞 |
-| E2-500 | 小树成长最小数据模型 | `BACKLOG` | 旗舰重复游玩改善 | 本地、不可倒退、无 FOMO |
-| E2-501 | 小树成长 UI | `BACKLOG` | E2-500 | 奖励是记录而非压力 |
+| E2-400 | Home 2.0 信息架构 | `DONE`（用户指令提前执行，Playtest 待补） | 三旗舰至少 2 个通过 Playtest | 儿童入口清晰（继续玩+儿童分类，commit 81a6a06） |
+| E2-401 | 家长/管理功能降级 | `DONE` | E2-400 | 更新/整理不抢占首页（折叠进页脚家长设置） |
+| E2-402 | Home 卡片反馈与进入转场 | `DONE` | E2-400 | 快、轻、不阻塞（scale 0.96 按压+图标下沉+阴影减弱） |
+| E2-500 | 小树成长最小数据模型 | `DONE`（用户指令提前执行，Playtest 待补） | 旗舰重复游玩改善 | 本地、不可倒退、无 FOMO（family-game-room-tree-v1，commit 3c5eec3） |
+| E2-501 | 小树成长 UI | `DONE` | E2-500 | 奖励是记录而非压力（hero 右上 SVG 小树+阶段徽章，无催促） |
 | E2-600 | Water Sort 直接操作迁移 | `BACKLOG` | Parking 经验稳定 | 倒水有拿起/倾斜/流动反馈 |
 | E2-601 | Tangram 直接操作迁移 | `BACKLOG` | motion 稳定 | 拖/转/吸附更像积木 |
 | E2-602 | Cards 拖牌体验升级 | `BACKLOG` | drag 模式稳定 | 纸牌主路径可直接拖 |
@@ -4492,6 +4492,19 @@ Do not change:
 ---
 
 # 92. Experience 2.0 Changelog
+
+## 2026-09-17 — v0.4（Sprint 3~7 落地，第一阶段完成）
+
+用户指令「继续推进，全部完成，分批提交」——Sprint 3~7 一次性落地，每个 Sprint 独立提交与验收。
+Home 2.0 与 Meta Tree 按方案本应等待旗舰 Playtest=KEEP 后启动，本次按用户明确指令提前执行（§28 前提条件未满足，已在看板标注「Playtest 待补」）。
+
+- E2-101 停车场 polish（f1ce362）：驶出粒子尾迹+出口箭头点亮；胜利保留棋盘背景、结果卡底部弹出（再来一局主按钮）；PuzzleScene.exit 放宽为 protected。
+- E2-200~202 合成水果（acd1c19）：落点线+投影、投放初速、新预览轻弹；合并涟漪+浮字+按水果色粒子；650ms 连锁 ×N 表现（不改计分）；大水果碗震+极轻 camera shake；危险线 620ms 呼吸；结算保留水果堆+底部弹卡。
+- E2-300~302 切水果（8000a88）：ActionScene 拆 showHud/showResult 可覆写 hooks（默认旧行为，其余三款动作游戏零改动）；玩具柜 intro（浮动装饰水果+开始主按钮+难度次级+滑动教学）；开局「开始！」不阻塞；HUD 拆大数字分数+时间块（末 10 秒变橙）；结算保留最后一帧。
+- E2-400~402 Home 2.0（81a6a06）：「今天想玩什么？」hero+继续玩绿卡直达；儿童分类文案（全部/动脑筋/拼一拼/手要快/一起玩，内部 ID 不变）；检查更新/整理图标折叠进页脚家长设置；卡片按压 0.96+图标下沉。
+- E2-500~501 小树成长（3c5eec3）：tree.ts 本地存储（叶子只增、里程碑只发一次、坏档容忍）；recordFlag 与动作新纪录统一发叶；大厅 SVG 小树七阶段；无签到/无倒计时/无催促。
+- 测试基线 206→212（38 文件）；全部经 CDP 真实操作验收。
+- Wave 1~5（全库 24 游戏 L3 迁移）与 Content Pass（推箱子 30 关、数织 30 图等）仍为 `BACKLOG`，属第二阶段。
 
 ## 2026-09-17 — v0.3（Sprint 0/1/2 落地）
 
