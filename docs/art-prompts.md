@@ -21,6 +21,7 @@
 | lobby-c.png | 3 列 × 2 行 | `1536x1024` | 512×512 |
 | lobby-d.png | 2 列 × 1 行 | `1536x768` | 768×768 |
 | lobby-e.png | 3 列 × 1 行 | `1536x512` | 512×512 |
+| lobby-f.png | 纸牌图标（单格） | 1×1 | `1024x1024` | 1024×1024 |
 
 ## 官方提示词要点（写法依据）
 
@@ -148,6 +149,23 @@ no drop shadows, no gradients.
 ```
 
 参数：size `1536x512`（单格 512×512）、quality `high`、background
+`transparent`（假透明则 `opaque` 白底）。
+
+### lobby-f.png（纸牌，单格图标）
+
+```text
+Task: a single square icon for a children's game collection.
+Composition: one playing card standing upright, slightly tilted,
+cream-white face with a big red heart pip and rounded corners,
+a second card face-down behind it in soft blue; a small golden
+star badge at the top right corner.
+Style: rounded flat vector icon for young children, thick smooth
+outlines, soft limited pastel palette, simple bold silhouette
+that stays readable at 48 px.
+Constraints: no text, no watermark, no drop shadows, no gradients.
+```
+
+参数：size `1024x1024`（单图标不切格）、quality `high`、background
 `transparent`（假透明则 `opaque` 白底）。
 
 ## 交付与验收
