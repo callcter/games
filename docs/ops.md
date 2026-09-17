@@ -123,6 +123,14 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-17 发布 `c4fb94e`（1 个提交）：Phase 1/2 稳定化收口（线上审查结论
+  docs/EXPERIENCE-2-PHASE-1-2-STABILIZATION.md）——数织大厅总数从写死 9 改为
+  PATTERNS.length 唯一来源、推箱子从写死 <10 改为 LEVELS.length（第 11~30 关
+  计入、越界 key 过滤）、FreeCell 基础堆顶牌移除拖动源（规则不支持取回）；
+  EXPERIENCE-2 看板/迁移矩阵/Changelog 对齐。测试 213→215，CDP 实测大厅进度
+  与 FreeCell 五种拖动路径/undo/foundation 不可拖。发布后验证 HTTP 301→HTTPS、
+  证书（至 2026-12-14）、no-cache 缓存头正常；53 个构建文件 SHA-256 全部一致。
+  发布后已推送 GitHub。Experience 2.0 新功能开发停止，等待真实玩家 Playtest。
 - 2026-09-17 发布 `8b60fd4`（18 个提交）：Experience 2.0 两个阶段全量落地——
   纸牌三款拖牌、水排序/七巧板拿起反馈、2048/记忆/扫雷触觉增强、动作三款
   保留背景结算卡、数织 9→50 幅（双射变体保唯一解）、推箱子 10→30 关
