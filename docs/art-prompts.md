@@ -21,7 +21,8 @@
 | packets.png | 红包、金色炮仗 | 2 列 × 1 行 | 2 | 红包雨 |
 | moles.png | 棕色地鼠、睡觉地鼠 | 2 列 × 1 行 | 2 | 打地鼠 |
 | bubbles.png | 蓝色泡泡、金色泡泡 | 2 列 × 1 行 | 2 | 点泡泡 |
-| 大厅图标 | 20 个游戏图标 | 逐张生成 | 20 | 大厅 |
+| lobby-a/b/c.png | 大厅图标（每张 6 个游戏） | 各 3 列 × 2 行 | 各 6 | 大厅 |
+| lobby-d.png | 大厅图标（剩余 2 个游戏） | 2 列 × 1 行 | 2 | 大厅 |
 
 游戏内精灵图帧切割规格（我接入时按此切）：
 fruits 每帧 256×341；packets / moles / bubbles 每帧 512×512。
@@ -153,45 +154,111 @@ No text, no numbers, no letters, no watermark, no borders, no grid lines.
 Flat 2D, vector style.
 ```
 
-## 提示词 E：大厅图标（逐张生成，共 20 张）
+## 提示词 E：大厅图标精灵图（4 张，替换手写 SVG）
 
-统一模板（把 `{符号}` 换成下表内容）：
+> 为什么要精灵图而不是逐张生成：逐张生成 20 次风格必然漂移、
+> 大厅看起来像拼贴；一张图内的 6 个图标风格天然统一。管线与
+> fruits-small/big.png 完全相同（白底、洪水填充去白、逐帧裁剪）。
+
+风格统一是第一优先级——四张图请**在同一次对话里连续生成**，
+每张提示词的样式段落（Kawaii flat cartoon style...white background）
+一字不改。
+
+### lobby-a.png（2048 / 俄罗斯方块 / 五子棋 / 扫雷 / 蜘蛛纸牌 / 空当接龙）
 
 ```text
-A square app icon for a children's game collection, rounded corners,
-soft cream background with a subtle warm gradient, centered flat cartoon
-illustration of {符号}, kawaii style, thick smooth outlines, soft cel
-shading, cheerful pastel colors, generous padding around the subject,
-no text, no letters, no numbers, no watermark.
+Sprite sheet with exactly 6 equal square cells in a 3 by 2 grid
+(3 columns, 2 rows) on a plain solid white background. Kawaii flat
+cartoon style, thick smooth outlines, soft cel shading, glossy
+highlights, cheerful pastel colors. One icon per cell, centered,
+occupying about 72% of the cell, same size in every cell, simple
+bold shapes readable at small size.
+
+Row 1: 1) two rounded game number tiles, one coral tile showing "4"
+and one gold tile showing "8", slightly overlapping;
+2) colorful tetromino blocks, one L-shape and one T-shape, mid-fall
+with tiny motion lines;
+3) a wooden go board corner with one black and one white glossy
+round stone.
+Row 2: 4) a round cartoon landmine with a cute worried face and a
+small red flag planted next to it;
+5) a friendly little spider sitting on a playing card;
+6) a single playing card showing a big golden spade ace.
+
+No text outside the two tiles, no watermark, no grid lines, no drop
+shadows, flat 2D vector style.
 ```
 
-| 游戏 | {符号} |
-| --- | --- |
-| 2048 | two game tiles merging: a "4" tile and a "8" tile (numbers ARE allowed for this one icon only) |
-| 五子棋 | one black and one white glossy go stone crossing on a wooden board corner |
-| 俄罗斯方块 | colorful tetromino blocks (one L-shape, one T-shape) mid-fall |
-| 合成水果 | a happy watermelon with a cute face |
-| 空当接龙 | a single playing card with a big golden spade ace |
-| 蜘蛛纸牌 | a friendly little spider sitting on a playing card |
-| 扫雷 | a round cartoon landmine with a small red flag planted next to it |
-| 记忆翻牌 | two playing-style cards, one face up one face down, with a golden star |
-| 七巧板 | colorful tangram triangles forming a little house |
-| 接水管 | two chunky pipe pieces (one elbow, one straight) in mint green |
-| 推箱子 | a small wooden crate with a smiling face on a tile floor |
-| 泡泡龙 | a cluster of three glossy bubbles (pink, blue, yellow) |
-| 点泡泡 | a golden bubble being popped with a tiny star burst |
-| 红包雨 | a red Chinese money envelope with golden seal, two gold coins beside it |
-| 打地鼠 | a happy brown mole peeking out of a green hole |
-| 切水果 | a watermelon slice with a white slash line and juice droplets |
-| 解绳结 | a smooth tangled rope loop with one loose end lifted |
-| 迷宫探险 | a top-view simple maze path with a small flag at the exit |
-| 数织 | a grid of dark and light squares forming a heart pixel pattern |
-| 数独 | a 3x3 mini grid with a few soft number tiles (numbers allowed for this icon) |
+### lobby-b.png（合成水果 / 切水果 / 泡泡龙 / 点泡泡 / 红包雨 / 打地鼠）
+
+```text
+Sprite sheet with exactly 6 equal square cells in a 3 by 2 grid
+(3 columns, 2 rows) on a plain solid white background. Kawaii flat
+cartoon style, thick smooth outlines, soft cel shading, glossy
+highlights, cheerful pastel colors. One icon per cell, centered,
+occupying about 72% of the cell, same size in every cell, simple
+bold shapes readable at small size.
+
+Row 1: 1) a happy watermelon with a cute smiling face;
+2) a watermelon slice with a white slash line and juice droplets;
+3) a cluster of three glossy bubbles, pink, blue and yellow.
+Row 2: 4) a golden bubble being popped with a tiny star burst;
+5) a red Chinese money envelope with a golden seal and two gold
+coins beside it;
+6) a happy brown mole peeking out of a green hole.
+
+No text, no watermark, no grid lines, no drop shadows, flat 2D
+vector style.
+```
+
+### lobby-c.png（记忆翻牌 / 七巧板 / 接水管 / 推箱子 / 解绳结 / 迷宫）
+
+```text
+Sprite sheet with exactly 6 equal square cells in a 3 by 2 grid
+(3 columns, 2 rows) on a plain solid white background. Kawaii flat
+cartoon style, thick smooth outlines, soft cel shading, glossy
+highlights, cheerful pastel colors. One icon per cell, centered,
+occupying about 72% of the cell, same size in every cell, simple
+bold shapes readable at small size.
+
+Row 1: 1) two rounded playing-style cards, one face up with a golden
+star, one face down with a question-mark-free swirl pattern;
+2) colorful tangram triangles forming a little house;
+3) two chunky pipe pieces, one elbow and one straight, in mint green.
+Row 2: 4) a small wooden crate with a smiling face on a tile floor;
+5) a smooth tangled rope loop with one loose end lifted;
+6) a top-view simple maze path with a small flag at the exit.
+
+No text, no watermark, no grid lines, no drop shadows, flat 2D
+vector style.
+```
+
+### lobby-d.png（数独 / 数织，2 格收尾）
+
+```text
+Sprite sheet with exactly 2 equal square cells side by side (1 row,
+2 columns) on a plain solid white background. Kawaii flat cartoon
+style, thick smooth outlines, soft cel shading, glossy highlights,
+cheerful pastel colors. One icon per cell, centered, occupying
+about 72% of the cell, same size, simple bold shapes readable at
+small size.
+
+Left cell: a 3 by 3 mini sudoku grid tile with a few soft number
+tiles (numbers are allowed in this icon only).
+Right cell: a grid of dark and light rounded squares forming a heart
+pixel pattern.
+
+No other text, no watermark, no grid lines outside the icons,
+no drop shadows, flat 2D vector style.
+```
+
+> 注意：lobby-a 第 1 格（2048 的数字瓷砖）和 lobby-d 左格（数独）
+> 是仅有的允许出现数字的格子；其余图标一律无文字。
 
 ## 生成后怎么交付
 
-1. 文件按上表命名（fruits.png、packets.png、moles.png、bubbles.png、
-   icon-<游戏id>.png），发给我即可；
+1. 文件按上表命名（fruits*.png、packets.png、moles.png、bubbles.png、
+   lobby-a/b/c/d.png），发给我即可；
 2. 我负责：去白底（近白像素转透明）、按网格切割校验、放进 `public/art/`、
    接入各游戏替换程序化纹理、Workbox 离线预缓存（png 已在
    `globPatterns` 中）与 iPad 高分屏验证；
