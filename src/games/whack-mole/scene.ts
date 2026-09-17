@@ -76,7 +76,7 @@ export class WhackMoleScene extends ActionScene {
       const y = BOARD_Y + (Math.floor(index / 3) - 1) * HOLE_SPACING
       const hole = this.add.ellipse(x, y, HOLE_W, HOLE_H, 0x6b4f3a).setStrokeStyle(4, 0x527267)
       this.entities.add(hole)
-      const mole = this.add.image(x, y + HOLE_H * 0.55, 'mole-normal').setVisible(false)
+      const mole = this.add.image(x, y + HOLE_H * 0.55, 'mole-normal').setDisplaySize(96,96).setVisible(false)
       this.entities.add(mole)
       // 遮罩：洞口平面以上 + 洞椭圆内部可见，实现「从洞里钻出来」
       const maskShape = this.make.graphics()
@@ -92,7 +92,7 @@ export class WhackMoleScene extends ActionScene {
     const view = this.holes.find(entry => entry.holeIndex === index)
     if (!view) return
     const centerY = this.holeCenterY(index)
-    view.mole.setTexture(sleeper ? 'mole-sleeper' : 'mole-normal').setVisible(true)
+    view.mole.setTexture(sleeper ? 'mole-sleeper' : 'mole-normal').setDisplaySize(96,96).setVisible(true)
     this.tweens.killTweensOf(view.mole)
     view.mole.y = centerY + HOLE_H * 0.55
     this.tweens.add({ targets: view.mole, y: centerY - 34, duration: 190, ease: 'Back.Out' })
@@ -128,7 +128,7 @@ export class WhackMoleScene extends ActionScene {
   }
   private makeMoleTextures(): void {
     if (this.textures.exists('mole-normal')) return
-    const graphics = this.make.graphics()
+    const graphics = this.make.graphics().setScale(2)
     const drawMole = (sleeper: boolean, key: string): void => {
       graphics.clear()
       graphics.fillStyle(sleeper ? 0x9aa0a6 : 0xa67c52)
@@ -150,7 +150,7 @@ export class WhackMoleScene extends ActionScene {
       }
       graphics.fillStyle(0xd9827a)                          // 鼻子
       graphics.fillCircle(48, 56, 5)
-      graphics.generateTexture(key, 96, 96)
+      graphics.generateTexture(key, 192, 192)
     }
     drawMole(false, 'mole-normal')
     drawMole(true, 'mole-sleeper')

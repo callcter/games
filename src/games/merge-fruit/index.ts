@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { enableHighDpi } from '../../platform/display/high-dpi'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { MergeFruitScene } from './scene'
 
@@ -13,6 +14,7 @@ export async function mountMergeFruit(container: HTMLElement, onExit: () => void
 
   game = new Phaser.Game({
     type: Phaser.AUTO,
+    callbacks: { postBoot: enableHighDpi },
     parent: container,
     width: 768,
     height: 1024,

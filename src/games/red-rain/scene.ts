@@ -54,7 +54,7 @@ export class RedRainScene extends ActionScene {
     this.state.drops.forEach((drop, index) => {
       const view = this.views[index]!, key = drop.cracker ? 'firecracker' : 'red-packet'
       view.setPosition(drop.x, drop.y)
-      if (view.texture.key !== key) view.setTexture(key)
+      if (view.texture.key !== key) view.setTexture(key).setDisplaySize(drop.cracker ? 54 : 80,drop.cracker ? 92 : 102)
     })
   }
   // 红包在持续下落，点击判定取点击瞬间最近的实体索引交给 core 的 tap 处理。
@@ -67,13 +67,13 @@ export class RedRainScene extends ActionScene {
     return best
   }
   private makeDrop(drop: Drop): Phaser.GameObjects.Image {
-    const view = this.add.image(drop.x, drop.y, drop.cracker ? 'firecracker' : 'red-packet')
+    const view = this.add.image(drop.x, drop.y, drop.cracker ? 'firecracker' : 'red-packet').setDisplaySize(drop.cracker ? 54 : 80,drop.cracker ? 92 : 102)
     this.entities.add(view)
     return view
   }
   private makePacketTextures(): void {
     if (this.textures.exists('red-packet')) return
-    const graphics = this.make.graphics()
+    const graphics = this.make.graphics().setScale(2)
     graphics.fillStyle(0xd94f43)
     graphics.fillRoundedRect(3, 3, 74, 96, 10)
     graphics.lineStyle(3, 0xe6b84d)
@@ -91,7 +91,7 @@ export class RedRainScene extends ActionScene {
     graphics.lineStyle(2, 0xffd79a, 0.6)
     graphics.lineBetween(12, 76, 12, 86)
     graphics.lineBetween(12, 86, 22, 86)
-    graphics.generateTexture('red-packet', 80, 102)
+    graphics.generateTexture('red-packet', 160, 204)
     graphics.clear()
     graphics.fillStyle(0x4a5568)
     graphics.fillRoundedRect(13, 10, 28, 74, 12)
@@ -101,7 +101,7 @@ export class RedRainScene extends ActionScene {
     graphics.fillCircle(27, 8, 6)
     graphics.lineStyle(2, 0xe88065)
     graphics.lineBetween(27, 8, 36, 1)
-    graphics.generateTexture('firecracker', 54, 92)
+    graphics.generateTexture('firecracker', 108, 184)
     graphics.destroy()
   }
   // 开包只出一组金色文字（福 +N）+ 一组金币粒子，避免两个错位特效像 bug。

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { enableHighDpi } from '../../platform/display/high-dpi'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
 import { newGame, restoreGame, type FreeCellState } from './core/game'
@@ -18,6 +19,7 @@ export async function mountFreeCell(container: HTMLElement, onExit: () => void):
   const initialState = saved?.state ?? initialDeal
   const audio = new GameAudio()
   let game: Phaser.Game | null = new Phaser.Game({
+    callbacks: { postBoot: enableHighDpi },
     type: Phaser.AUTO, parent: container, width: 1024, height: 768, backgroundColor: '#23614f',
     scene: new FreeCellScene(audio, {
       onExit,

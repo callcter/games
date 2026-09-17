@@ -7,8 +7,9 @@ let serial = 0
 /** 烘焙成真正的半张透明图片，切面、果皮和旋转一起飞散，不使用固定世界遮罩。 */
 export function makeCutHalf(scene: Phaser.Scene, key: string | null, fallback: string, kind: number, rotation: number, angle: number, side: number): Phaser.GameObjects.Image {
   const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = 128
+  canvas.width = canvas.height = 256
   const ctx = canvas.getContext('2d')!
+  ctx.scale(2, 2)
   const tx = Math.cos(angle), ty = Math.sin(angle), nx = -ty, ny = tx
   ctx.translate(64, 64)
   ctx.save()
@@ -44,7 +45,7 @@ export function makeCutHalf(scene: Phaser.Scene, key: string | null, fallback: s
   const textureKey = `cut-half-${serial++}`
   const textures = scene.textures
   textures.addCanvas(textureKey, canvas)
-  const image = scene.add.image(0, 0, textureKey)
+  const image = scene.add.image(0, 0, textureKey).setDisplaySize(128, 128)
   image.once('destroy', () => { if (textures.exists(textureKey)) textures.remove(textureKey) })
   return image
 }

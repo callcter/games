@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { enableHighDpi } from '../../platform/display/high-dpi'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { measureGameViewport } from '../../platform/display/game-viewport'
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
@@ -33,6 +34,7 @@ export async function mount2048(container: HTMLElement, onExit: () => void): Pro
 
   game = new Phaser.Game({
     type: Phaser.AUTO,
+    callbacks: { postBoot: enableHighDpi },
     parent: container,
     width: viewport.width,
     height: viewport.height,

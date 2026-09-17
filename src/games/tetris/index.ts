@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { enableHighDpi } from '../../platform/display/high-dpi'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { measureGameViewport } from '../../platform/display/game-viewport'
 import { TetrisScene } from './scene'
@@ -15,6 +16,7 @@ export async function mountTetris(container: HTMLElement, onExit: () => void): P
 
   game = new Phaser.Game({
     type: Phaser.AUTO,
+    callbacks: { postBoot: enableHighDpi },
     parent: container,
     width: viewport.width,
     height: viewport.height,

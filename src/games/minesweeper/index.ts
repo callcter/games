@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { enableHighDpi } from '../../platform/display/high-dpi'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { MinesweeperScene } from './scene'
 
@@ -6,6 +7,7 @@ export async function mountMinesweeper(container: HTMLElement, onExit: () => voi
   const audio = new GameAudio()
   let game: Phaser.Game | null = new Phaser.Game({
     type: Phaser.AUTO,
+    callbacks: { postBoot: enableHighDpi },
     parent: container,
     width: 768,
     height: 1024,
