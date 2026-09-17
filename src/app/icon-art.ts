@@ -10,7 +10,10 @@ interface LobbySheet {
 }
 
 export const LOBBY_SHEETS: readonly LobbySheet[] = [
-  { url: 'art/lobby-a.png', cols: 3, rows: 2, ids: ['2048', 'tetris', 'gomoku', 'minesweeper', 'spider', 'freecell'] }
+  { url: 'art/lobby-a.png', cols: 3, rows: 2, ids: ['2048', 'tetris', 'gomoku', 'minesweeper', 'spider', 'freecell'] },
+  { url: 'art/lobby-b.png', cols: 3, rows: 2, ids: ['merge-fruit', 'fruit-slicer', 'bubbles', 'pop-bubbles', 'red-rain', 'whack-mole'] },
+  { url: 'art/lobby-c.png', cols: 3, rows: 2, ids: ['memory', 'tangram', 'pipes', 'sokoban', 'untangle', 'maze'] },
+  { url: 'art/lobby-d.png', cols: 2, rows: 1, ids: ['sudoku', 'nonogram'] }
 ]
 
 const FRAME_OUTPUT = 128
