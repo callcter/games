@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { awardLeaf, readTree, treeStage, TREE_STAGES } from '../../src/app/tree'
+import { adoptMilestone, awardLeaf, readTree, treeStage, TREE_STAGES } from '../../src/app/tree'
 
 describe('treeStage', () => {
   it('叶子数落进正确阶段', () => {
@@ -54,6 +54,20 @@ describe('readTree / awardLeaf（localStorage 环境）', () => {
     expect(readTree().leaves).toBe(0)
     expect(awardLeaf('x')).toBe(true)
     expect(readTree().leaves).toBe(1)
+  })
+
+  it('编号迁移时里程碑继承、叶子数不变', () => {
+    expect(awardLeaf('nonogram-17')).toBe(true)
+    const before = readTree()
+    adoptMilestone('nonogram-17', 'nonogram-9')
+    const after = readTree()
+    expect(after.leaves).toBe(before.leaves)
+    expect(after.milestones['nonogram-9']).toBe(true)
+    expect(after.milestones['nonogram-17']).toBeUndefined()
+    // 新名字已发过叶则不动；同名字与空名字忽略。
+    adoptMilestone('nonogram-9', 'nonogram-9')
+    adoptMilestone('', 'x')
+    expect(readTree().leaves).toBe(after.leaves)
   })
 
   it('叶子只增不减（读取端不允许负数）', () => {

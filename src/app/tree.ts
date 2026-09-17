@@ -40,6 +40,21 @@ export function readTree(): TreeProgress {
   }
 }
 
+/** 编号迁移：旧里程碑已发过叶时新名字继承该状态（不重复发叶、叶子数不变）。 */
+export function adoptMilestone(from: string, to: string): void {
+  if (!from || !to || from === to) return
+  try {
+    const tree = readTree()
+    if (tree.milestones[from] && !tree.milestones[to]) {
+      tree.milestones[to] = true
+      delete tree.milestones[from]
+      localStorage.setItem(KEY, JSON.stringify(tree))
+    }
+  } catch {
+    // 存储不可用时跳过，不影响游戏。
+  }
+}
+
 /** 首次达成某自然目标时发一片叶子；重复达成不再发。 */
 export function awardLeaf(milestone: string): boolean {
   if (!milestone) return false

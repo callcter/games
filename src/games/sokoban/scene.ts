@@ -41,7 +41,8 @@ export class SokobanScene extends PuzzleScene {
       const best = this.bestMoves[level]
       const challenge = (PAR[level] ?? 0) >= 8 ? '☆' : ''
       const label = best === undefined ? `${challenge}${level + 1}${this.practice.has(level) ? ' ✓' : ''}` : `${challenge}${level + 1} ${'★'.repeat(stars(level, best))}`
-      this.button(128 + level % 5 * 128, 240 + Math.floor(level / 5) * 130, label, () => { this.level = level; this.restart() }, 108, this.content)
+      // 6 排全部收进 900 高画布：末排中心 776、底边 806，与底部按钮行（850）留出安全距离。
+      this.button(128 + level % 5 * 128, 216 + Math.floor(level / 5) * 112, label, () => { this.level = level; this.restart() }, 108, this.content)
     })
   }
   private step(d: number): void {

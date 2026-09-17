@@ -81,14 +81,15 @@ export class FreeCellScene extends Phaser.Scene {
     this.dragOffsets = group.map(view => ({ x: view.x - group[0]!.x, y: view.y - group[0]!.y }))
     this.dragOrigin = { x: group[0]!.x, y: group[0]!.y }
     this.dragMoved = false
-    this.selection = null
+    // 不在这里清空 selection：轻点（无位移）的 dragend 要靠它完成「选源牌→点目标」；
+    // 只有真正拖动起来才切换会话、放弃旧选中。
     group.forEach(view => this.children.bringToTop(view))
     this.audio.playMove()
   }
 
   private moveCardDrag(object: unknown, dragX: number, dragY: number): void {
     if (!this.dragGroup.length || object !== this.dragGroup[0]) return
-    this.dragMoved = true
+    if (!this.dragMoved) { this.dragMoved = true; this.selection = null }
     this.dragGroup.forEach((view, index) => {
       const offset = this.dragOffsets[index]!
       view.setPosition(dragX + offset.x, dragY + offset.y)

@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
-import { recordFlag } from '../puzzle-kit/progress'
-import { clues, lineCells, mark, newGame, PATTERNS, patternSize, solution, type Mark, type NonogramState } from './core/game'
+import { migrateNumberedFlags, recordFlag } from '../puzzle-kit/progress'
+import { clues, legacyV2ToV3, lineCells, mark, newGame, PATTERNS, patternSize, solution, type Mark, type NonogramState } from './core/game'
 import { restoreNonogram } from '../puzzle-kit/core/drafts'
+import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
 export class NonogramScene extends PuzzleScene {
   private state = newGame(5)
   private mode: Mark = 1
@@ -17,6 +18,11 @@ export class NonogramScene extends PuzzleScene {
   private columnClues: Phaser.GameObjects.Text[] = []
   constructor(audio: GameAudio, exit: () => void) { super('nonogram', '数织', audio, exit) }
   protected start(): void {
+    // 已发布交错版完成记录迁移到当前编号（≥9 无歧义；0-8 两代同义保留原样）。
+    migrateNumberedFlags('nonogram', 9, legacyV2ToV3)
+    // 三代编号兼容策略（二轮验收 R2）：无法可靠区分的无版本号旧档按原身份保守恢复；
+    // 进入游戏时把现有草档原样备份一次，迁移万一误判也不丢原始进度。
+    void this.backupLegacyDraft()
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.playing || this.state.won) return
       const i = this.cellAt(p)
@@ -34,6 +40,20 @@ export class NonogramScene extends PuzzleScene {
       this.state = saved.state; this.history = saved.history; this.assisted = saved.assisted; this.draw()
     }, () => { this.state = newGame(0); this.history = []; this.assisted = false; this.draw() })
   }
+  /** 无版本号旧档的一次性原样备份（迁移误判时的最后防线）。 */
+  private async backupLegacyDraft(): Promise<void> {
+    if (!this.alive) return
+    try {
+      const backupKey = 'game-puzzle-draft-nonogram-v1-backup'
+      const existing = await loadGameSave<unknown>(backupKey)
+      if (existing !== null && existing !== undefined) return
+      const raw = await loadGameSave<unknown>('game-puzzle-draft-nonogram-v1')
+      if (raw !== null && raw !== undefined) await saveGame(backupKey, raw)
+    } catch {
+      // 存储不可用时跳过备份，不影响开局。
+    }
+  }
+
   private draw(): void {
     this.playing = true
     this.stroke = null

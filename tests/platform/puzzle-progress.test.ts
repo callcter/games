@@ -56,6 +56,20 @@ it('shows the nonogram total from the live pattern library, not the old 9', asyn
   expect(line(17)).toBe(`已画 17 / ${PATTERNS.length} 幅`)
   expect(line(PATTERNS.length)).toBe(`已画 ${PATTERNS.length} / ${PATTERNS.length} 幅`)
 })
+it('renames numbered flags once for numbering migrations without double counting', async () => {
+  storage.loadGameSave.mockResolvedValue({ best: {}, flags: ['nonogram-17', 'nonogram-2', 'nonogram-33', 'sudoku-4'], levels: {} })
+  const { loadProgress, migrateNumberedFlags } = await import('../../src/games/puzzle-kit/progress')
+  await loadProgress()
+  // 只迁移 ≥9 的编号；0-8 两代同义保留；映射目标已存在时删旧防重复。
+  migrateNumberedFlags('nonogram', 9, n => (n === 17 ? 9 : n === 33 ? 9 : undefined))
+  await vi.waitFor(() => expect(storage.saveGame).toHaveBeenCalled())
+  const saved = storage.saveGame.mock.calls.at(-1)![1]
+  expect(saved.flags).toContain('nonogram-9')
+  expect(saved.flags).not.toContain('nonogram-17')
+  expect(saved.flags).not.toContain('nonogram-33')
+  expect(saved.flags).toContain('nonogram-2')
+  expect(saved.flags).toContain('sudoku-4')
+})
 it('labels old action records and separates the new difficulty tiers', async () => {
   const { summarizeProgress } = await import('../../src/games/puzzle-kit/progress')
   expect(summarizeProgress({best:{'pop-bubbles':999},flags:[],levels:{}})['pop-bubbles']).toContain('历史')

@@ -65,6 +65,8 @@ try {
   // 只在开发服中观察场景状态，不在产品中暴露调试入口。
   const open = async id => {
     await evaluate(`(async()=>{const {PuzzleScene}=await import('/src/games/puzzle-kit/scene.ts');if(!PuzzleScene.prototype.__test){const create=PuzzleScene.prototype.create;PuzzleScene.prototype.create=function(){window.__scene=this;return create.call(this)};PuzzleScene.prototype.__test=true}})()`)
+    // reload/导航后大厅卡片可能尚未渲染完成，先等卡片再点（修复随机 null.click）。
+    await until(`!!document.querySelector('.game-grid [data-game="${id}"]')`)
     await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
     await until(`window.__scene?.sys?.settings.key==='${id}' && __scene.alive`)
     await pause(400)
@@ -228,7 +230,7 @@ try {
   await click(blank.x,blank.y);await click(90,855);await click(77.333,780)
   assert.equal(await evaluate(`__scene.state.notes[${blank.i}][0]`),1)
   const beforeReload = await evaluate('JSON.stringify(__scene.state)')
-  await home();await send('Page.reload');await until("!!document.querySelector('.game-grid')")
+  await home();await send('Page.reload');await until("!!document.querySelector('.game-grid [data-game=\"sudoku\"]')")
   await open('sudoku');assert.ok(await evaluate("__scene.message.includes('找到')"));await click(260,480)
   assert.equal(await evaluate('JSON.stringify(__scene.state)'),beforeReload)
   await home()

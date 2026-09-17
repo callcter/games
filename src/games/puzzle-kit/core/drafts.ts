@@ -1,5 +1,5 @@
 import { conflicts, countSolutions, SIZES, type SudokuState, type SudokuSize } from '../../sudoku/core/game'
-import { newGame as nonogram, PATTERNS, solution, type NonogramState, type Mark } from '../../nonogram/core/game'
+import { newGame as nonogram, legacyV2ToV3, BASE_PATTERN_COUNT, PATTERNS, solution, type NonogramState, type Mark } from '../../nonogram/core/game'
 import { newGame as sokoban, LEVELS, type SokobanState } from '../../sokoban/core/game'
 import { MODES as waterModes, TUBE_CAPACITY, topRun, type WaterState } from '../../water-sort/core/game'
 import { MODES as parkingModes, SIZE as PARK_SIZE, EXIT_ROW, type ParkState } from '../../parking/core/game'
@@ -25,11 +25,26 @@ function sudokuState(value: unknown, validateUnique = true): SudokuState | null 
 
 function nonogramState(value: unknown): NonogramState | null {
   const s = object(value)
-  if (!Number.isInteger(s.level) || (s.level as number) < 0 || (s.level as number) >= PATTERNS.length) return null
-  const state = nonogram(s.level as number), target = solution(state.level)
-  if (!numbers(s.marks, state.marks.length, -1, 1)) return null
-  const marks = [...s.marks] as Mark[]
-  return { ...state, marks, won: target.every((v,i) => (v === 1) === (marks[i] === 1)) }
+  if (!Number.isInteger(s.level) || (s.level as number) < 0) return null
+  // 三代编号兼容（二轮验收 R2）：level < 9 是扩容前/当前的原图身份；已发布交错版
+  // 的编号经 legacyV2ToV3 映射。按「原身份优先、交错版其次」逐候选验证：
+  // 长度必须吻合，已填格与图案目标的相容度过低（< 0.5）视为编号错代，试下一代。
+  const candidates: number[] = []
+  if ((s.level as number) < BASE_PATTERN_COUNT && (s.level as number) < PATTERNS.length) candidates.push(s.level as number)
+  const mapped = legacyV2ToV3(s.level as number)
+  if (mapped !== undefined && !candidates.includes(mapped)) candidates.push(mapped)
+  for (const level of candidates) {
+    const state = nonogram(level), target = solution(level)
+    if (!numbers(s.marks, state.marks.length, -1, 1)) continue
+    const marks = [...s.marks] as Mark[]
+    const filled = marks.filter(mark => mark === 1).length
+    if (filled) {
+      const hits = marks.filter((mark, i) => mark === 1 && target[i] === 1).length
+      if (hits / filled < 0.5) continue
+    }
+    return { ...state, marks, won: target.every((v, i) => (v === 1) === (marks[i] === 1)) }
+  }
+  return null
 }
 
 function sokobanState(value: unknown, level: number): SokobanState | null {

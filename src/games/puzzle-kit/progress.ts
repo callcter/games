@@ -1,5 +1,5 @@
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
-import { awardLeaf } from '../../app/tree'
+import { adoptMilestone, awardLeaf } from '../../app/tree'
 import { PATTERNS as NONOGRAM_PATTERNS } from '../nonogram/core/game'
 import { LEVELS as SOKOBAN_LEVELS } from '../sokoban/core/game'
 
@@ -58,6 +58,30 @@ export function recordFlag(flag: string): void {
     persist(progress)
     // 每个自然目标的第一次完成同时给小树一片叶子（EXPERIENCE-2 §13.2）。
     awardLeaf(flag)
+  })
+}
+
+/** 编号体系迁移（如数织三代编号）：对每个匹配 prefix-N 的标记按映射改名。
+ * 目标名已存在时删旧防重复；旧里程碑在小树中已发过叶则由新名字继承（不重发）。 */
+export function migrateNumberedFlags(prefix: string, minNumber: number, map: (n: number) => number | undefined): void {
+  void loadProgress().then(progress => {
+    let changed = false
+    const pattern = new RegExp(`^${prefix}-(\\d+)$`)
+    for (let i = 0; i < progress.flags.length; i++) {
+      const match = pattern.exec(progress.flags[i]!)
+      if (!match) continue
+      const number = Number(match[1])
+      if (!(number >= minNumber)) continue
+      const mapped = map(number)
+      if (mapped === undefined) continue
+      const from = progress.flags[i]!
+      const to = `${prefix}-${mapped}`
+      adoptMilestone(from, to)
+      if (progress.flags.includes(to)) { progress.flags.splice(i, 1); i--; changed = true; continue }
+      progress.flags[i] = to
+      changed = true
+    }
+    if (changed) persist(progress)
   })
 }
 

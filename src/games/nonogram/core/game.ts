@@ -45,6 +45,36 @@ for (const pattern of BASE_PATTERNS) {
 }
 export const PATTERNS = expanded
 export const BASE_PATTERN_COUNT = BASE_PATTERNS.length
+
+// ---------- 三代关卡编号的存档兼容（EXPERIENCE-2 二轮验收 R2） ----------
+// 已发布交错版（f352e7f..c4fb94e 线上窗口）按「原图与其变体连续」编号；
+// 重放同一变体规则与去重得到该代顺序，映射到当前（原图优先）编号。
+// 图案集合两代一致，仅顺序不同，因此映射是精确的双射而非猜测。
+const v2Order: Array<{ name: string; rows: readonly string[] }> = []
+{
+  const seen = new Set<string>()
+  for (const pattern of BASE_PATTERNS) {
+    seen.add(pattern.rows.join('/'))
+    v2Order.push(pattern)
+    for (const variant of VARIANTS) {
+      const rows = variant.flip(pattern.rows)
+      const key = rows.join('/')
+      if (seen.has(key)) continue
+      seen.add(key)
+      v2Order.push({ name: `${pattern.name}${variant.suffix}`, rows })
+    }
+  }
+}
+const v3IndexByName = new Map(expanded.map((pattern, index) => [pattern.name, index]))
+export const LEGACY_V2_TO_V3: readonly number[] = v2Order.map(pattern => {
+  const index = v3IndexByName.get(pattern.name)
+  if (index === undefined) throw new Error(`交错版图案 ${pattern.name} 在当前图案库中缺失`)
+  return index
+})
+/** 交错版（已发布扩容版）关卡编号 → 当前编号；越界返回 undefined。 */
+export function legacyV2ToV3(level: number): number | undefined {
+  return Number.isInteger(level) && level >= 0 && level < LEGACY_V2_TO_V3.length ? LEGACY_V2_TO_V3[level] : undefined
+}
 export type Mark = -1 | 0 | 1
 export interface NonogramState { level: number; marks: Mark[]; won: boolean }
 export function clues(line: readonly number[]): number[] {
