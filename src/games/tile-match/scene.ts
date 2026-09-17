@@ -37,7 +37,7 @@ export class TileMatchScene extends PuzzleScene {
     const maxX = Math.max(...this.state.tiles.map(tile => tile.gx + tile.layer * 0.34))
     const maxY = Math.max(...this.state.tiles.map(tile => tile.gy + tile.layer * 0.34))
     const left = 384 - (maxX * SPACING + TILE) / 2
-    const top = Math.max(210, 210 + (516 - (maxY * SPACING + TILE)) / 2)
+    const top = Math.max(222, 222 + (504 - (maxY * SPACING + TILE)) / 2)
     const screen = (tile: MatchState['tiles'][number]): [number, number] =>
       [left + (tile.gx + tile.layer * 0.34) * SPACING + TILE / 2, top + (tile.gy + tile.layer * 0.34) * SPACING + TILE / 2]
 
