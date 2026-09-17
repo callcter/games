@@ -55,7 +55,7 @@ export class ParkingScene extends PuzzleScene {
     this.content.add(board)
     board.fillStyle(0xefe7d5, 1)
     board.fillRoundedRect(LEFT - 10, TOP - 10, CELL * 6 + 20, CELL * 6 + 20, 16)
-    board.lineStyle(3, 0xd8cdbb)
+    board.lineStyle(2, 0xe3dac8)
     for (let index = 1; index < 6; index++) {
       board.lineBetween(LEFT + index * CELL, TOP, LEFT + index * CELL, TOP + CELL * 6)
       board.lineBetween(LEFT, TOP + index * CELL, LEFT + CELL * 6, TOP + index * CELL)
@@ -78,8 +78,9 @@ export class ParkingScene extends PuzzleScene {
 
   private car(car: ParkState['cars'][number]): void {
     const horizontal = car.horizontal
-    const width = horizontal ? car.len * CELL - 12 : CELL - 14
-    const height = horizontal ? CELL - 14 : car.len * CELL - 12
+    // 车身与格线、邻车间各留 20px 以上呼吸空隙，避免挤成一团。
+    const width = horizontal ? car.len * CELL - 22 : CELL - 24
+    const height = horizontal ? CELL - 24 : car.len * CELL - 22
     const [cx, cy] = cellCenter(car.x + (horizontal ? car.len / 2 - 0.5 : 0.5), car.y + (horizontal ? 0.5 : car.len / 2 - 0.5))
     const group = this.add.container(cx, cy)
     this.content.add(group)
