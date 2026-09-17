@@ -14,6 +14,8 @@ export class TangramScene extends PuzzleScene {
     this.input.on('dragstart', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
       this.beforeDrag = this.state; this.selected = Number(object.getData('piece'))
       object.setScale(1); this.content.bringToTop(object)
+      // 拿起时轻微弹一下，拼块像被手指捏起来。
+      this.tweens.add({ targets: object, scale: 1.05, duration: 90, yoyo: true, ease: 'Sine.Out' })
     })
     this.input.on('drag', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container, x: number, y: number) => object.setPosition(Phaser.Math.Clamp(x,80,688),Phaser.Math.Clamp(y,225,760)))
     this.input.on('dragend', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {

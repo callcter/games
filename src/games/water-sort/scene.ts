@@ -11,6 +11,8 @@ const SYMBOLS = ['●', '▲', '■', '◆', '★', '✚']
 const TUBE_W = 66, TUBE_H = 204, LAYER_H = 46
 
 export class WaterSortScene extends PuzzleScene {
+  /** 试管容器视图，倒水反馈动画用；draw 时重建。 */
+  private readonly tubeBodies = new Map<number, Phaser.GameObjects.Container>()
   private mode = 0
   private state = newGame(0)
   private history: WaterState[] = []
@@ -35,6 +37,7 @@ export class WaterSortScene extends PuzzleScene {
   }
 
   private draw(): void {
+    this.tubeBodies.clear()
     const done = this.state.tubes.filter(tube => tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY).length
     this.resetView(`把每根试管倒成同一种颜色 · ${this.state.moves} 步 · 完成 ${done}/${this.state.colors}`)
     MODES.forEach((entry, index) => this.button(160 + 224 * index, 165, `${this.mode === index ? '✓ ' : ''}${entry.label}`, () => {
@@ -65,8 +68,13 @@ export class WaterSortScene extends PuzzleScene {
   /** 画一根试管：玻璃管身 + 自底向上水层 + 色符号；完成管顶部打勾。 */
   private tube(tube: number[], x: number, y: number, index: number): void {
     const selected = this.selected === index
-    const body = this.add.container(x, y - (selected ? 12 : 0))
+    const body = this.add.container(x, y)
     this.content.add(body)
+    this.tubeBodies.set(index, body)
+    if (selected) {
+      // 拿起：弹起并轻轻倾斜，像真的捏起一根试管。
+      this.tweens.add({ targets: body, y: y - 12, angle: -6, duration: 170, ease: 'Back.Out' })
+    }
     const finished = tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY
     const glass = this.add.graphics()
     glass.fillStyle(0xfffdf6, 0.6)
@@ -92,7 +100,7 @@ export class WaterSortScene extends PuzzleScene {
     // 触控区域比管身大一圈，孩子的手指好点。
     // 先入容器再开交互：加入容器后输入矩阵才会随容器注册；alpha 极小但非 0，
     // Phaser 4 会把完全透明的对象从输入命中里剔除。
-    const hit = this.add.rectangle(x, y - (selected ? 12 : 0), TUBE_W + 34, TUBE_H + 30, 0xffffff, 0.001)
+    const hit = this.add.rectangle(x, y, TUBE_W + 34, TUBE_H + 30, 0xffffff, 0.001)
     this.content.add(hit)
     hit.setInteractive({ useHandCursor: true })
     hit.on('pointerdown', () => this.tap(index))
@@ -113,12 +121,16 @@ export class WaterSortScene extends PuzzleScene {
       this.draw()
       return
     }
+    const fromIndex = this.selected
     const result = pour(this.state, this.selected, index)
     if (!result) {
       this.audio.playPop(1)
-      this.say(canPour(this.state, this.selected, index) ? '' : '只能倒进空管或颜色相同的管子哦')
+      this.say(canPour(this.state, fromIndex, index) ? '' : '只能倒进空管或颜色相同的管子哦')
       this.selected = -1
       this.draw()
+      // 非法倒水：源管左右摆两下「倒不进去」。
+      const from = this.tubeBodies.get(fromIndex)
+      if (from) this.tweens.add({ targets: from, angle: { from: -5, to: 5 }, duration: 80, yoyo: true, repeat: 2, onComplete: () => from.setAngle(0) })
       return
     }
     this.history.push(this.state)
@@ -127,6 +139,12 @@ export class WaterSortScene extends PuzzleScene {
     this.selected = -1
     this.audio.playPop(1 + result.poured)
     this.draw()
+    // 倒进去了：目标管轻微一沉再弹回，像真的接住了水。
+    const target = this.tubeBodies.get(index)
+    if (target) {
+      target.setScale(1, 0.965)
+      this.tweens.add({ targets: target, scaleY: 1, duration: 220, ease: 'Back.Out' })
+    }
     this.remember('water-sort', { state: this.state, history: this.history, mode: this.mode })
     if (this.state.won) {
       recordFlag('water-sort-clear')
