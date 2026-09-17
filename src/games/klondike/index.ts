@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { enableHighDpi } from '../../platform/display/high-dpi'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
-import { newDeal, type KlondikeState } from './core/game'
+import { newDeal, reviveState, type KlondikeState } from './core/game'
 import { KlondikeScene } from './scene'
 
 const SAVE_KEY = 'klondike-v1'
@@ -13,15 +13,7 @@ interface SaveEnvelope {
   initialDeal: KlondikeState
 }
 
-function revive(value: unknown): KlondikeState | null {
-  if (!value || typeof value !== 'object') return null
-  const state = value as KlondikeState
-  const cards = [...state.stock ?? [], ...state.waste ?? [], ...(state.columns ?? []).flatMap(column => [...(column?.hidden ?? []), ...(column?.up ?? [])])]
-  if (cards.length !== 52 || !Array.isArray(state.columns) || state.columns.length !== 7) return null
-  if (new Set(cards.map(card => card?.id)).size !== 52) return null
-  if (typeof state.foundations?.spades !== 'number') return null
-  return state
-}
+const revive = reviveState
 
 function restoreSave(value: unknown): SaveEnvelope | null {
   if (!value || typeof value !== 'object') return null

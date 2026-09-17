@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, RandomSource } from '../../src/games/cards/core/cards'
-import { canDropOnColumn, draw, newDeal, nextAutoMove, playColumn, playWaste, recall, stuck } from '../../src/games/klondike/core/game'
+import { canDropOnColumn, draw, newDeal, nextAutoMove, playColumn, playWaste, recall, reviveState, stuck } from '../../src/games/klondike/core/game'
 
 const card = (suit: Card['suit'], rank: number): Card => ({ id: `${suit}${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black' })
 const fixed: RandomSource = () => 0.42
@@ -115,6 +115,39 @@ describe('纸牌规则', () => {
     expect(move).toEqual({ kind: 'column', from: 1 })
     const blocked = { ...state, columns: state.columns.map((column, index) => index === 1 ? { hidden: [card('clubs', 8)], up: column.up } : column) }
     expect(nextAutoMove(blocked)).toBeNull()
+  })
+  it('存档校验：收进回收区的牌计入 52 张，重复或缺失的坏档被拒', () => {
+    const base = newDeal(fixed)
+    // 从列顶把一张 A 收进基础堆后退出再进，应能恢复而不是重新发牌。
+    const collected = {
+      ...base,
+      waste: base.waste,
+      columns: base.columns.map(column => ({ ...column })),
+      foundations: { ...base.foundations }
+    }
+    const ace = collected.columns.findIndex(column => column.up[0]?.rank === 1)
+    if (ace >= 0) {
+      const suit = collected.columns[ace]!.up[0]!.suit
+      collected.columns[ace] = { hidden: collected.columns[ace]!.hidden, up: [] }
+      collected.foundations[suit] = 1
+    }
+    expect(reviveState(collected)).not.toBeNull()
+    expect(reviveState(collected)!.foundations).toEqual(collected.foundations)
+    // 少一张（52 不齐）或与基础堆同牌重复出现都拒绝
+    expect(reviveState({ ...collected, stock: collected.stock.slice(1) })).toBeNull()
+    const duplicated = JSON.parse(JSON.stringify(collected)) as typeof collected
+    duplicated.columns[0]!.up.push({ ...collected.columns[0]!.up[0]! })
+    expect(reviveState(duplicated)).toBeNull()
+  })
+  it('多张选中不能一起进基础堆', () => {
+    const state = {
+      ...newDeal(fixed),
+      columns: [
+        { hidden: [], up: [card('hearts', 2), card('spades', 1)] }, { hidden: [], up: [] }, { hidden: [], up: [] },
+        { hidden: [], up: [] }, { hidden: [], up: [] }, { hidden: [], up: [] }, { hidden: [], up: [] }
+      ]
+    }
+    expect(playColumn(state, 0, 2, 'foundation').moved).toBe(false)
   })
   it('还能翻牌就不算卡死', () => {
     const state = newDeal(fixed)

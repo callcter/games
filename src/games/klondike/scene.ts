@@ -154,8 +154,12 @@ export class KlondikeScene extends Phaser.Scene {
   }
 
   private selectWaste(): void {
-    if (this.autoFinishing || this.selection) return
-    if (this.state.waste.length) {
+    if (this.autoFinishing) return
+    // 再点一次选中的废牌 = 取消选中，别让孩子卡在选不出去的牌上。
+    if (this.selection) {
+      this.selection = null
+      this.hintMessage = '已取消选中'
+    } else if (this.state.waste.length) {
       this.selection = { kind: 'waste' }
       this.hintMessage = '已选中翻出的牌，点目标位置'
     }
@@ -165,16 +169,17 @@ export class KlondikeScene extends Phaser.Scene {
   private selectColumn(column: number, start: number): void {
     if (this.autoFinishing) return
     if (this.selection) {
-      if (this.selection.kind === 'column' && this.selection.column === column && this.selection.start === start) {
+      const sameSpot = this.selection.kind === 'column' && this.selection.column === column && this.selection.start === start
+      if (sameSpot) {
         this.selection = null
         this.hintMessage = '已取消选中'
         this.draw()
         return
       }
-      if (!(this.selection.kind === 'column' && this.selection.column === column)) {
-        this.targetTableau(column)
-        return
-      }
+      const otherColumn = !(this.selection.kind === 'column' && this.selection.column === column)
+      // 有选中时先尝试移到这一列；成功了 finish 已收尾。
+      if (otherColumn && this.tryMoveSelectionToColumn(column)) return
+      // 移不动（或同列换选）：落到下面直接改选这张牌，不让孩子卡在旧选择上。
     }
     const up = this.state.columns[column]!.up
     // 从 start 到列顶必须是红黑交替递减的连续段才能整段拿起。
@@ -193,6 +198,20 @@ export class KlondikeScene extends Phaser.Scene {
     this.draw()
   }
 
+  /** 尝试把当前选中的牌移到指定列；返回是否成功（成功时已重绘）。 */
+  private tryMoveSelectionToColumn(column: number): boolean {
+    const selection = this.selection
+    if (!selection) return false
+    const result = selection.kind === 'waste'
+      ? playWaste(this.state, column)
+      : selection.kind === 'foundation'
+        ? recall(this.state, selection.suit, column)
+        : playColumn(this.state, selection.column, this.state.columns[selection.column]!.up.length - selection.start, column)
+    const failure = selection.kind === 'foundation' ? '这里要接颜色相反、点数大一号的牌' : '这里要接颜色相反、点数大一号的牌；空列只能放 K'
+    this.finish(result, failure)
+    return result.moved
+  }
+
   private selectFoundation(suit: Suit): void {
     if (this.autoFinishing) return
     if (this.selection) { this.targetFoundation(suit); return }
@@ -205,17 +224,11 @@ export class KlondikeScene extends Phaser.Scene {
 
   private targetTableau(column: number): void {
     if (this.autoFinishing || !this.selection) return
-    const selection = this.selection
-    if (selection.kind === 'waste') {
-      this.finish(playWaste(this.state, column), '这里要接颜色相反、点数大一号的牌；空列只能放 K')
-      return
+    // 空位不是牌：移动失败时清掉选中，下次点哪里都是新开始。
+    if (!this.tryMoveSelectionToColumn(column) && this.selection) {
+      this.selection = null
+      this.draw()
     }
-    if (selection.kind === 'foundation') {
-      this.finish(recall(this.state, selection.suit, column), '这里要接颜色相反、点数大一号的牌')
-      return
-    }
-    this.finish(playColumn(this.state, selection.column, this.state.columns[selection.column]!.up.length - selection.start, column),
-      '这里要接颜色相反、点数大一号的牌；空列只能放 K')
   }
 
   private targetFoundation(suit: Suit): void {
@@ -227,6 +240,12 @@ export class KlondikeScene extends Phaser.Scene {
       return
     }
     if (selection.kind !== 'column') return
+    const count = this.state.columns[selection.column]!.up.length - selection.start
+    if (count > 1) {
+      this.hintMessage = '基础堆一次只能收最上面的一张'
+      this.draw()
+      return
+    }
     this.finish(playColumn(this.state, selection.column, 1, 'foundation'), '基础堆要从 A 开始，按同一花色依次收')
   }
 

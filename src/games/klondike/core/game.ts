@@ -171,3 +171,22 @@ export function stuck(state: KlondikeState): boolean {
   if (state.stock.length || state.waste.length) return false // 还能继续翻牌
   return true
 }
+
+/** 恢复存档：校验 52 张完整（含基础堆已收的）、7 列结构与花色不与基础堆重复。
+ * 坏档返回 null，由调用方重新发牌。 */
+export function reviveState(value: unknown): KlondikeState | null {
+  if (!value || typeof value !== 'object') return null
+  const state = value as KlondikeState
+  if (!Array.isArray(state.columns) || state.columns.length !== 7
+    || !Array.isArray(state.stock) || !Array.isArray(state.waste)) return null
+  const foundations = state.foundations
+  if (!foundations || SUITS.some(suit => !Number.isInteger(foundations[suit]) || foundations[suit] < 0 || foundations[suit] > 13)) return null
+  const cards = [...state.stock, ...state.waste, ...state.columns.flatMap(column => [...(column?.hidden ?? []), ...(column?.up ?? [])])]
+  const collected = SUITS.reduce((sum, suit) => sum + foundations[suit], 0)
+  if (cards.length + collected !== 52) return null
+  if (new Set(cards.map(card => card?.id)).size !== cards.length) return null
+  // 基础堆已收的花色 1..rank 不能再出现在场上。
+  if (cards.some(card => card && card.rank <= foundations[card.suit])) return null
+  if (!Number.isInteger(state.moves) || state.moves < 0) return null
+  return { ...state, won: SUITS.every(suit => foundations[suit] === 13) }
+}
