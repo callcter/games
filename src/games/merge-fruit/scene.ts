@@ -3,6 +3,8 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
 import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
+import { showFloatingText } from '../../experience/feedback/floating-text'
+import { createBurstPool } from '../../experience/feedback/particles'
 import { FRUIT_LEVELS, fruitAt, mergeFruits, randomDropLevel } from './core/game'
 
 interface SceneCallbacks {
@@ -45,6 +47,14 @@ export class MergeFruitScene extends Phaser.Scene {
   private dangerGraphics: Phaser.GameObjects.Graphics | null = null
   private dangerActive: boolean | null = null
   private nextDangerCheck = 0
+  private dangerTween: Phaser.Tweens.Tween | null = null
+  private guideLine: Phaser.GameObjects.Graphics | null = null
+  private bowlView: Phaser.GameObjects.Graphics | null = null
+  private bowlShaking = false
+  private lastHeavyAt = 0
+  private chainCount = 0
+  private lastMergeAt = 0
+  private readonly bursts = createBurstPool(this)
 
   constructor(audio: GameAudio, callbacks: SceneCallbacks) {
     super({ key: 'merge-fruit' })
@@ -62,6 +72,9 @@ export class MergeFruitScene extends Phaser.Scene {
     this.createWorld()
     this.currentLevel = randomDropLevel()
     this.nextLevel = randomDropLevel()
+    this.chainCount = 0
+    this.lastMergeAt = 0
+    this.lastHeavyAt = 0
     this.drawInterface()
     this.refreshPreviews()
 
@@ -360,8 +373,11 @@ export class MergeFruitScene extends Phaser.Scene {
     bowl.lineTo(BOWL_RIGHT, BOWL_BOTTOM)
     bowl.lineTo(BOWL_RIGHT, BOWL_TOP)
     bowl.strokePath()
+    this.bowlView = bowl
     this.dangerGraphics = this.add.graphics()
     this.drawDangerLine(false)
+    // 落点参考：很淡的垂直线 + 碗底投影，只做玩具感不做成瞄准器。
+    this.guideLine = this.add.graphics().setDepth(3)
 
     // 触屏环境不提示键盘投放方式
     const dropHint = hasPrecisePointer() ? '轻点位置投放 · 也可用 ← → 移动，空格投放' : '轻点位置投放'
@@ -375,13 +391,26 @@ export class MergeFruitScene extends Phaser.Scene {
     const radius = fruitAt(this.currentLevel).radius
     this.guideX = Phaser.Math.Clamp(x, BOWL_LEFT + radius + 5, BOWL_RIGHT - radius - 5)
     if (this.preview) this.preview.x = this.guideX
+    this.drawGuideShadow(radius)
+  }
+
+  private drawGuideShadow(radius: number): void {
+    if (!this.guideLine) return
+    this.guideLine.clear()
+    if (this.gameOver || !this.canDrop) return
+    this.guideLine.lineStyle(3, 0x9c7047, 0.16)
+    this.guideLine.lineBetween(this.guideX, DROP_Y + radius * 0.6, this.guideX, BOWL_BOTTOM - 14)
+    this.guideLine.fillStyle(0x9c7047, 0.14)
+    this.guideLine.fillEllipse(this.guideX, BOWL_BOTTOM - 10, radius * 1.8, 12)
   }
 
   private dropFruit(): void {
     if (!this.canDrop || this.gameOver) return
     this.canDrop = false
     const level = this.currentLevel
-    this.spawnFruit(this.guideX, DROP_Y, level)
+    const fruit = this.spawnFruit(this.guideX, DROP_Y, level)
+    // 轻微下沉初速：像松手放开，而不是凭空出现。
+    fruit.setVelocity(0, 2.2)
     this.audio.playPlace(2)
     this.currentLevel = this.nextLevel
     this.nextLevel = randomDropLevel()
@@ -422,7 +451,17 @@ export class MergeFruitScene extends Phaser.Scene {
       if (!first || !second || first === second) continue
       const levelA = Number(first.getData('fruitLevel'))
       const levelB = Number(second.getData('fruitLevel'))
-      if (!mergeFruits(levelA, levelB)) continue
+      if (!mergeFruits(levelA, levelB)) {
+        // 大水果互相磕碰：碗体轻震 + 极轻画面晃动，让「重」被感觉到（节流防嗡嗡响）。
+        const heavy = Math.max(levelA, levelB)
+        if (heavy >= 7 && this.time.now - this.lastHeavyAt > 260) {
+          this.lastHeavyAt = this.time.now
+          this.shakeBowl(heavy >= 9 ? 3 : 2)
+          if (heavy >= 9) this.cameras.main.shake(90, 0.0035)
+          this.audio.playPlace(1)
+        }
+        continue
+      }
       if (this.mergingBodies.has(bodyA.id) || this.mergingBodies.has(bodyB.id)) continue
       this.mergingBodies.add(bodyA.id)
       this.mergingBodies.add(bodyB.id)
@@ -442,15 +481,39 @@ export class MergeFruitScene extends Phaser.Scene {
     const y = (first.y + second.y) / 2
     const velocityX = ((first.body?.velocity.x ?? 0) + (second.body?.velocity.x ?? 0)) / 2
     const velocityY = Math.min(0, ((first.body?.velocity.y ?? 0) + (second.body?.velocity.y ?? 0)) / 2 - 2.2)
+    // 接触瞬间的小涟漪：两颗水果「挤到了一起」（纯视觉层，不动刚体）。
+    this.splash(x, y)
     this.removeFruit(first)
     this.removeFruit(second)
+    let mergedColor = 0xfff3c4
     if (result.nextLevel === null) {
       this.animateWatermelonClear(x, y)
     } else {
       const merged = this.spawnFruit(x, y, result.nextLevel)
       merged.setVelocity(velocityX, velocityY)
+      mergedColor = fruitAt(result.nextLevel).color
       this.animateMerge(x, y, level, result.nextLevel, merged)
     }
+
+    // 纯表现层连锁：650ms 内连续合成逐级抬升浮字、粒子与音高，不改变 core 计分。
+    const now = this.time.now
+    this.chainCount = now - this.lastMergeAt < 650 ? this.chainCount + 1 : 1
+    this.lastMergeAt = now
+    showFloatingText(this, { x, y: y - 42, text: `+${result.score}`, color: '#fffdf6', fontSize: this.chainCount >= 2 ? 28 : 24 })
+    if (this.chainCount >= 2) {
+      showFloatingText(this, {
+        x, y: y - 92, text: this.chainCount >= 4 ? `连锁 ×${this.chainCount}！` : `连锁 ×${this.chainCount}`,
+        color: '#ffb84d', fontSize: 26 + Math.min(8, this.chainCount * 2), durationMs: 900
+      })
+    }
+    this.bursts.burst({
+      x, y,
+      count: this.chainCount >= 3 ? 16 : 9,
+      speed: this.chainCount >= 3 ? 260 : 190,
+      tint: [mergedColor, 0xfff3c4],
+      radius: 4,
+      lifespanMs: 480
+    })
 
     this.score += result.score
     if (this.score > this.bestScore) {
@@ -459,6 +522,26 @@ export class MergeFruitScene extends Phaser.Scene {
     }
     this.scoreText?.setText(this.scoreLabel())
     this.audio.playMerge()
+    if (this.chainCount >= 2) this.audio.playPop(1 + Math.min(1.1, this.chainCount * 0.16))
+  }
+
+  /** 接触涟漪：小圆环快速扩散消散，替代会牵动刚体的 squash。 */
+  private splash(x: number, y: number): void {
+    const ring = this.add.graphics().setDepth(99)
+    ring.lineStyle(4, 0xffffff, 0.65)
+    ring.strokeCircle(x, y, 16)
+    this.tweens.add({ targets: ring, scale: 1.9, alpha: 0, duration: 170, ease: 'Cubic.Out', onComplete: () => ring.destroy() })
+  }
+
+  /** 大水果落碗的轻震；进行中不叠加，结束后归位。 */
+  private shakeBowl(strength: number): void {
+    if (!this.bowlView || this.bowlShaking) return
+    this.bowlShaking = true
+    const home = this.bowlView.x
+    this.tweens.add({
+      targets: this.bowlView, x: home + strength, duration: 55, yoyo: true, repeat: 3,
+      onComplete: () => { this.bowlView?.setPosition(home, 0); this.bowlShaking = false }
+    })
   }
 
   private animateMerge(x: number, y: number, fromLevel: number, toLevel: number, merged: FruitImage): void {
@@ -514,19 +597,32 @@ export class MergeFruitScene extends Phaser.Scene {
     this.preview = this.add.image(this.guideX, DROP_Y, this.textureKey(this.currentLevel)).setDepth(20)
     const currentSize = this.displaySizeForRadius(current.radius)
     this.preview.setDisplaySize(currentSize, currentSize)
+    // 新预览轻弹出现，模拟「下一颗被拿起」。
+    this.preview.setScale(this.preview.scaleX * 0.78)
+    this.tweens.add({ targets: this.preview, scaleX: this.preview.scaleX / 0.78, scaleY: this.preview.scaleY / 0.78, duration: 180, ease: 'Back.Out' })
     const next = fruitAt(this.nextLevel)
     this.nextPreview = this.add.image(690, 165, this.textureKey(this.nextLevel)).setDepth(20)
     const nextSize = Phaser.Math.Clamp(this.displaySizeForRadius(next.radius), 42, 76)
     this.nextPreview.setDisplaySize(nextSize, nextSize)
     this.nextText?.setText(next.name)
+    this.drawGuideShadow(current.radius)
   }
 
   private drawDangerLine(active: boolean): void {
     if (!this.dangerGraphics || this.dangerActive === active) return
     this.dangerActive = active
+    this.dangerTween?.remove()
+    this.dangerTween = null
     this.dangerGraphics.clear()
     this.dangerGraphics.lineStyle(active ? 5 : 3, active ? 0xe25037 : 0xcb6544, active ? 0.95 : 0.45)
     this.dangerGraphics.lineBetween(BOWL_LEFT + 8, DANGER_Y, BOWL_RIGHT - 8, DANGER_Y)
+    if (active) {
+      // 缓慢呼吸而不是高频报警：提醒但不制造焦虑。
+      this.dangerGraphics.setAlpha(0.6)
+      this.dangerTween = this.tweens.add({ targets: this.dangerGraphics, alpha: 1, duration: 620, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    } else {
+      this.dangerGraphics.setAlpha(1)
+    }
   }
 
   private handleKey(event: KeyboardEvent): void {
@@ -541,27 +637,38 @@ export class MergeFruitScene extends Phaser.Scene {
     this.gameOver = true
     this.canDrop = false
     this.preview?.setVisible(false)
+    this.guideLine?.clear()
+    this.dangerTween?.remove()
+    this.dangerTween = null
     this.matter.world.pause()
     this.audio.playGameOver()
 
-    const panel = this.add.container(SCENE_WIDTH / 2, 570).setDepth(200)
+    // 水果堆保留为背景：压暗一层，卡片从底部弹出，「再玩一次」是第一主操作。
+    this.add.rectangle(SCENE_WIDTH / 2, SCENE_HEIGHT / 2, SCENE_WIDTH, SCENE_HEIGHT, 0x173f35, 0.34)
+      .setDepth(190).setInteractive()
+    const panel = this.add.container(SCENE_WIDTH / 2, 0).setDepth(200)
     const background = new Phaser.GameObjects.Graphics(this)
-    background.fillStyle(0xf8f1df, 0.96)
-    background.fillRoundedRect(-215, -100, 430, 200, 28)
-    const title = new Phaser.GameObjects.Text(this, 0, -48, '水果堆满啦', {
+    background.fillStyle(0xf8f1df, 0.98)
+    background.fillRoundedRect(-225, -170, 450, 340, 28)
+    background.lineStyle(3, 0xd8cdbb, 1)
+    background.strokeRoundedRect(-225, -170, 450, 340, 28)
+    const title = new Phaser.GameObjects.Text(this, 0, -118, '水果堆满啦', {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
     }).setOrigin(0.5)
-    const score = new Phaser.GameObjects.Text(this, 0, 1, `本局得分 ${this.score}`, {
-      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '20px'
+    const score = new Phaser.GameObjects.Text(this, 0, -52, `这次 ${this.score} 分 · 最好 ${this.bestScore} 分`, {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px'
     }).setOrigin(0.5)
-    const restart = new Phaser.GameObjects.Text(this, 0, 55, '再来一局', {
+    const replay = new Phaser.GameObjects.Text(this, 0, 24, '再玩一次', {
       color: '#fffaf0', backgroundColor: '#cb6544',
-      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '20px', fontStyle: 'bold',
-      padding: { x: 22, y: 11 }
+      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '23px', fontStyle: 'bold',
+      padding: { x: 30, y: 13 }
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
-    panel.add([background, title, score, restart])
-    panel.setScale(0.82)
-    this.tweens.add({ targets: panel, scale: 1, duration: 260, ease: 'Back.Out' })
+    const leave = new Phaser.GameObjects.Text(this, 0, 112, '回游戏屋', {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '19px'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
+    panel.add([background, title, score, replay, leave])
+    panel.y = SCENE_HEIGHT + 200
+    this.tweens.add({ targets: panel, y: 560, duration: 340, ease: 'Back.Out' })
   }
 
   private restart(): void {
@@ -582,6 +689,10 @@ export class MergeFruitScene extends Phaser.Scene {
     this.soundText = null
     this.dangerGraphics = null
     this.dangerActive = null
+    this.dangerTween = null
+    this.guideLine = null
+    this.bowlView = null
+    this.bowlShaking = false
     this.nextDangerCheck = 0
     this.scene.restart()
   }
