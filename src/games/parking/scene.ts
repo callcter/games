@@ -4,6 +4,7 @@ import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { AxisDragController, type DragStop } from '../../experience/input/axis-drag'
 import { pickup as pickupMotion, release as releaseMotion, snap as snapMotion } from '../../experience/feedback/motion'
+import { createBurstPool } from '../../experience/feedback/particles'
 import { EXIT_ROW, heroExit, legalTargets, MODES, newGame, slide, solve, type ParkState } from './core/game'
 import { restoreParking } from '../puzzle-kit/core/drafts'
 
@@ -30,6 +31,8 @@ export class ParkingScene extends PuzzleScene {
   private carViews = new Map<number, Phaser.GameObjects.Container>()
   private drags: AxisDragController[] = []
   private spots: Phaser.GameObjects.Rectangle[] = []
+  private exitArrow: Phaser.GameObjects.Text | null = null
+  private bursts = createBurstPool(this)
 
   constructor(audio: GameAudio, exit: () => void) { super('parking', '停车场', audio, exit) }
 
@@ -82,6 +85,7 @@ export class ParkingScene extends PuzzleScene {
     board.fillRect(LEFT + CELL * 6 - 2, TOP + EXIT_ROW * CELL + 4, 12, CELL - 8)
     const arrow = this.add.text(LEFT + CELL * 6 + 26, TOP + EXIT_ROW * CELL + CELL / 2, '→', { fontSize: '30px', color: '#2f8f6b', fontStyle: 'bold' }).setOrigin(0.5)
     this.content.add(arrow)
+    this.exitArrow = arrow
 
     this.state.cars.forEach(car => this.car(car))
     this.button(160, 850, '撤销', () => {
@@ -235,7 +239,7 @@ export class ParkingScene extends PuzzleScene {
     }
   }
 
-  /** 红车到出口：短暂停顿后加速驶出（EXPERIENCE-2 §6.3）。 */
+  /** 红车到出口：短暂停顿后加速驶出，沿途粒子尾迹、出口箭头亮起，棋盘保留为背景。 */
   private celebrateExit(): void {
     this.draw()
     const hero = this.state.cars[0]!
@@ -243,13 +247,54 @@ export class ParkingScene extends PuzzleScene {
     if (!view) return
     const [ex] = cellCenter(6 + hero.len / 2, hero.y)
     this.moving = true
+    // 出口箭头亮起并放大，指向「路通了」。
+    if (this.exitArrow) {
+      this.exitArrow.setColor('#1f7a4d')
+      this.exitArrow.setScale(1)
+      this.tweens.add({ targets: this.exitArrow, scale: 1.5, duration: 340, yoyo: true, ease: 'Sine.InOut' })
+    }
     this.time.delayedCall(PARKING_FEEL.exitPauseMs, () => {
       if (!this.alive) return
-      this.tweens.add({ targets: view, x: ex, duration: PARKING_FEEL.exitMs, ease: 'Cubic.In', onComplete: () => {
-        recordFlag('parking-clear')
-        this.celebrate('红车开出去啦！')
-        this.remember('parking', null)
-      } })
+      this.tweens.add({
+        targets: view, x: ex, duration: PARKING_FEEL.exitMs, ease: 'Cubic.In',
+        onUpdate: () => {
+          // 尾迹粒子从车尾散出，量小不遮棋盘。
+          this.bursts.burst({ x: view.x - 60, y: view.y + (Phaser.Math.Between(-8, 8)), count: 3, speed: 90, lifespanMs: 420, tint: 0xfff3c4, radius: 4, gravityY: -30 })
+        },
+        onComplete: () => {
+          recordFlag('parking-clear')
+          this.remember('parking', null)
+          this.showResultCard()
+        }
+      })
     })
+  }
+
+  /** 胜利结果卡：棋盘保留在背景，卡片从底部弹出；「再来一局」是第一主操作。 */
+  private showResultCard(): void {
+    this.audio.playWin()
+    this.say(`红车开出去啦！用了 ${this.state.moves} 步`)
+    const dim = this.add.rectangle(384, 450, 768, 900, 0x173f35, 0.28).setInteractive()
+    this.content.add(dim)
+    const card = this.add.container(384, 900)
+    this.content.add(card)
+    const panel = this.add.graphics()
+    panel.fillStyle(0xfffdf6, 1)
+    panel.fillRoundedRect(-260, -150, 520, 300, 22)
+    panel.lineStyle(3, 0xd8cdbb, 1)
+    panel.strokeRoundedRect(-260, -150, 520, 300, 22)
+    card.add(panel)
+    const title = this.add.text(0, -96, '红车开出去啦！', { fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '34px', color: '#173f35', fontStyle: 'bold' }).setOrigin(0.5)
+    card.add(title)
+    title.setScale(0.7)
+    this.tweens.add({ targets: title, scale: 1, duration: 280, ease: 'Back.Out' })
+    const detail = this.add.text(0, -34, `用了 ${this.state.moves} 步 · ${MODES[this.mode]!.label}难度`, { fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px', color: '#4c5b53' }).setOrigin(0.5)
+    card.add(detail)
+    const replay = this.button(0, 28, '再来一局', () => { this.restart() }, 300, card)
+    replay.setFontSize(24)
+    const leave = this.button(0, 108, '回游戏屋', () => { this.exit() }, 220, card)
+    leave.setFontSize(19)
+    card.y = 1050
+    this.tweens.add({ targets: card, y: 640, duration: 320, ease: 'Back.Out' })
   }
 }

@@ -9,7 +9,7 @@ export abstract class PuzzleScene extends Phaser.Scene {
   protected audio: GameAudio
   protected message = ''
   protected heading: string
-  private exit: () => void
+  protected exit: () => void
   protected content!: Phaser.GameObjects.Container
   private status!: Phaser.GameObjects.Text
   protected alive = false
