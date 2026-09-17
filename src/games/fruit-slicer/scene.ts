@@ -22,6 +22,10 @@ export class FruitSlicerScene extends ActionScene {
   private blade!: Phaser.GameObjects.Graphics
   private lastPointer: TrailPoint | null = null
   private lastWhoosh = 0
+  private pendingMode = 0
+  private hudScore: Phaser.GameObjects.Text | null = null
+  private hudScoreLabel: Phaser.GameObjects.Text | null = null
+  private hudTime: Phaser.GameObjects.Text | null = null
   constructor(audio: GameAudio, exit: () => void) { super('fruit-slicer', '切水果', audio, exit) }
   protected modes(): readonly { label: string }[] {
     return MODES.map((entry, index) => ({ label: `${this.mode === index ? '✓ ' : ''}${entry.label}` }))
@@ -33,6 +37,114 @@ export class FruitSlicerScene extends ActionScene {
   protected statusLine(): string {
     return `分数 ${this.state.score} · 已切 ${this.state.cut} 个 · 剩余 ${this.remainingSeconds} 秒`
   }
+
+  /** 自定义 intro（EXPERIENCE-2 §8.1）：玩具柜式主按钮 + 次级难度行 + 手势教学动画。 */
+  protected override showIntro(): void {
+    this.running = false
+    this.pendingMode = this.mode
+    const best = Math.max(...[0, 1, 2].map(mode => {
+      try {
+        const value = Number(window.localStorage.getItem(`family-game-room-fruit-slicer-v2-best-${mode}`))
+        return Number.isFinite(value) && value >= 0 ? value : 0
+      } catch { return 0 }
+    }))
+    this.resetView('准备好了吗？')
+    // 中央三颗装饰水果轻微浮动，让画面像玩具柜而不是设置页。
+    if (ensureFruitArtFrames(this)) {
+      this.useArtFruits = true
+      ;[10, 5, 3].forEach((level, index) => {
+        const fruit = this.add.image(384 + (index - 1) * 150, 330 + (index === 1 ? -26 : 0), fruitArtKey(level))
+        const size = level === 10 ? 132 : 104
+        fruit.setDisplaySize(size, size)
+        this.content.add(fruit)
+        this.tweens.add({ targets: fruit, y: fruit.y - 10, duration: 1400 + index * 240, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+      })
+    }
+    const start = this.button(384, 508, '开 始', () => this.launch(this.pendingMode, this.roundSeconds(this.pendingMode)), 264, this.content)
+    start.setFontSize(26)
+    const modeRow = this.text(384, 592, `难度：${MODES[this.pendingMode]!.label} ›`, 21, this.content)
+    modeRow.setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      this.pendingMode = (this.pendingMode + 1) % MODES.length
+      modeRow.setText(`难度：${MODES[this.pendingMode]!.label} ›`)
+      this.audio.playPlace(1)
+    })
+    if (best > 0) this.text(384, 650, `最高纪录 ${best} 分`, 20, this.content).setColor('#698379')
+    // 手势教学：淡虚线 + 往返的滑动光点，不挡主按钮，任何真实输入都无冲突。
+    const coachLine = this.add.graphics()
+    coachLine.lineStyle(4, 0x9c7047, 0.28)
+    coachLine.lineBetween(214, 760, 554, 700)
+    this.content.add(coachLine)
+    const dot = this.add.circle(214, 760, 13, 0xffb84d, 0.85)
+    this.content.add(dot)
+    this.tweens.add({
+      targets: dot, x: 554, y: 700, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+      onYoyo: () => dot.setAlpha(0.25), onRepeat: () => dot.setAlpha(0.85)
+    })
+    this.text(384, 806, '像这样滑动切开水果', 17, this.content).setColor('#8a7c66')
+  }
+
+  /** 回合开始的轻提示：不阻塞输入，500ms 内缩放淡出。 */
+  protected override launch(mode: number, seconds: number): void {
+    super.launch(mode, seconds)
+    const go = this.text(384, 520, '开始！', 46, this.entities)
+    go.setScale(0.6)
+    this.tweens.add({ targets: go, scale: 1.15, alpha: 0, duration: 560, ease: 'Back.Out', onComplete: () => go.destroy() })
+  }
+
+  /** HUD 拆成视觉块（EXPERIENCE-2 §8.3）：大数字分数 + 右上时间，不用长句状态行。 */
+  protected override showHud(): void {
+    if (!this.hudScore || !this.hudTime) {
+      this.hudScore = this.text(120, 148, `${this.state.score}`, 40, this.content)
+      this.hudScoreLabel = this.text(120, 186, '分数', 15, this.content)
+      this.hudScoreLabel.setColor('#8a7c66')
+      this.hudTime = this.text(648, 148, `${Math.ceil(this.remainingSeconds)}s`, 30, this.content)
+    }
+    const score = this.hudScore
+    const time = this.hudTime
+    score.setText(`${this.state.score}`)
+    time.setText(`${Math.ceil(this.remainingSeconds)}s`)
+    time.setColor(this.remainingSeconds <= 10 ? '#cb6544' : '#173f35')
+  }
+
+  /** 保留最后一帧的结算（EXPERIENCE-2 §8.4）：水果世界只压暗不清空，卡片底部弹出。 */
+  protected override showResult(score: number, isBest: boolean, best: number): void {
+    this.hudScore = null
+    this.hudScoreLabel = null
+    this.hudTime = null
+    this.say(isBest ? `新纪录 ${score} 分！` : `时间到！本局 ${score} 分`)
+    const dim = this.add.rectangle(384, 450, 768, 900, 0x173f35, 0.36).setInteractive()
+    this.content.add(dim)
+    const card = this.add.container(384, 0)
+    this.content.add(card)
+    const panel = this.add.graphics()
+    panel.fillStyle(0xfffdf6, 0.98)
+    panel.fillRoundedRect(-235, -165, 470, 330, 24)
+    panel.lineStyle(3, 0xd8cdbb, 1)
+    panel.strokeRoundedRect(-235, -165, 470, 330, 24)
+    card.add(panel)
+    const banner = this.add.text(0, -112, isBest ? '✦ 新纪录 ✦' : '✦ 时间到 ✦', {
+      color: isBest ? '#cb6544' : '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '36px', fontStyle: 'bold'
+    }).setOrigin(0.5)
+    card.add(banner)
+    banner.setScale(0.7)
+    this.tweens.add({ targets: banner, scale: 1, duration: 260, ease: 'Back.Out' })
+    card.add(this.add.text(0, -46, `本局 ${score} 分 · 最高 ${Math.max(score, best)} 分`, {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px'
+    }).setOrigin(0.5))
+    const replay = this.add.text(0, 30, '再来一次', {
+      color: '#fffaf0', backgroundColor: '#cb6544',
+      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '23px', fontStyle: 'bold',
+      padding: { x: 30, y: 13 }
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.replay())
+    card.add(replay)
+    const change = this.add.text(0, 118, '换个难度', {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '18px'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.showIntro())
+    card.add(change)
+    card.y = 1150
+    this.tweens.add({ targets: card, y: 560, duration: 340, ease: 'Back.Out' })
+  }
+
   preload(): void {
     preloadFruitSheets(this)
   }

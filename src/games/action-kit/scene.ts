@@ -73,8 +73,13 @@ export abstract class ActionScene extends PuzzleScene {
     const clamped = Math.min(delta, 50)
     this.remainingMs -= clamped
     this.tick(clamped)
-    this.say(this.statusLine())
+    this.showHud()
     if (this.remainingMs <= 0) this.endRound()
+  }
+
+  /** 回合中 HUD：默认写 puzzle 状态行；子类可覆写为自绘视觉块（分数/时间拆分）。 */
+  protected showHud(): void {
+    this.say(this.statusLine())
   }
 
   protected get remainingSeconds(): number {
@@ -122,11 +127,16 @@ export abstract class ActionScene extends PuzzleScene {
       recordBest(`${this.gameId}:v2:${this.mode}`, score, false)
     }
     this.audio.playWin()
+    this.showResult(score, isBest, this.best)
+  }
+
+  /** 结算面板：默认清场进入统一结算页；子类可覆写为保留最后一帧的 overlay（EXPERIENCE-2 §9）。 */
+  protected showResult(score: number, isBest: boolean, best: number): void {
     this.resetView(isBest ? `新纪录 ${score} 分！` : `时间到！本局 ${score} 分`)
     const banner = this.text(384, 420, isBest ? '✦ 新纪录 ✦' : '✦ 时间到 ✦', 34, this.content)
     banner.setScale(0.7)
     this.tweens.add({ targets: banner, scale: 1, duration: 260, ease: 'Back.Out' })
-    this.text(384, 500, `本局 ${score} 分 · 最高 ${this.best} 分`, 24, this.content)
+    this.text(384, 500, `本局 ${score} 分 · 最高 ${best} 分`, 24, this.content)
     this.button(240, 640, '再来一次', () => this.replay(), 190, this.content)
     this.button(528, 640, '换个难度', () => this.showIntro(), 190, this.content)
   }
