@@ -133,6 +133,43 @@ export abstract class ActionScene extends PuzzleScene {
     this.showResult(score, isBest, this.best)
   }
 
+  /** 动作游戏通用「保留游戏世界」结算：只压暗不清场，卡片从底部弹出（Wave 3）。
+   * accent 为主按钮底色，各游戏可用自己的强调色。 */
+  protected showKeptResult(score: number, isBest: boolean, best: number, accent = '#cb6544'): void {
+    this.say(isBest ? `新纪录 ${score} 分！` : `时间到！本局 ${score} 分`)
+    const dim = this.add.rectangle(384, 450, 768, 900, 0x173f35, 0.36).setInteractive()
+    this.content.add(dim)
+    const card = this.add.container(384, 0)
+    this.content.add(card)
+    const panel = this.add.graphics()
+    panel.fillStyle(0xfffdf6, 0.98)
+    panel.fillRoundedRect(-235, -160, 470, 320, 24)
+    panel.lineStyle(3, 0xd8cdbb, 1)
+    panel.strokeRoundedRect(-235, -160, 470, 320, 24)
+    card.add(panel)
+    const banner = this.add.text(0, -108, isBest ? '✦ 新纪录 ✦' : '✦ 时间到 ✦', {
+      color: isBest ? accent : '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '36px', fontStyle: 'bold'
+    }).setOrigin(0.5)
+    card.add(banner)
+    banner.setScale(0.7)
+    this.tweens.add({ targets: banner, scale: 1, duration: 260, ease: 'Back.Out' })
+    card.add(this.add.text(0, -44, `本局 ${score} 分 · 最高 ${Math.max(score, best)} 分`, {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px'
+    }).setOrigin(0.5))
+    const replay = this.add.text(0, 32, '再来一次', {
+      color: '#fffaf0', backgroundColor: accent,
+      fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '23px', fontStyle: 'bold',
+      padding: { x: 30, y: 13 }
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.replay())
+    card.add(replay)
+    const change = this.add.text(0, 118, '换个难度', {
+      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '18px'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.showIntro())
+    card.add(change)
+    card.y = 1150
+    this.tweens.add({ targets: card, y: 560, duration: 340, ease: 'Back.Out' })
+  }
+
   /** 结算面板：默认清场进入统一结算页；子类可覆写为保留最后一帧的 overlay（EXPERIENCE-2 §9）。 */
   protected showResult(score: number, isBest: boolean, best: number): void {
     this.resetView(isBest ? `新纪录 ${score} 分！` : `时间到！本局 ${score} 分`)

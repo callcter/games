@@ -12,6 +12,11 @@ export class RedRainScene extends ActionScene {
   }
   protected headline(): string { return '点开落下的红包收福分，连击有加倍；炮仗别点，会扣分' }
   protected roundSeconds(_mode: number): number { return 45 }
+  /** 时间到保留游戏世界为背景（Wave 3）。 */
+  protected override showResult(score: number, isBest: boolean, best: number): void {
+    this.showKeptResult(score, isBest, best, '#cb6544')
+  }
+
   protected replay(): void { this.launch(this.mode, this.roundSeconds(this.mode)) }
   protected roundScore(): number { return this.state.score }
   protected statusLine(): string {

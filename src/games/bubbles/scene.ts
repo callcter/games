@@ -80,6 +80,10 @@ export class BubblesScene extends PuzzleScene {
     const shot=trace(this.state,this.angle)
     if(shot.index<0){this.say('这里没有空位，换个方向试试');return}
     this.shooting=true;this.guide.clear();this.audio.playPlace(1)
+    // 发射口快速扩散的圆环，给「打出去」一个起点感。
+    const muzzle=this.add.graphics().setDepth(50)
+    muzzle.lineStyle(4,0xffffff,0.7);muzzle.strokeCircle(SHOOTER.x,SHOOTER.y,14)
+    this.tweens.add({targets:muzzle,scale:1.8,alpha:0,duration:180,ease:'Cubic.Out',onComplete:()=>muzzle.destroy()})
     const moving=this.bubble(SHOOTER.x,SHOOTER.y,this.state.current)
     this.tweens.addCounter({from:0,to:shot.path.length-1,duration:Math.max(200,shot.path.length*5/0.8),onUpdate:tween=>{
       const p=shot.path[Math.min(shot.path.length-1,Math.floor(tween.getValue()??0))]!

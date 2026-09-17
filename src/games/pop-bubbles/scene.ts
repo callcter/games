@@ -14,6 +14,11 @@ export class PopBubblesScene extends ActionScene {
   }
   protected headline(): string { return '点破上升的泡泡，泡泡越小分越高，金色三倍' }
   protected roundSeconds(_mode: number): number { return 60 }
+  /** 时间到保留游戏世界为背景（Wave 3）。 */
+  protected override showResult(score: number, isBest: boolean, best: number): void {
+    this.showKeptResult(score, isBest, best, '#58a897')
+  }
+
   protected replay(): void { this.launch(this.mode, this.roundSeconds(this.mode)) }
   protected roundScore(): number { return this.state.score }
   protected statusLine(): string {

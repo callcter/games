@@ -18,6 +18,11 @@ export class WhackMoleScene extends ActionScene {
   }
   protected headline(): string { return '点冒头的地鼠得分，连击有加倍；戴睡帽的鼠宝宝在睡觉，别打它' }
   protected roundSeconds(_mode: number): number { return 60 }
+  /** 时间到保留游戏世界为背景（Wave 3）。 */
+  protected override showResult(score: number, isBest: boolean, best: number): void {
+    this.showKeptResult(score, isBest, best, '#e6b84d')
+  }
+
   protected replay(): void { this.launch(this.mode, this.roundSeconds(this.mode)) }
   protected roundScore(): number { return this.state.score }
   protected statusLine(): string {
