@@ -1,4 +1,5 @@
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
+import { awardLeaf } from '../../app/tree'
 
 // 新增益智游戏共用的跨会话进度：best 记数值型最好成绩，flags 记完成标记，
 // levels 记关卡进度。结构变更时换新版本键并提供兼容迁移。
@@ -53,6 +54,8 @@ export function recordFlag(flag: string): void {
     if (progress.flags.includes(flag)) return
     progress.flags.push(flag)
     persist(progress)
+    // 每个自然目标的第一次完成同时给小树一片叶子（EXPERIENCE-2 §13.2）。
+    awardLeaf(flag)
   })
 }
 

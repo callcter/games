@@ -3,6 +3,30 @@ import { gameIcon } from './icons'
 import { installIconArt } from './icon-art'
 import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
 import { CATEGORIES, categoryOf, clearOrder, orderedIds, readRecent, rememberRecent, writeOrder, type Category } from './library'
+import { readTree, treeStage } from './tree'
+
+/** 小树的程序化 SVG：七个阶段逐级长出（种子→树屋），只记录不催促。 */
+function treeSvg(stage: number, leaves: number): string {
+  const crown = 30 + Math.min(26, stage * 5)
+  const parts: string[] = []
+  parts.push(`<circle cx="60" cy="104" r="9" fill="#c9a97e"/>`)// 土壤
+  if (stage >= 1) parts.push(`<line x1="60" y1="104" x2="60" y2="${104 - 12 - stage * 5}" stroke="#8a5a35" stroke-width="5" stroke-linecap="round"/>`)
+  if (stage >= 2) {
+    parts.push(`<circle cx="60" cy="${104 - 26 - stage * 6}" r="${crown}" fill="#4f8d55"/>`)
+    parts.push(`<circle cx="${60 - crown * 0.55}" cy="${104 - 18 - stage * 6}" r="${crown * 0.62}" fill="#5d9c52"/>`)
+    parts.push(`<circle cx="${60 + crown * 0.55}" cy="${104 - 18 - stage * 6}" r="${crown * 0.62}" fill="#447f4c"/>`)
+  }
+  if (stage >= 1 && stage < 2) {
+    parts.push(`<ellipse cx="52" cy="86" rx="8" ry="4" fill="#5d9c52" transform="rotate(-30 52 86)"/>`)
+    parts.push(`<ellipse cx="68" cy="82" rx="8" ry="4" fill="#5d9c52" transform="rotate(25 68 82)"/>`)
+  }
+  if (stage >= 4) for (const [x, y] of [[46, 66], [72, 58], [60, 78], [80, 72], [50, 84]] as const) {
+    parts.push(`<circle cx="${x}" cy="${y - stage}" r="4.5" fill="#f2b8b2"/><circle cx="${x}" cy="${y - stage}" r="2" fill="#ffd66b"/>`)
+  }
+  if (stage >= 5) parts.push(`<text x="82" y="60" font-size="16" text-anchor="middle">🐦</text>`)
+  if (stage >= 6) parts.push(`<rect x="52" y="70" width="16" height="13" rx="2" fill="#b98b63"/><path d="M50 70 L60 62 L70 70 Z" fill="#8a5a35"/>`)
+  return `<svg viewBox="0 0 120 120" width="86" height="86" role="img" aria-label="小树">${parts.join('')}<text x="60" y="118" font-size="10" text-anchor="middle" fill="#527267" font-weight="700">${leaves} 片叶</text></svg>`
+}
 
 const games = [
   { id: '2048', title: '2048', symbol: '2ⁿ', ready: true },
@@ -136,10 +160,12 @@ export function renderApp(root: HTMLDivElement | null): void {
     const gameIds = games.map(game => game.id)
     const ordered = orderedIds(gameIds, gameIds).flatMap(id => games.find(game => game.id === id) ?? [])
     const recent = readRecent(gameIds).flatMap(id => games.find(game => game.id === id) ?? [])
+    const tree = readTree()
 
     root.innerHTML = `
     <main class="app-shell">
       <header class="hero">
+        <div class="hero__tree" aria-label="我的小树">${treeSvg(treeStage(tree.leaves).index, tree.leaves)}<span class="hero__tree-stage">${treeStage(tree.leaves).name}</span></div>
         <h1>小树游戏屋</h1>
         <p>今天想玩什么？</p>
       </header>

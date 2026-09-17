@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordBest } from '../puzzle-kit/progress'
+import { awardLeaf } from '../../app/tree'
 
 // 动作游戏共享的实体活动区：避开 puzzle-kit 头部（y≤210）与底部按钮行（y≥850）。
 export const FIELD = { top: 228, bottom: 845 } as const
@@ -125,6 +126,8 @@ export abstract class ActionScene extends PuzzleScene {
         // 保存失败不影响本局体验。
       }
       recordBest(`${this.gameId}:v2:${this.mode}`, score, false)
+      // 第一次刷新个人纪录也是自然目标，给小树一片叶子。
+      awardLeaf(`${this.gameId}-record`)
     }
     this.audio.playWin()
     this.showResult(score, isBest, this.best)
