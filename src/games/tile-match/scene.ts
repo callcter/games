@@ -97,7 +97,7 @@ export class TileMatchScene extends PuzzleScene {
     }, 180, this.content)
     this.button(384, 850, `洗牌 ${this.state.shuffles}`, () => {
       const shuffled = shuffle(this.state)
-      if (!shuffled) { this.say('洗牌次数用完啦，试试撤销几步吧'); return }
+      if (!shuffled) { this.say(this.state.shuffles <= 0 ? '洗牌次数用完啦，试试撤销几步吧' : '这次没洗好，没有扣次数，再试一次吧'); return }
       this.state = shuffled
       this.audio.playPop(2)
       this.draw()
@@ -105,7 +105,7 @@ export class TileMatchScene extends PuzzleScene {
     this.button(608, 850, '再来一局', () => this.restart(), 180, this.content)
 
     if (isStuck(this.state)) {
-      const tip = this.add.text(384, 690, '槽满啦！撤销几步或洗一次牌吧', { fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', color: '#c0392b', fontStyle: 'bold' }).setOrigin(0.5)
+      const tip = this.add.text(384, 690, '槽满啦！撤销，或洗牌把槽里的牌放回去', { fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', color: '#c0392b', fontStyle: 'bold' }).setOrigin(0.5)
       this.content.add(tip)
     }
   }

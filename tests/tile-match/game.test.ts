@@ -6,6 +6,19 @@ const tile = (id: number, kind: number, layer: number, gx: number, gy: number): 
 const flat = (tiles: Tile[]): MatchState => ({ tiles, gone: [], slot: [], cleared: 0, undoLog: [], undos: 5, shuffles: 1, won: false })
 
 describe('叠叠消规则', () => {
+  it('满槽必须停手，洗牌收回槽中牌后可继续，失败不得扣次数', () => {
+    const state = flat(Array.from({ length: 12 }, (_, id) => tile(id, Math.floor(id / 3), 0, id, 0)))
+    let current = state
+    for (const id of [0, 1, 3, 4, 6, 7, 9]) current = pick(current, id)!.state
+    expect(simSolves(current)).toBe(false)
+    const next = shuffle(current, () => 0.3)!
+    expect(next).not.toBeNull()
+    expect(next.slot).toEqual([])
+    expect(isStuck(next)).toBe(false)
+    expect(pickable(next).some(id => pick(next, id) !== null)).toBe(true)
+    expect(simSolves(next)).toBe(true)
+    expect(current.slot).toHaveLength(7)
+  })
   it('被上层压住的方块不可拾取，顶层可拾取', () => {
     const state = flat([tile(0, 0, 0, 0, 0), tile(1, 0, 0, 1, 0), tile(2, 0, 0, 2, 0), tile(3, 1, 1, 0.5, 0)])
     // 上层 (0.5,0) 与底层 (0,0)、(1,0) 都重叠 → 只有底层 2 和顶层 3 可拾。

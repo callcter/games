@@ -88,10 +88,10 @@ export function undo(state: MatchState): MatchState | null {
   }
 }
 
-/** 剩余方块重新随机花色（位置与遮挡不变）；要求洗后仍可解，失败返回 null。 */
+/** 槽中未消除的牌先回场，再洗剩余花色；失败不消耗次数、不改原局面。 */
 export function shuffle(state: MatchState, random: RandomSource = Math.random): MatchState | null {
   if (state.won || state.shuffles <= 0) return null
-  const gone = new Set(state.gone)
+  const gone = new Set(state.gone.filter(id => !state.slot.includes(id)))
   const rest = state.tiles.filter(tile => !gone.has(tile.id))
   if (!rest.length) return null
   for (let attempt = 0; attempt < 24; attempt++) {
@@ -104,7 +104,7 @@ export function shuffle(state: MatchState, random: RandomSource = Math.random): 
       const at = rest.indexOf(tile)
       return at >= 0 ? { ...tile, kind: kinds[at]! } : tile
     })
-    const candidate: MatchState = { ...state, tiles, shuffles: state.shuffles - 1, undoLog: [] }
+    const candidate: MatchState = { ...state, tiles, gone: [...gone], slot: [], shuffles: state.shuffles - 1, undoLog: [] }
     if (simSolves(candidate)) return candidate
   }
   return null
@@ -117,6 +117,7 @@ export function simSolves(state: MatchState): boolean {
   const gone = [...state.gone]
   let slot = [...state.slot]
   for (let guard = 0; guard < 600; guard++) {
+    if (slot.length >= SLOT_SIZE) return false
     const taken = new Set(gone)
     const free = state.tiles.filter(tile => !taken.has(tile.id) && !blocked(state.tiles, taken, tile))
     if (!free.length) return slot.length === 0 && gone.length === state.tiles.length
