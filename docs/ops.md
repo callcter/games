@@ -123,6 +123,14 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-18 发布 `16360cc`（3 个提交）：两轮 codex 独立验收退回的全部修复——一轮 A1~A6
+  （数织旧档身份、纸牌拖动跟手、停车场输入锁、监听器累积、内容入口、回归脚本），二轮
+  R1~R3（纸牌轻点移动、数织三代编号兼容含交错版精确映射与一次性备份、推箱子选关末排
+  越界）及 browser-smoke 卡片级等待稳定性修复。测试 215→221；正式 pnpm test:browser
+  完整跑绿；每项修复均有 CDP 专项证据。发布后验证 HTTP 301→HTTPS、HTTPS 200、证书
+  （SAN 三域名，至 2026-12-14）、no-cache/immutable 缓存头正常；本地 dist 53 个构建
+  文件在服务器上 SHA-256 全部一致。发布后已推送 GitHub。iPad 真机与孩子 Playtest
+  仍待安排。
 - 2026-09-17 发布 `c4fb94e`（1 个提交）：Phase 1/2 稳定化收口（线上审查结论
   docs/EXPERIENCE-2-PHASE-1-2-STABILIZATION.md）——数织大厅总数从写死 9 改为
   PATTERNS.length 唯一来源、推箱子从写死 <10 改为 LEVELS.length（第 11~30 关
