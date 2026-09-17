@@ -11,6 +11,7 @@ it('every supplied level is solvable through legal pushes', () => {
   })
 })
 it('keeps PAR in sync with the optimal solution length', () => {
+  expect(LEVELS).toHaveLength(30) // Wave 4 内容扩展：10 → 30 关
   expect(PAR).toHaveLength(LEVELS.length)
   LEVELS.forEach((_, level) => expect(PAR[level]).toBe(solve(newGame(level))?.length))
 })
