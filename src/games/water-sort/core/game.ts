@@ -14,8 +14,8 @@ export interface WaterState {
 
 export const MODES: readonly { label: string; colors: number; empties: number }[] = [
   { label: '基础', colors: 3, empties: 2 },
-  { label: '进阶', colors: 4, empties: 2 },
-  { label: '挑战', colors: 5, empties: 2 }
+  { label: '进阶', colors: 5, empties: 2 },
+  { label: '挑战', colors: 6, empties: 2 }
 ]
 
 /** 试管顶部连续同色层的数量。 */
