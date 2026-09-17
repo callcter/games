@@ -7,7 +7,7 @@ const GROUPS: Record<string, Category> = {
   '2048': 'logic', minesweeper: 'logic', sudoku: 'logic', nonogram: 'logic', memory: 'logic',
   tangram: 'shapes', maze: 'shapes', pipes: 'shapes', sokoban: 'shapes', untangle: 'shapes', 'water-sort': 'shapes', parking: 'shapes', 'tile-match': 'logic',
   tetris: 'action', 'merge-fruit': 'action', bubbles: 'action', 'pop-bubbles': 'action',
-  'red-rain': 'action', 'whack-mole': 'action', 'fruit-slicer': 'action', gomoku: 'cards', freecell: 'cards', spider: 'cards'
+  'red-rain': 'action', 'whack-mole': 'action', 'fruit-slicer': 'action', gomoku: 'cards', freecell: 'cards', klondike: 'cards', spider: 'cards'
 }
 export const categoryOf = (id: string): Category => GROUPS[id] ?? 'all'
 const KEY = 'family-game-room-recent-v1'

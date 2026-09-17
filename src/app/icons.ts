@@ -12,6 +12,8 @@ const mole = path('M14 45V32a18 18 0 0 1 36 0v13', '#bb896a') + circle(16, 22, 6
 
 const matchTiles = rect(10, 14, 34, 30, coral, 8) + rect(24, 26, 32, 28, gold, 8) + label(40, 46, '🍎', 20)
 
+const klondikeCard = rect(14, 10, 36, 48, cream) + rect(24, 20, 36, 48, cream) + path('M42 30C39 34 36 35 36 39a3 3 0 0 0 6 0c0-2-2-3-3-5 2 0 4-1 4-3a2 2 0 0 0-4 0c0 2 2 4 3 6', 'none') + label(42, 58, '♠', 24)
+
 const parkingCar = rect(8, 22, 42, 22, coral, 8) + rect(16, 14, 22, 12, '#a8dbeb', 5) + circle(16, 46, 4, '#36594b') + circle(42, 46, 4, '#36594b') + path('M52 14l8 6m-8 0l8-6', 'none')
 
 const testTube = path('M24 10h16v30a12 12 0 0 1-8 11 8 8 0 0 1-8-11Z', '#cfe8ef') + rect(24, 26, 16, 10, coral) + rect(24, 38, 16, 8, gold)
@@ -19,6 +21,7 @@ const testTube = path('M24 10h16v30a12 12 0 0 1-8 11 8 8 0 0 1-8-11Z', '#cfe8ef'
 const art: Record<string, string> = {
   'water-sort': testTube,
   parking: parkingCar,
+  klondike: klondikeCard,
   'tile-match': matchTiles,
   '2048': rect(8, 15, 30, 34, '#f2cf79') + rect(30, 23, 27, 31, coral) + label(23, 39, '4') + label(44, 46, '8'),
   gomoku: rect(8, 8, 48, 48, '#efd5a2') + path('M20 9v46M33 9v46M46 9v46M9 20h46M9 33h46M9 46h46') + circle(20, 20, 7, '#25493e') + circle(33, 33, 7, cream) + circle(46, 46, 7, '#25493e'),

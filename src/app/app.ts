@@ -10,6 +10,7 @@ const games = [
   { id: 'tetris', title: '俄罗斯方块', symbol: '▦', ready: true },
   { id: 'merge-fruit', title: '合成水果', symbol: '🍉', ready: true },
   { id: 'freecell', title: '空当接龙', symbol: '♠♥', ready: true },
+  { id: 'klondike', title: '纸牌', symbol: '🂡', ready: true },
   { id: 'spider', title: '蜘蛛纸牌', symbol: '🕷♠', ready: true },
   { id: 'minesweeper', title: '扫雷', symbol: '✹⚑', ready: true },
   ...puzzles
@@ -514,6 +515,23 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.querySelector('.game-loading')?.remove()
   }
 
+  const showKlondike = async (): Promise<void> => {
+    currentView = 'game'
+    const currentNavigation = ++navigationId
+    activeGame?.destroy(); activeGame = null
+    root.innerHTML = gameScreenMarkup('正在发牌…', 'landscape')
+    const host = root.querySelector<HTMLDivElement>('.game-host')
+    if (!host) return
+    const { mountKlondike } = await import('../games/klondike')
+    if (currentNavigation !== navigationId) return
+    const mountedGame = await mountKlondike(host, goHome)
+    if (currentNavigation !== navigationId) {
+      mountedGame.destroy()
+      return
+    }
+    activeGame = mountedGame
+  }
+
   const route = (): void => {
     const id = gameFromHash(window.location.hash)
     if (id) rememberRecent(id, games.map(game => game.id))
@@ -524,6 +542,7 @@ export function renderApp(root: HTMLDivElement | null): void {
     else if (window.location.hash === '#/tetris') void showTetris()
     else if (window.location.hash === '#/merge-fruit') void showMergeFruit()
     else if (window.location.hash === '#/freecell') void showFreeCell()
+    else if (window.location.hash === '#/klondike') void showKlondike()
     else if (window.location.hash === '#/spider') void showSpider()
     else if (window.location.hash === '#/minesweeper') void showMinesweeper()
     else showHome()
