@@ -123,6 +123,12 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-17 发布 `d2ac750`（1 个提交）：修复合成水果碰撞失效——素材接入后
+  spawnFruit 先按旧纹理常量 setCircle 再 setDisplaySize，显示缩放联动把刚体缩成
+  质量 0 的退化圆，水果互相穿透且不触发 collisionstart 合并；改为先
+  setDisplaySize 再以 core 规则半径 setCircle 收尾。CDP 实测 DPR=1/2 各投 9 颗：
+  正常堆叠无穿模、多次合成得分；发版后验证 HTTP 301/缓存头/证书正常，
+  43 个构建文件 SHA-256 与本地 dist 全部一致。
 - 2026-09-17 发布 `9e785e6`（5 个提交）：全部游戏按设备像素密度渲染（enableHighDpi，
   DPR 上限 2、总像素 ≤4M）解决 Retina 发虚；四款动作游戏提速为基础/进阶/挑战并
   渐进加速，最高分按难度分档（`family-game-room-<id>-v2-best-<mode>`，旧成绩标
