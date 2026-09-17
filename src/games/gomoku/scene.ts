@@ -222,10 +222,13 @@ export class GomokuScene extends Phaser.Scene {
     })
 
     if (this.state.winningLine.length >= 5) {
+      // 胜利连线从第一子生长到最后一子，让「赢」有一个明确的过程感。
       const first = this.pointForIndex(this.state.winningLine[0] ?? 0, geometry)
       const last = this.pointForIndex(this.state.winningLine.at(-1) ?? 0, geometry)
-      graphics.lineStyle(Math.max(3, spacing * 0.1), 0xe25037, 0.88)
-      graphics.lineBetween(first.x, first.y, last.x, last.y)
+      const dx = last.x - first.x, dy = last.y - first.y
+      const bar = this.add.rectangle(first.x, first.y, 0, Math.max(3, spacing * 0.12), 0xe25037, 0.88)
+      bar.setOrigin(0, 0.5).setRotation(Math.atan2(dy, dx))
+      this.tweens.add({ targets: bar, width: Math.hypot(dx, dy), duration: 340, ease: 'Cubic.Out' })
     }
   }
 
