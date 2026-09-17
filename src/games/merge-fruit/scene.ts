@@ -397,9 +397,12 @@ export class MergeFruitScene extends Phaser.Scene {
   private spawnFruit(x: number, y: number, level: number): FruitImage {
     const fruit = fruitAt(level)
     const image = this.matter.add.image(x, y, this.textureKey(level))
-    image.setCircle(TEXTURE_RADIUS, { restitution: 0.12, friction: 0.08, frictionAir: 0.006, density: 0.0016 })
     const displaySize = this.displaySizeForRadius(fruit.radius)
+    // 先定显示尺寸再设碰撞圆：setDisplaySize 会按纹理比例联动缩放刚体，
+    // 素材纹理边长逐帧不一，先缩放会把圆体缩成质量 0 的退化形状互相穿透。
+    // 以规则半径收尾，保证 Matter 碰撞半径与显示半径、core 配置三者一致。
     image.setDisplaySize(displaySize, displaySize)
+    image.setCircle(fruit.radius, { restitution: 0.12, friction: 0.08, frictionAir: 0.006, density: 0.0016 })
     image.setDataEnabled()
     image.setData('fruitLevel', level)
     image.setData('spawnedAt', this.time.now)
