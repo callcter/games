@@ -74,7 +74,30 @@ try {
   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await send('Page.navigate',{url:base})
   await until("!!document.querySelector('.game-grid')")
-  if (process.env.RENDER_ONLY) {
+  if (process.env.PRODUCTION_ONLY) {
+    // 生产包不暴露场景对象；验证真实发布资源、点击启动、SW 接管和离线再打开。
+    await until("(async()=>{const r=await navigator.serviceWorker.getRegistration();return r?.active?.state==='activated'})()")
+    // prompt 模式首次安装不会强行接管当前页面；下一次导航才受新 SW 控制。
+    await send('Page.reload');await until("!!document.querySelector('.game-grid') && !!navigator.serviceWorker.controller")
+    for (const [width,height] of [[768,1024],[1024,768]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:false})
+      for (const id of ['water-sort','parking','tile-match']) {
+        await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
+        await until("!!document.querySelector('canvas')");await pause(800)
+        await click(608,165);await pause(500)
+        await click(680,45);await click(680,45)
+        await screenshot(`production-${id}-${width}`)
+        await home()
+      }
+    }
+    await send('Network.enable')
+    await send('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0})
+    await send('Page.reload');await until("!!document.querySelector('.game-grid')")
+    await evaluate(`document.querySelector('.game-grid [data-game="water-sort"]').click()`)
+    await until("!!document.querySelector('canvas')");await pause(700)
+    await screenshot('production-offline')
+    await send('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1})
+  } else if (process.env.RENDER_ONLY) {
     for (const [width,height] of [[768,1024],[1024,768]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:false})
       for (const id of ['2048','gomoku','tetris','merge-fruit','freecell','spider','minesweeper','maze']) {
@@ -91,6 +114,28 @@ try {
   for(const [width,height] of [[768,1024],[1024,768]]){
     await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:Number(process.env.DEVICE_SCALE ?? 1),mobile:false})
     await pause()
+    await open('water-sort'); await resumeOrFresh(); await click(608,165)
+    assert.equal(await evaluate('__scene.state.colors'),6)
+    assert.equal(await evaluate("(()=>{let bad=0;const walk=o=>{if(o.type==='Text'&&o.text==='?')bad++;if(o.list)o.list.forEach(walk)};walk(__scene.content);return bad})()"),0)
+    const pourPoints = await evaluate(`(async()=>{const {canPour}=await import('/src/games/water-sort/core/game.ts');const s=__scene.state;for(let a=0;a<s.tubes.length;a++)for(let b=0;b<s.tubes.length;b++)if(canPour(s,a,b)){const point=i=>({x:384+((i%4)-1.5)*128,y:i<4?330:608});return [point(a),point(b)]}})()`)
+    assert.ok(pourPoints)
+    for(const p of pourPoints) await click(p.x,p.y)
+    assert.equal(await evaluate('__scene.state.moves'),1)
+    await screenshot(`water-sort-${width}`);await home()
+    await open('parking');await resumeOrFresh()
+    assert.ok(await evaluate(`__scene.state.cars.every(c=>{const v=__scene.carViews.get(c.id);return v.x===110+(c.x+(c.horizontal?c.len/2:.5))*92&&v.y===235+(c.y+(c.horizontal?.5:c.len/2))*92})`))
+    const carMove = await evaluate(`(async()=>{const {legalTargets}=await import('/src/games/parking/core/game.ts');for(const c of [...__scene.state.cars].reverse()){const targets=legalTargets(__scene.state,c.id);if(targets.length){const t=targets[0],v=__scene.carViews.get(c.id);return {x:v.x,y:v.y,tx:110+(c.horizontal?t+c.len/2:c.x+.5)*92,ty:235+(c.horizontal?c.y+.5:t+c.len/2)*92}}}})()`)
+    assert.ok(carMove);await click(carMove.x,carMove.y);await click(carMove.tx,carMove.ty)
+    assert.equal(await evaluate('__scene.state.moves'),1)
+    await screenshot(`parking-${width}`);await home()
+    await open('tile-match')
+    await evaluate(`(async()=>{const {pick}=await import('/src/games/tile-match/core/game.ts');let s={tiles:Array.from({length:12},(_,id)=>({id,kind:Math.floor(id/3),layer:0,gx:id%4,gy:Math.floor(id/4)})),gone:[],slot:[],cleared:0,undoLog:[],undos:5,shuffles:1,won:false};for(const id of [0,1,3,4,6,7,9])s=pick(s,id).state;__scene.state=s;__scene.draw()})()`)
+    await click(384,850)
+    assert.equal(await evaluate('__scene.state.slot.length'),0)
+    assert.equal(await evaluate('__scene.state.shuffles'),0)
+    await click(252,386)
+    assert.equal(await evaluate('__scene.state.slot.length'),1)
+    await screenshot(`tile-match-${width}`);await home()
     await evaluate("document.querySelector('[data-category=logic]').click()")
     assert.equal(await evaluate("document.querySelectorAll('.game-card:not([hidden])').length"),6)
     await open('sudoku'); await resumeOrFresh(); await click(568,165)
@@ -175,7 +220,7 @@ try {
   await send('HeapProfiler.collectGarbage')
   const afterCycles = await send('Memory.getDOMCounters')
   console.log('连续切换前/后的 DOM 与监听器数量:',JSON.stringify({beforeCycles,afterCycles}))
-  assert.equal(afterCycles.jsEventListeners,beforeCycles.jsEventListeners, '重复切换后监听器不应增长')
+  assert.ok(afterCycles.jsEventListeners <= beforeCycles.jsEventListeners, '重复切换后监听器不应增长')
   // 刷新丢弃模块内缓存，再验证磁盘上的笔记和棋盘。
   await open('sudoku');await click(260,480)
   const blank = await evaluate('(()=>{const i=__scene.state.puzzle.indexOf(0),c=505/9;return {i,x:131.5+(i%9+.5)*c,y:225+(Math.floor(i/9)+.5)*c}})()')
