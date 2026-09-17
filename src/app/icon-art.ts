@@ -1,5 +1,6 @@
-// 大厅图标精灵图：加载 → 边缘连通白底转透明 → 逐帧按内容裁剪居中，
-// 替换对应游戏的 SVG 兜底图标。素材缺失或加载失败时静默保留 SVG。
+// 大厅图标精灵图：按网格整格裁剪，画到统一圆角徽章上替换 SVG 兜底图标。
+// 不做透明化——生成图的纸牌等白色主体在描边不闭合时会被边缘洪水填充挖穿；
+// 圆角徽章让白底图标自然融入卡片底色。素材缺失或加载失败时静默保留 SVG。
 
 interface LobbySheet {
   url: string
@@ -16,7 +17,7 @@ export const LOBBY_SHEETS: readonly LobbySheet[] = [
   { url: 'art/lobby-d.png', cols: 2, rows: 1, ids: ['sudoku', 'nonogram'] }
 ]
 
-const FRAME_OUTPUT = 128
+const BADGE = 128
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise(resolve => {
@@ -28,58 +29,32 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
   })
 }
 
-// 从四角洪水填充清掉与边缘连通的近白像素；格子间隙与图标内部的高光互不连通，得以保留。
-function stripEdgeWhite(data: Uint8ClampedArray, width: number, height: number): void {
-  const nearWhite = (i: number): boolean =>
-    data[i]! >= 240 && data[i + 1]! >= 240 && data[i + 2]! >= 240
-  const stack: number[] = []
-  const push = (x: number, y: number): void => {
-    stack.push(y * width + x)
-  }
-  push(0, 0); push(width - 1, 0); push(0, height - 1); push(width - 1, height - 1)
-  while (stack.length) {
-    const index = stack.pop()!
-    if (data[index * 4 + 3]! === 0 || !nearWhite(index * 4)) continue
-    data[index * 4 + 3] = 0
-    const x = index % width, y = (index - x) / width
-    if (x > 0) push(x - 1, y)
-    if (x < width - 1) push(x + 1, y)
-    if (y > 0) push(x, y - 1)
-    if (y < height - 1) push(x, y + 1)
-  }
-}
-
 function extractFrames(image: HTMLImageElement, sheet: LobbySheet): (string | null)[] {
-  const source = document.createElement('canvas')
-  source.width = image.naturalWidth
-  source.height = image.naturalHeight
-  const ctx = source.getContext('2d', { willReadFrequently: true })
-  if (!ctx) return sheet.ids.map(() => null)
-  ctx.drawImage(image, 0, 0)
-  const pixels = ctx.getImageData(0, 0, source.width, source.height)
-  stripEdgeWhite(pixels.data, source.width, source.height)
-  ctx.putImageData(pixels, 0, 0)
-  const cellW = Math.floor(source.width / sheet.cols), cellH = Math.floor(source.height / sheet.rows)
+  const cellW = image.naturalWidth / sheet.cols, cellH = image.naturalHeight / sheet.rows
   return sheet.ids.map((_, index) => {
     const col = index % sheet.cols, row = Math.floor(index / sheet.cols)
-    let left = -1, top = -1, right = -1, bottom = -1
-    for (let y = 0; y < cellH; y++) {
-      for (let x = 0; x < cellW; x++) {
-        if (pixels.data[((row * cellH + y) * source.width + col * cellW + x) * 4 + 3]! <= 24) continue
-        if (left < 0) { left = x; top = y }
-        right = x; bottom = y
-      }
-    }
-    if (left < 0) return null
-    const size = Math.max(right - left + 1, bottom - top + 1)
     const frame = document.createElement('canvas')
-    frame.width = FRAME_OUTPUT; frame.height = FRAME_OUTPUT
-    frame.getContext('2d')!.drawImage(
-      source,
-      col * cellW + left - (size - (right - left + 1)) / 2,
-      row * cellH + top - (size - (bottom - top + 1)) / 2,
-      size, size, 0, 0, FRAME_OUTPUT, FRAME_OUTPUT
-    )
+    frame.width = BADGE; frame.height = BADGE
+    const ctx = frame.getContext('2d')!
+    const radius = 22
+    ctx.beginPath()
+    ctx.moveTo(radius, 0)
+    ctx.arcTo(BADGE, 0, BADGE, BADGE, radius)
+    ctx.arcTo(BADGE, BADGE, 0, BADGE, radius)
+    ctx.arcTo(0, BADGE, 0, 0, radius)
+    ctx.arcTo(0, 0, BADGE, 0, radius)
+    ctx.closePath()
+    ctx.fillStyle = '#fffdf6'
+    ctx.fill()
+    // 格子内容留 9% 边距后整体缩进徽章，白底与徽章底色融合。
+    const inset = Math.round(BADGE * 0.09)
+    ctx.save()
+    ctx.clip()
+    ctx.drawImage(image, col * cellW, row * cellH, cellW, cellH, inset, inset, BADGE - inset * 2, BADGE - inset * 2)
+    ctx.restore()
+    ctx.lineWidth = 3
+    ctx.strokeStyle = '#d8cdbb'
+    ctx.stroke()
     return frame.toDataURL('image/png')
   })
 }
