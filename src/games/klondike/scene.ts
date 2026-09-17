@@ -32,6 +32,8 @@ export class KlondikeScene extends Phaser.Scene {
   private hintMessage = '先点亮着的牌，再点目标位置'
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
+  /** 拖动组登记：列号:起点 → 从该牌到列顶的 view 序列（draw 时重建）。 */
+  private readonly columnViews = new Map<string, Phaser.GameObjects.Container[]>()
 
   constructor(audio: GameAudio, callbacks: SceneCallbacks, initialState = newDeal(), initialDeal = initialState) {
     super({ key: 'klondike' })
@@ -43,11 +45,107 @@ export class KlondikeScene extends Phaser.Scene {
 
   create(): void {
     this.input.on('pointerdown', () => void this.audio.unlock())
+    // 拖牌：拿起跟手，松手按落点提交；轻点（位移小）退回原点选路径。
+    this.input.on('dragstart', (_pointer: Phaser.Input.Pointer, object: unknown) => this.beginCardDrag(object))
+    this.input.on('drag', (_pointer: Phaser.Input.Pointer, object: unknown, dragX: number, dragY: number) => this.moveCardDrag(object, dragX, dragY))
+    this.input.on('dragend', (_pointer: Phaser.Input.Pointer, object: unknown) => void this.endCardDrag(object))
+    this.draw()
+  }
+
+  // ---------- 拖牌会话（Experience 2.0 Wave 1：直接操作牌，点选仍是辅助路径） ----------
+
+  private dragGroup: Phaser.GameObjects.Container[] = []
+  private dragOffsets: Array<{ x: number; y: number }> = []
+  private dragOrigin = { x: 0, y: 0 }
+  private dragMoved = false
+
+  /** 一张明牌是否可作为拖动起点：废牌堆顶、基础堆顶，或列中到顶为合法序列。 */
+  private canDragFrom(kind: 'waste' | 'foundation' | 'column', column: number, start: number): boolean {
+    if (kind !== 'column') return true
+    const up = this.state.columns[column]!.up
+    for (let index = start; index < up.length - 1; index++) {
+      const upper = up[index + 1]!
+      if (upper.color === up[index]!.color || upper.rank !== up[index]!.rank - 1) return false
+    }
+    return true
+  }
+
+  private beginCardDrag(object: unknown): void {
+    if (this.autoFinishing || this.state.won || this.dragGroup.length) return
+    if (!(object instanceof Phaser.GameObjects.Container)) return
+    const source = object.getData('cardSource') as { kind: 'waste' | 'foundation' | 'column'; column: number; start: number; suit: Suit } | undefined
+    if (!source || !this.canDragFrom(source.kind, source.column, source.start)) return
+    let group: Phaser.GameObjects.Container[]
+    if (source.kind === 'waste' || source.kind === 'foundation') {
+      group = [object]
+    } else {
+      // 拖动组 = 该列明牌 view 中从 start 到列顶的切片。
+      const upViews = this.columnViews.get(`${source.column}`) ?? [object]
+      group = upViews.slice(Math.max(0, upViews.length - (this.state.columns[source.column]!.up.length - source.start)))
+    }
+    this.dragGroup = group
+    this.dragOffsets = group.map(view => ({ x: view.x - group[0]!.x, y: view.y - group[0]!.y }))
+    this.dragOrigin = { x: group[0]!.x, y: group[0]!.y }
+    this.dragMoved = false
+    this.selection = null
+    group.forEach(view => this.children.bringToTop(view))
+    this.audio.playMove()
+  }
+
+  private moveCardDrag(object: unknown, dragX: number, dragY: number): void {
+    if (!this.dragGroup.length || object !== this.dragGroup[0]) return
+    this.dragMoved = true
+    this.dragGroup.forEach((view, index) => {
+      const offset = this.dragOffsets[index]!
+      view.setPosition(dragX + offset.x, dragY + offset.y)
+    })
+  }
+
+  private endCardDrag(object: unknown): void {
+    if (!this.dragGroup.length || object !== this.dragGroup[0]) return
+    const group = this.dragGroup
+    const source = (object as Phaser.GameObjects.Container).getData('cardSource') as { kind: 'waste' | 'foundation' | 'column'; column: number; start: number; suit: Suit }
+    const head = group[0]!
+    this.dragGroup = []
+    // 轻点：位移很小，退回点选路径（选中/取消/改选）。
+    if (!this.dragMoved || (Math.abs(head.x - this.dragOrigin.x) < 6 && Math.abs(head.y - this.dragOrigin.y) < 6)) {
+      this.draw()
+      if (source.kind === 'waste') this.selectWaste()
+      else if (source.kind === 'foundation') this.selectFoundation(source.suit)
+      else this.selectColumn(source.column, source.start)
+      return
+    }
+    // 落点判定：先看基础堆区，再看牌列。
+    const x = head.x - CARD_WIDTH / 2
+    const y = head.y - CARD_HEIGHT / 2
+    if (y + CARD_HEIGHT / 2 < TABLEAU_Y - 20) {
+      const foundationIndex = Math.round((x - 576) / 104)
+      if (foundationIndex >= 0 && foundationIndex < 4 && group.length === 1) {
+        const result = source.kind === 'waste'
+          ? playWaste(this.state, 'foundation')
+          : source.kind === 'column'
+            ? playColumn(this.state, source.column, 1, 'foundation')
+            : null
+        if (result?.moved) { this.finish(result, '基础堆要从 A 开始，按同一花色依次收'); return }
+      }
+    }
+    const column = Math.round((x - TABLEAU_X) / (CARD_WIDTH + COLUMN_GAP))
+    if (column >= 0 && column < 7) {
+      const result = source.kind === 'waste'
+        ? playWaste(this.state, column)
+        : source.kind === 'foundation'
+          ? recall(this.state, source.suit, column)
+          : playColumn(this.state, source.column, this.state.columns[source.column]!.up.length - source.start, column)
+      if (result?.moved) { this.finish(result, '这里要接颜色相反、点数大一号的牌；空列只能放 K'); return }
+    }
+    // 没有合法落点：回弹重绘。
+    this.hintMessage = '放不进去，换个位置试试'
     this.draw()
   }
 
   private draw(): void {
     this.children.removeAll(true)
+    this.columnViews.clear()
     this.cameras.main.setBackgroundColor('#23614f')
     this.drawHeader()
     this.drawPiles()
@@ -96,10 +194,12 @@ export class KlondikeScene extends Phaser.Scene {
     }
     const wasteTop = this.state.waste[this.state.waste.length - 1]
     if (wasteTop) {
-      createCardView(this, 157, TOP_Y, CARD_WIDTH, CARD_HEIGHT * 0.82, wasteTop, {
+      const wasteView = createCardView(this, 157, TOP_Y, CARD_WIDTH, CARD_HEIGHT * 0.82, wasteTop, {
         selected: this.selection?.kind === 'waste',
         onSelect: () => this.selectWaste()
       })
+      wasteView.setData('cardSource', { kind: 'waste', column: -1, start: -1, suit: wasteTop.suit })
+      this.input.setDraggable(wasteView)
     } else {
       createCardSlot(this, 157, TOP_Y, CARD_WIDTH, CARD_HEIGHT * 0.82, '', () => this.selectWaste())
     }
@@ -107,10 +207,12 @@ export class KlondikeScene extends Phaser.Scene {
       const x = 576 + index * 104
       const rank = this.state.foundations[suit]
       if (rank > 0) {
-        createCardView(this, x, TOP_Y, 90, CARD_HEIGHT * 0.82, { id: `f-${suit}-${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black' }, {
+        const view = createCardView(this, x, TOP_Y, 90, CARD_HEIGHT * 0.82, { id: `f-${suit}-${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black' }, {
           selected: this.selection?.kind === 'foundation' && this.selection.suit === suit,
           onSelect: () => this.selectFoundation(suit)
         })
+        view.setData('cardSource', { kind: 'foundation', column: -1, start: -1, suit })
+        this.input.setDraggable(view)
       } else {
         createCardSlot(this, x, TOP_Y, 90, CARD_HEIGHT * 0.82, suitSymbol(suit), () => this.targetFoundation(suit))
       }
@@ -132,14 +234,19 @@ export class KlondikeScene extends Phaser.Scene {
         createCardView(this, x, y, CARD_WIDTH, CARD_HEIGHT, { id: 'hidden', suit: 'spades', rank: 0, color: 'black' }, { faceUp: false })
         y += hiddenOverlap
       })
+      const upViews: Phaser.GameObjects.Container[] = []
       column.up.forEach((card, cardIndex) => {
         const selected = this.selection?.kind === 'column' && this.selection.column === columnIndex && cardIndex >= this.selection.start
-        createCardView(this, x + (selected ? 6 : 0), y, CARD_WIDTH, CARD_HEIGHT, card, {
+        const view = createCardView(this, x + (selected ? 6 : 0), y, CARD_WIDTH, CARD_HEIGHT, card, {
           selected,
           onSelect: () => this.selectColumn(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
+        view.setData('cardSource', { kind: 'column' as const, column: columnIndex, start: cardIndex, suit: card.suit })
+        if (this.canDragFrom('column', columnIndex, cardIndex)) this.input.setDraggable(view)
+        upViews.push(view)
         y += overlap
       })
+      this.columnViews.set(`${columnIndex}`, upViews)
     })
   }
 

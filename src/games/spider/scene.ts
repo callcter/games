@@ -46,12 +46,70 @@ export class SpiderScene extends Phaser.Scene {
 
   create(): void {
     this.input.on('pointerdown', () => void this.audio.unlock())
+    // 拖牌（Experience 2.0 Wave 1）：拿起跟手、松手按落点提交；轻点退回点选。
+    this.input.on('dragstart', (_pointer: Phaser.Input.Pointer, object: unknown) => this.beginCardDrag(object))
+    this.input.on('drag', (_pointer: Phaser.Input.Pointer, object: unknown, dragX: number, dragY: number) => this.moveCardDrag(object, dragX, dragY))
+    this.input.on('dragend', (_pointer: Phaser.Input.Pointer, object: unknown) => this.endCardDrag(object))
+    this.draw()
+  }
+
+  // ---------- 拖牌会话 ----------
+
+  private dragGroup: Phaser.GameObjects.Container[] = []
+  private dragOffsets: Array<{ x: number; y: number }> = []
+  private dragOrigin = { x: 0, y: 0 }
+  private dragMoved = false
+  /** 列号:起点 → 从该牌到列顶的 view 序列（draw 时重建）。 */
+  private readonly columnViews = new Map<string, Phaser.GameObjects.Container[]>()
+
+  private beginCardDrag(object: unknown): void {
+    if (this.state.won || this.dealing || this.dragGroup.length) return
+    if (!(object instanceof Phaser.GameObjects.Container)) return
+    const source = object.getData('cardSource') as { column: number; start: number } | undefined
+    if (!source) return
+    const faceUps = this.columnViews.get(`${source.column}`) ?? [object]
+    const group = faceUps.slice(faceUps.length - (this.state.tableau[source.column]!.length - source.start))
+    this.dragGroup = group
+    this.dragOffsets = group.map(view => ({ x: view.x - group[0]!.x, y: view.y - group[0]!.y }))
+    this.dragOrigin = { x: group[0]!.x, y: group[0]!.y }
+    this.dragMoved = false
+    this.selection = null
+    group.forEach(view => this.children.bringToTop(view))
+    this.audio.playMove()
+  }
+
+  private moveCardDrag(object: unknown, dragX: number, dragY: number): void {
+    if (!this.dragGroup.length || object !== this.dragGroup[0]) return
+    this.dragMoved = true
+    this.dragGroup.forEach((view, index) => {
+      const offset = this.dragOffsets[index]!
+      view.setPosition(dragX + offset.x, dragY + offset.y)
+    })
+  }
+
+  private endCardDrag(object: unknown): void {
+    if (!this.dragGroup.length || object !== this.dragGroup[0]) return
+    const source = (object as Phaser.GameObjects.Container).getData('cardSource') as { column: number; start: number }
+    const head = this.dragGroup[0]!
+    this.dragGroup = []
+    if (!this.dragMoved || (Math.abs(head.x - this.dragOrigin.x) < 6 && Math.abs(head.y - this.dragOrigin.y) < 6)) {
+      this.draw()
+      this.selectCard(source.column, source.start)
+      return
+    }
+    const column = Math.round((head.x - CARD_WIDTH / 2 - COLUMN_X) / (CARD_WIDTH + COLUMN_GAP))
+    if (column >= 0 && column < 10 && column !== source.column) {
+      const result = moveSequence(this.state, source.column, source.start, column)
+      if (result.moved) { this.finish(result); return }
+    }
+    this.hintMessage = '放不进去，换个位置试试'
     this.draw()
   }
 
   private draw(): void {
     this.tweens.killAll()
     this.children.removeAll(true)
+    this.columnViews.clear()
     this.cameras.main.setBackgroundColor('#315b46')
     this.drawHeader()
     this.drawCompletedRuns()
@@ -139,6 +197,7 @@ export class SpiderScene extends Phaser.Scene {
     this.state.tableau.forEach((column, columnIndex) => {
       const x = COLUMN_X + columnIndex * (CARD_WIDTH + COLUMN_GAP)
       createCardSlot(this, x, TABLEAU_Y, CARD_WIDTH, CARD_HEIGHT, '', () => this.targetColumn(columnIndex))
+      const upViews: Phaser.GameObjects.Container[] = []
       column.forEach((item, cardIndex) => {
         const y = TABLEAU_Y + cardIndex * overlap
         const selected = this.selection?.column === columnIndex && cardIndex >= this.selection.start
@@ -147,6 +206,10 @@ export class SpiderScene extends Phaser.Scene {
           selected,
           onSelect: () => this.selectCard(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
+        if (item.faceUp && movableSequenceLength(column, cardIndex) > 0) {
+          view.setData('cardSource', { column: columnIndex, start: cardIndex })
+          this.input.setDraggable(view)
+        }
         // 本轮新发的牌从右上牌堆依次飞入，让孩子看清每列到了哪张
         if (dealtLast && cardIndex === column.length - 1 && this.dealingColumns.includes(columnIndex)) {
           const order = this.dealingColumns.indexOf(columnIndex)
@@ -160,7 +223,9 @@ export class SpiderScene extends Phaser.Scene {
             ease: 'Cubic.Out'
           })
         }
+        upViews.push(view)
       })
+      this.columnViews.set(`${columnIndex}`, upViews)
     })
     if (dealtLast) {
       const flightMs = 300 + this.dealingColumns.length * 60

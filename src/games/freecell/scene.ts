@@ -53,11 +53,98 @@ export class FreeCellScene extends Phaser.Scene {
 
   create(): void {
     this.input.on('pointerdown', () => void this.audio.unlock())
+    // 拖牌（Experience 2.0 Wave 1）：拿起跟手、松手按落点提交；轻点退回点选。
+    this.input.on('dragstart', (_pointer: Phaser.Input.Pointer, object: unknown) => this.beginCardDrag(object))
+    this.input.on('drag', (_pointer: Phaser.Input.Pointer, object: unknown, dragX: number, dragY: number) => this.moveCardDrag(object, dragX, dragY))
+    this.input.on('dragend', (_pointer: Phaser.Input.Pointer, object: unknown) => this.endCardDrag(object))
+    this.draw()
+  }
+
+  // ---------- 拖牌会话 ----------
+
+  private dragGroup: Phaser.GameObjects.Container[] = []
+  private dragOffsets: Array<{ x: number; y: number }> = []
+  private dragOrigin = { x: 0, y: 0 }
+  private dragMoved = false
+  /** 列号:起点 → 从该牌到列顶的 view 序列（draw 时重建）。 */
+  private readonly columnViews = new Map<string, Phaser.GameObjects.Container[]>()
+
+  private beginCardDrag(object: unknown): void {
+    if (this.autoFinishing || this.state.won || this.dragGroup.length) return
+    if (!(object instanceof Phaser.GameObjects.Container)) return
+    const source = object.getData('cardSource') as { kind: 'freecell' | 'foundation' | 'tableau'; index: number; column: number; start: number } | undefined
+    if (!source) return
+    const group = source.kind === 'tableau'
+      ? (this.columnViews.get(`${source.column}`) ?? [object]).slice(source.start)
+      : [object]
+    this.dragGroup = group
+    this.dragOffsets = group.map(view => ({ x: view.x - group[0]!.x, y: view.y - group[0]!.y }))
+    this.dragOrigin = { x: group[0]!.x, y: group[0]!.y }
+    this.dragMoved = false
+    this.selection = null
+    group.forEach(view => this.children.bringToTop(view))
+    this.audio.playMove()
+  }
+
+  private moveCardDrag(object: unknown, dragX: number, dragY: number): void {
+    if (!this.dragGroup.length || object !== this.dragGroup[0]) return
+    this.dragMoved = true
+    this.dragGroup.forEach((view, index) => {
+      const offset = this.dragOffsets[index]!
+      view.setPosition(dragX + offset.x, dragY + offset.y)
+    })
+  }
+
+  private endCardDrag(object: unknown): void {
+    if (!this.dragGroup.length || object !== this.dragGroup[0]) return
+    const group = this.dragGroup
+    const source = (object as Phaser.GameObjects.Container).getData('cardSource') as { kind: 'freecell' | 'foundation' | 'tableau'; index: number; column: number; start: number }
+    const head = group[0]!
+    this.dragGroup = []
+    // 轻点退回点选路径。
+    if (!this.dragMoved || (Math.abs(head.x - this.dragOrigin.x) < 6 && Math.abs(head.y - this.dragOrigin.y) < 6)) {
+      this.draw()
+      if (source.kind === 'freecell') this.selectFreeCell(source.index)
+      else if (source.kind === 'tableau') this.selectTableau(source.column, source.start)
+      return
+    }
+    const x = head.x - CARD_WIDTH / 2
+    const y = head.y - CARD_HEIGHT / 2
+    // 基础堆区（单张）。
+    if (group.length === 1 && y < TABLEAU_Y - 40) {
+      const foundationIndex = Math.round((x - 576) / 104)
+      if (foundationIndex >= 0 && foundationIndex < 4) {
+        const result = source.kind === 'tableau'
+          ? moveTableauToFoundation(this.state, source.column)
+          : moveFreeCellToFoundation(this.state, source.index)
+        if (result.moved) { this.finish(result, '回收区要按同一花色从 A 依次收'); return }
+      }
+      // 空当区（单张）。
+      const freeIndex = Math.round((x - 40) / 112)
+      if (freeIndex >= 0 && freeIndex < 4 && source.kind === 'tableau') {
+        const result = moveTableauToFreeCell(this.state, source.column, freeIndex)
+        if (result.moved) { this.finish(result, '空当格里已经有一张了'); return }
+      }
+    }
+    // 牌列。
+    const column = Math.round((x - TABLEAU_X) / (CARD_WIDTH + COLUMN_GAP))
+    if (column >= 0 && column < 8) {
+      const movedCount = source.kind === 'tableau' ? this.state.tableau[source.column]!.length - source.start : 1
+      const result = source.kind === 'tableau'
+        ? moveTableauToTableau(this.state, source.column, column, this.state.tableau[source.column]!.length - source.start)
+        : moveFreeCellToTableau(this.state, source.index, column)
+      if (result.moved) {
+        this.finish(result, movedCount > 1 ? '一次可搬的张数受空当格和空列限制' : '这里要接颜色相反、点数大一号的牌')
+        return
+      }
+    }
+    this.hintMessage = '放不进去，换个位置试试'
     this.draw()
   }
 
   private draw(): void {
     this.children.removeAll(true)
+    this.columnViews.clear()
     this.cameras.main.setBackgroundColor('#23614f')
     this.drawHeader()
     this.drawTopSlots()
@@ -95,10 +182,12 @@ export class FreeCellScene extends Phaser.Scene {
       const x = 40 + index * 112
       const card = this.state.freeCells[index]
       if (card) {
-        createCardView(this, x, 92, CARD_WIDTH, CARD_HEIGHT * 0.82, card, {
+        const view = createCardView(this, x, 92, CARD_WIDTH, CARD_HEIGHT * 0.82, card, {
           selected: this.selection?.kind === 'freecell' && this.selection.index === index,
           onSelect: () => this.selectFreeCell(index)
         })
+        view.setData('cardSource', { kind: 'freecell', index, column: -1, start: -1 })
+        this.input.setDraggable(view)
       } else {
         createCardSlot(this, x, 92, CARD_WIDTH, CARD_HEIGHT * 0.82, '空', () => this.targetFreeCell(index))
       }
@@ -109,7 +198,9 @@ export class FreeCellScene extends Phaser.Scene {
       const rank = this.state.foundations[suit]
       if (rank > 0) {
         const card = { id: `foundation-${suit}-${rank}`, suit, rank, color: suit === 'hearts' || suit === 'diamonds' ? 'red' as const : 'black' as const }
-        createCardView(this, x, 92, 90, CARD_HEIGHT * 0.82, card, { onSelect: () => this.targetFoundation(suit) })
+        const view = createCardView(this, x, 92, 90, CARD_HEIGHT * 0.82, card, { onSelect: () => this.targetFoundation(suit) })
+        view.setData('cardSource', { kind: 'foundation', index: -1, column: -1, start: -1 })
+        this.input.setDraggable(view)
       } else {
         createCardSlot(this, x, 92, 90, CARD_HEIGHT * 0.82, suitSymbol(suit), () => this.targetFoundation(suit))
       }
@@ -130,15 +221,20 @@ export class FreeCellScene extends Phaser.Scene {
       ).setDepth(-1).setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.targetTableau(columnIndex))
       createCardSlot(this, x, TABLEAU_Y, CARD_WIDTH, CARD_HEIGHT, '', () => this.targetTableau(columnIndex))
+      const upViews: Phaser.GameObjects.Container[] = []
       column.forEach((card, cardIndex) => {
         const selected = this.selection?.kind === 'tableau'
           && this.selection.column === columnIndex
           && cardIndex >= this.selection.start
-        createCardView(this, x + (selected ? 6 : 0), TABLEAU_Y + cardIndex * overlap, CARD_WIDTH, CARD_HEIGHT, card, {
+        const view = createCardView(this, x + (selected ? 6 : 0), TABLEAU_Y + cardIndex * overlap, CARD_WIDTH, CARD_HEIGHT, card, {
           selected,
           onSelect: () => this.selectTableau(columnIndex, cardIndex)
         }).setDepth(cardIndex + 1)
+        view.setData('cardSource', { kind: 'tableau' as const, index: -1, column: columnIndex, start: cardIndex })
+        if (movableSequenceLength(column, cardIndex) > 0) this.input.setDraggable(view)
+        upViews.push(view)
       })
+      this.columnViews.set(`${columnIndex}`, upViews)
     })
   }
 
