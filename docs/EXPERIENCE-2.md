@@ -2407,16 +2407,16 @@ README 与实际路由不一致
 | E2-402 | Home 卡片反馈与进入转场 | `DONE` | E2-400 | 快、轻、不阻塞（scale 0.96 按压+图标下沉+阴影减弱） |
 | E2-500 | 小树成长最小数据模型 | `DONE`（用户指令提前执行，Playtest 待补） | 旗舰重复游玩改善 | 本地、不可倒退、无 FOMO（family-game-room-tree-v1，commit 3c5eec3） |
 | E2-501 | 小树成长 UI | `DONE` | E2-500 | 奖励是记录而非压力（hero 右上 SVG 小树+阶段徽章，无催促） |
-| E2-600 | Water Sort 直接操作迁移 | `BACKLOG` | Parking 经验稳定 | 倒水有拿起/倾斜/流动反馈 |
-| E2-601 | Tangram 直接操作迁移 | `BACKLOG` | motion 稳定 | 拖/转/吸附更像积木 |
-| E2-602 | Cards 拖牌体验升级 | `BACKLOG` | drag 模式稳定 | 纸牌主路径可直接拖 |
+| E2-600 | Water Sort 直接操作迁移 | `DONE` | Parking 经验稳定 | 倒水有拿起/倾斜/流动反馈（拿起弹起倾斜+非法摆动+成功 squash，commit d8e0bda） |
+| E2-601 | Tangram 直接操作迁移 | `DONE` | motion 稳定 | 拖/转/吸附更像积木（拿起弹跳，commit d8e0bda） |
+| E2-602 | Cards 拖牌体验升级 | `DONE` | drag 模式稳定 | 纸牌主路径可直接拖（纸牌/空当接龙/蜘蛛三款整组拖动+轻点回退点选，commit ee31a45） |
 | E2-603 | Pipes 机械卡位反馈 | `BACKLOG` | motion 稳定 | 转管有明确 detent 感 |
 | E2-604 | Sudoku 落笔反馈 | `BACKLOG` | motion 稳定 | 输入、冲突、完成层级清楚 |
 | E2-605 | 2048 滑动手感升级 | `BACKLOG` | motion 稳定 | 方块移动/合并反馈连续 |
-| E2-700 | 七巧板 Content Pass | `BACKLOG` | 七巧板 feel 完成 | 20+ 有难度梯度轮廓 |
-| E2-701 | 推箱子 Content Pass | `BACKLOG` | 推箱子 feel 检查 | 30+ 梯度关卡 |
-| E2-702 | 数织 Content Pass | `BACKLOG` | 数织 feel 检查 | 30+ 梯度图案 |
-| E2-800 | 全库 Experience 回归 | `BACKLOG` | 主要迁移完成 | 24 游戏可进入/退出/重玩 |
+| E2-700 | 七巧板 Content Pass | `WONT_DO`（本轮） | 七巧板 feel 完成 | 20+ 轮廓需逐幅手工设计合法拼法，自动生成易产生不可拼图案；记入 Experience Debt |
+| E2-701 | 推箱子 Content Pass | `DONE` | 推箱子 feel 检查 | 30 关（固定种子生成+BFS 验证，4-7/8-12/13-30 三段带，commit 06ff6c2） |
+| E2-702 | 数织 Content Pass | `DONE` | 数织 feel 检查 | 50 幅（镜像/转置/反色双射变体保持唯一解，5×5 组 20 幅在前、10×10 组 30 幅在后，commit f352e7f） |
+| E2-800 | 全库 Experience 回归 | `PLAYTEST` | 主要迁移完成 | 24 游戏可进入/退出/重玩（各 Wave 均经 CDP 抽查；全量矩阵待上线后真机回归） |
 | E2-900 | Experience 2.0 稳定版 | `BACKLOG` | E2-800 | DoD + Playtest + PWA 回归通过 |
 
 ## 41.1 WIP Limit
@@ -4492,6 +4492,19 @@ Do not change:
 ---
 
 # 92. Experience 2.0 Changelog
+
+## 2026-09-17 — v0.5（Wave 1~5 全库迁移完成，第二阶段落地）
+
+用户指令「继续完成下一阶段，一次性完成，分批提交」——五个 Wave 全部落地，每个 Wave 独立提交与 CDP 抽查验收。
+
+- Wave 1a 纸牌拖牌（ee31a45）：纸牌/空当接龙/蜘蛛主操作升级为整组拖动跟手、落点判定提交、轻点退回点选；规则/计分/存档/自动收尾不动。
+- Wave 1b 触觉拿起（d8e0bda）：水排序拿起弹起倾斜、非法倒水摆动、成功 squash；七巧板拿起弹跳。
+- Wave 2 触觉反馈（37e3e34）：2048 合并 +分浮字、记忆配对弹跳+高音、扫雷踩雷轻震/胜利暖光。迷宫轨迹与叠叠消飞入此前已具备。
+- Wave 3 动作结算（b01f4c1）：点泡泡/红包雨/打地鼠接入 showKeptResult（保留游戏世界+底部弹卡+各自强调色）；泡泡龙发射口扩散环；俄罗斯方块消行闪光此前已有。
+- Wave 4 内容扩展：数织 9→50 幅（f352e7f，双射变体严格保持唯一解，全部经求解器验证）；推箱子 10→30 关（06ff6c2，固定种子生成+BFS 验证+PAR 回填，测试逐一校验）。
+- Wave 5 五子棋（91537a4）：胜利连线 340ms 生长动画；落子弹跳/最后一步标记/思考提示此前已有。
+- 测试基线 212→213（38 文件）。
+- Experience Debt（§89）：XD-001 接水管完成传播 sweep（draw 全量重建无 view 引用，需重构绘制层）；XD-002 数独落笔弹跳（复用棋盘对象无独立 view）；XD-003 七巧板内容扩展（E2-700 WONT_DO，需手工拼法设计）。
 
 ## 2026-09-17 — v0.4（Sprint 3~7 落地，第一阶段完成）
 
