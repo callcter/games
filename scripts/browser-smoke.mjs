@@ -52,6 +52,7 @@ try {
   const screenshot = async name => {
     const result = await send('Page.captureScreenshot')
     await writeFile(join(artifacts, `${name}.png`), Buffer.from(result.data,'base64'))
+    return result.data
   }
   const point = (x,y) => evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+${x}*r.width/768,y:r.y+${y}*r.height/900}})()`)
   const click = async (x,y) => {
@@ -73,8 +74,22 @@ try {
   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await send('Page.navigate',{url:base})
   await until("!!document.querySelector('.game-grid')")
+  if (process.env.RENDER_ONLY) {
+    for (const [width,height] of [[768,1024],[1024,768]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:false})
+      for (const id of ['2048','gomoku','tetris','merge-fruit','freecell','spider','minesweeper','maze']) {
+        await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
+        await until("!!document.querySelector('canvas')"); await pause(600)
+        assert.ok(await evaluate("(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect();return c.width/r.width>=1.9 && c.height/r.height>=1.9})()"),`${id}: Retina backing buffer`)
+        const shot = await screenshot(`retina-${id}-${width}`)
+        const black = await evaluate(`new Promise(resolve=>{const image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d');ctx.drawImage(image,0,0);const r=document.querySelector('canvas').getBoundingClientRect();let black=0;for(let y=1;y<10;y++)for(let x=1;x<10;x++){const p=ctx.getImageData((r.x+r.width*x/10)*2,(r.y+r.height*y/10)*2,1,1).data;if(p[0]+p[1]+p[2]<10)black++}resolve(black)};image.src='data:image/png;base64,${shot}'})`)
+        assert.ok(black<12,`${id}: render must fill the Retina buffer, black samples=${black}`)
+        await evaluate('history.back()'); await until("!!document.querySelector('.game-grid')")
+      }
+    }
+  } else {
   for(const [width,height] of [[768,1024],[1024,768]]){
-    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
+    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:Number(process.env.DEVICE_SCALE ?? 1),mobile:false})
     await pause()
     await evaluate("document.querySelector('[data-category=logic]').click()")
     assert.equal(await evaluate("document.querySelectorAll('.game-card:not([hidden])').length"),5)
@@ -114,6 +129,16 @@ try {
     await screenshot(`nonogram-${width}`)
     await click(160,850);assert.ok(await evaluate('__scene.state.marks.every(v=>v===0)'))
     await home()
+    await open('maze')
+    const route=await evaluate("(async()=>{const {path}=await import('/src/games/maze/core/game.ts');return path(__scene.state).slice(0,9)})()")
+    const mazePoint=async index=>{const size=await evaluate('__scene.state.size');return point(134+(index%size+.5)*500/size,230+(Math.floor(index/size)+.5)*500/size)}
+    const mazeObjects=await evaluate('__scene.content.list.length')
+    await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[await mazePoint(route[0])]})
+    for(const index of route.slice(1)){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[await mazePoint(index)]});await pause(40)}
+    await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await pause()
+    assert.equal(await evaluate('__scene.state.player'),route.at(-1))
+    assert.equal(await evaluate('__scene.content.list.length'),mazeObjects)
+    await screenshot(`maze-drag-${width}`);await home()
     await evaluate("document.querySelector('[data-category=all]').click()")
     await screenshot(`lobby-${width}`)
     await open('tangram');await click(135,210)
@@ -162,7 +187,7 @@ try {
   assert.equal(await evaluate('JSON.stringify(__scene.state)'),beforeReload)
   await home()
   for (const [width,height] of [[768,1024],[1024,768]]) {
-    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
+    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:Number(process.env.DEVICE_SCALE ?? 1),mobile:false})
     for (const id of ['pop-bubbles','red-rain','whack-mole','fruit-slicer']) {
       await open(id); await click(160,400)
       const listeners = await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')")
@@ -214,6 +239,7 @@ try {
       assert.ok(burst.count<=64)
       await screenshot(`${id}-${width}`); await home()
     }
+  }
   }
   assert.deepEqual(errors,[])
   console.log(`通过；截图目录：${artifacts}`)
