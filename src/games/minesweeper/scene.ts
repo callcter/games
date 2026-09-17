@@ -51,6 +51,8 @@ export class MinesweeperScene extends Phaser.Scene {
     this.draw()
   }
 
+  private statusDrawn: 'ready' | 'playing' | 'won' | 'lost' | null = null
+
   private draw(): void {
     this.children.removeAll(true)
     this.timerText = null
@@ -60,6 +62,13 @@ export class MinesweeperScene extends Phaser.Scene {
     this.drawBoard()
     this.drawControls()
     if (this.state.status === 'won' || this.state.status === 'lost') this.drawResult()
+    // 结局的体感：踩雷轻轻一震，胜利闪一下暖光；只在新进入该状态时播一次。
+    const status = this.state.status
+    if ((status === 'won' || status === 'lost') && this.statusDrawn !== status) {
+      if (status === 'lost') this.cameras.main.shake(160, 0.006)
+      else this.cameras.main.flash(140, 255, 244, 214)
+    }
+    this.statusDrawn = status
   }
 
   private drawHeader(): void {

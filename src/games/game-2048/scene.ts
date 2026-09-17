@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { showFloatingText } from '../../experience/feedback/floating-text'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
 import {
@@ -90,11 +91,14 @@ export class Game2048Scene extends Phaser.Scene {
     this.move(direction)
   }
 
+  private lastGain = 0
+
   private move(direction: Direction): void {
     const previous = this.state
     const result = moveGame(this.state, direction)
     if (!result.moved) return
     this.state = result.state
+    this.lastGain = this.state.score - previous.score
     this.tileAnimations = {
       newIndices: new Set(result.spawnedIndex === null ? [] : [result.spawnedIndex]),
       mergedIndices: new Set(result.mergedIndices)
@@ -224,6 +228,10 @@ export class Game2048Scene extends Phaser.Scene {
           yoyo: true,
           ease: 'Sine.Out'
         })
+        // 合并得分浮字只出现在首个合并格，避免多格重复刷屏。
+        if (this.lastGain > 0 && index === Math.min(...animations.mergedIndices)) {
+          showFloatingText(this, { x: tile.x, y: tile.y - 16, text: `+${this.lastGain}`, color: '#fffdf6', fontSize: 22, durationMs: 620 })
+        }
       }
     })
 

@@ -34,14 +34,22 @@ export class MemoryScene extends PuzzleScene {
       this.content.add(tile)
       const label = this.text(x, y, shown ? (this.animals ? ANIMALS : FRUITS)[value]! : '✦', cell * 0.46, this.content)
       if (index === animatedIndex) {
-        tile.setScale(0.65, 1); label.setScale(0.65, 1)
-        this.tweens.add({ targets: [tile, label], scaleX: 1, duration: 140, ease: 'Cubic.Out' })
+        if (s.matched.includes(index)) {
+          // 新配对：两张牌欢快地弹一下。
+          tile.setScale(1.18); label.setScale(1.18)
+          this.tweens.add({ targets: [tile, label], scale: 1, duration: 240, ease: 'Back.Out' })
+        } else {
+          tile.setScale(0.65, 1); label.setScale(0.65, 1)
+          this.tweens.add({ targets: [tile, label], scaleX: 1, duration: 140, ease: 'Cubic.Out' })
+        }
       }
       tile.setInteractive({ useHandCursor: true }).on('pointerup', () => {
         const next = flip(this.state, index)
         if (next === this.state) return
+        const matchedBefore = this.state.matched.length
         this.state = next
         this.audio.playPlace(1)
+        if (next.matched.length > matchedBefore) this.audio.playPop(1.25)
         this.draw(index)
         if (next.won) {
           this.celebrate(this.players === 2 ? `完成！比分 ${next.scores.join(' : ')}` : `完成！用了 ${next.turns} 次`)
