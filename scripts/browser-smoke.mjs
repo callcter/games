@@ -46,7 +46,8 @@ try {
     return result.result.value
   }
   const until = async expression => {
-    for(let i=0;i<100;i++){if(await evaluate(expression))return;await pause(100)}
+    // 线上首次预缓存含本地图集，慢网络允许更长等待；本地仍快速暴露超时。
+    for(let i=0;i<(process.env.PRODUCTION_ONLY ? 600 : 100);i++){if(await evaluate(expression))return;await pause(100)}
     throw new Error(`等待超时: ${expression}`)
   }
   const screenshot = async name => {
