@@ -1,4 +1,4 @@
-export const PATTERNS = [
+const BASE_PATTERNS = [
   { name: '小爱心', rows: ['01010', '11111', '11111', '01110', '00100'] },
   { name: '小房子', rows: ['00100', '01110', '11111', '11011', '11011'] },
   { name: '小树', rows: ['00100', '01110', '11111', '00100', '00100'] },
@@ -9,6 +9,42 @@ export const PATTERNS = [
   { name: '小帆船', rows: ['..........', '....#.....', '...##.....', '..###.....', '.####.....', '#####.....', '.#######..', '#########.', '##########', '..######..'] },
   { name: '小火箭', rows: ['....##....', '...####...', '...####...', '..######..', '..##..##..', '..######..', '.########.', '.########.', '###....###', '##......##'] }
 ] as const
+
+// 内容扩展（EXPERIENCE-2 Wave 4）：镜像变体是不同的线索关卡，且唯一解性质在
+// 双射变换下保持（若镜像题有两解，映回原图即原题两解，矛盾）。对称图案的
+// 重复变体被过滤。5×5 组在前、10×10 组在后，形成自然的难度梯度。
+const flipH = (rows: readonly string[]): string[] => rows.map(row => [...row].reverse().join(''))
+const flipV = (rows: readonly string[]): string[] => [...rows].reverse()
+const flipT = (rows: readonly string[]): string[] => rows[0]!.split('').map((_, x) => rows.map(row => row[x]).join(''))
+const invert = (rows: readonly string[]): string[] => rows.map(row => [...row].map(ch => ch === '#' ? '.' : ch === '1' ? '0' : ch === '.' ? '#' : '1').join(''))
+// 镜/影/转（180°）/转置 + 各自的反色；全部是保持唯一解的双射变换，对称图案去重。
+const VARIANTS: Array<{ suffix: string; flip: (rows: readonly string[]) => readonly string[] }> = [
+  { suffix: '·镜', flip: flipH },
+  { suffix: '·影', flip: flipV },
+  { suffix: '·转', flip: rows => flipV(flipH(rows)) },
+  { suffix: '·斜', flip: flipT },
+  { suffix: '·夜', flip: rows => invert(rows) },
+  { suffix: '·夜镜', flip: rows => invert(flipH(rows)) },
+  { suffix: '·夜影', flip: rows => invert(flipV(rows)) },
+  { suffix: '·夜转', flip: rows => invert(flipV(flipH(rows))) },
+  { suffix: '·夜斜', flip: rows => invert(flipT(rows)) }
+]
+const seen = new Set<string>()
+const expanded: Array<{ name: string; rows: readonly string[] }> = []
+for (const pattern of BASE_PATTERNS) {
+  seen.add(pattern.rows.join('/'))
+  expanded.push(pattern)
+  // 原图与其变体连续排列：5×5 组天然在前、10×10 组在后。
+  for (const variant of VARIANTS) {
+    const rows = variant.flip(pattern.rows)
+    const key = rows.join('/')
+    if (seen.has(key)) continue
+    seen.add(key)
+    expanded.push({ name: `${pattern.name}${variant.suffix}`, rows })
+  }
+}
+export const PATTERNS = expanded
+export const BASE_PATTERN_COUNT = BASE_PATTERNS.length
 export type Mark = -1 | 0 | 1
 export interface NonogramState { level: number; marks: Mark[]; won: boolean }
 export function clues(line: readonly number[]): number[] {

@@ -5,6 +5,14 @@ it('all picture clues have one solution', () => {
   expect(clues([0, 1, 1, 0, 1])).toEqual([2, 1])
   expect(clues([0, 0])).toEqual([0])
 })
+it('expands to 30+ distinct pictures with natural size ordering', () => {
+  // Wave 4 内容扩展：镜像变体 + 无重复 + 5×5 在前、10×10 在后的难度梯度。
+  expect(PATTERNS.length).toBeGreaterThanOrEqual(30)
+  const keys = new Set(PATTERNS.map(pattern => pattern.rows.join('/')))
+  expect(keys.size).toBe(PATTERNS.length)
+  const sizes = PATTERNS.map(pattern => pattern.rows[0]!.length)
+  expect([...sizes].sort((a, b) => a - b)).toEqual(sizes)
+})
 it('fills skipped cells during a stroke in either direction without wrapping rows', () => {
   expect(lineCells(0, 4, 5)).toEqual([0,1,2,3,4])
   expect(lineCells(24, 4, 5)).toEqual([24,19,14,9,4])
