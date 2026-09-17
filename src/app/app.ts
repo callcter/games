@@ -140,14 +140,8 @@ export function renderApp(root: HTMLDivElement | null): void {
     root.innerHTML = `
     <main class="app-shell">
       <header class="hero">
-        <span class="hero__eyebrow">没有广告 · 随时离线</span>
         <h1>小树游戏屋</h1>
-        <p>选一个小游戏，开心玩一会儿吧。</p>
-        <div class="app-actions">
-          ${editingOrder ? '' : '<button class="check-update" type="button">检查更新</button>'}
-          <button class="edit-order" type="button">${editingOrder ? '' : '整理图标'}</button>
-          <span class="update-status" role="status"></span>
-        </div>
+        <p>今天想玩什么？</p>
       </header>
       ${editingOrder ? `
       <div class="order-editor" role="status">
@@ -155,6 +149,7 @@ export function renderApp(root: HTMLDivElement | null): void {
         <button type="button" data-order-reset>恢复默认</button>
         <button type="button" data-order-done>完成</button>
       </div>` : `
+      ${recent.length ? `<button type="button" class="continue-card" data-game="${recent[0]!.id}"><span class="continue-card__play" aria-hidden="true">▶</span><span>${gameIcon(recent[0]!.id)}</span><span>继续玩：${recent[0]!.title}</span></button>` : ''}
       ${recent.length ? `<section class="recent-games" aria-label="最近玩过"><h2>最近玩过</h2><div>${recent.map(game => `<button type="button" data-game="${game.id}">${gameIcon(game.id)} ${game.title}</button>`).join('')}</div></section>` : ''}
       <nav class="game-categories" aria-label="游戏分类">${CATEGORIES.map(category => `<button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">${category.title}</button>`).join('')}</nav>`}
       <section class="game-grid${editingOrder ? ' game-grid--editable' : ''}" aria-label="游戏列表">
@@ -166,6 +161,17 @@ export function renderApp(root: HTMLDivElement | null): void {
           </button>
         `).join('')}
       </section>
+      <footer class="parent-corner">
+        <details class="parent-settings">
+          <summary>家长设置</summary>
+          <div class="app-actions">
+            <button class="check-update" type="button">检查更新</button>
+            <button class="edit-order" type="button">整理图标</button>
+            <span class="update-status" role="status"></span>
+            <span class="app-note">没有广告 · 随时离线</span>
+          </div>
+        </details>
+      </footer>
     </main>
     <aside class="update-toast" role="status" hidden>
       <span>游戏屋有新版本啦</span>

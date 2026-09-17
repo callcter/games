@@ -1,6 +1,7 @@
+// 分类 ID 是工程内部概念；UI 文案用孩子能懂的语言（EXPERIENCE-2 §11.1）。
 export const CATEGORIES = [
-  { id: 'all', title: '全部游戏' }, { id: 'logic', title: '数字逻辑' },
-  { id: 'shapes', title: '图形路线' }, { id: 'action', title: '轻松反应' }, { id: 'cards', title: '棋类纸牌' }
+  { id: 'all', title: '全部' }, { id: 'logic', title: '动脑筋' },
+  { id: 'shapes', title: '拼一拼' }, { id: 'action', title: '手要快' }, { id: 'cards', title: '一起玩' }
 ] as const
 export type Category = typeof CATEGORIES[number]['id']
 const GROUPS: Record<string, Category> = {

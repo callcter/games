@@ -73,6 +73,51 @@ button { font: inherit; }
   font-size: 0.95rem;
 }
 
+/* 继续玩：一等入口，只在有最近记录时出现（EXPERIENCE-2 §11）。 */
+.continue-card {
+  display: flex;
+  width: min(100%, 560px);
+  margin: 0 auto 26px;
+  padding: 18px 26px;
+  border: 0;
+  border-radius: 22px;
+  background: #2f8f6b;
+  color: #fffdf6;
+  font-size: 1.35rem;
+  font-weight: 800;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: 0 14px 32px rgb(47 143 107 / 32%);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.continue-card:active {
+  transform: scale(0.97);
+  box-shadow: 0 6px 18px rgb(47 143 107 / 22%);
+}
+.continue-card__play { font-size: 1rem; }
+.continue-card .game-icon { width: 34px; height: 34px; }
+
+/* 家长设置：运维功能折叠在页脚，不与开始游戏抢视觉（EXPERIENCE-2 §11.2）。 */
+.parent-corner { margin-top: 30px; text-align: center; }
+.parent-settings summary {
+  list-style: none;
+  display: inline-block;
+  color: #9aa89f;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+.parent-settings summary::-webkit-details-marker { display: none; }
+.parent-settings summary::after { content: ' ⌄'; }
+.parent-settings[open] summary::after { content: ' ⌃'; }
+.parent-settings .app-actions { justify-content: center; flex-wrap: wrap; }
+.app-note { color: #9aa89f; font-size: 0.85rem; font-weight: 700; }
+
 .game-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -96,7 +141,12 @@ button { font: inherit; }
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
-.game-card:not(:disabled):active { transform: scale(0.97); }
+.game-card:not(:disabled):active {
+  transform: scale(0.96);
+  box-shadow: 0 6px 18px rgb(56 72 49 / 8%);
+}
+.game-card:not(:disabled):active .game-card__symbol { transform: translateY(2px); }
+.game-card__symbol { transition: transform 130ms ease; }
 .game-card[hidden] { display: none; }
 .recent-games { margin: 0 0 24px; }
 .recent-games h2 { font-size: 1.1rem; margin: 0 0 12px; }
