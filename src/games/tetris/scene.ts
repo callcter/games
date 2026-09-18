@@ -242,7 +242,7 @@ export class TetrisScene extends Phaser.Scene {
 
     const width = this.scale.width
     const height = this.scale.height
-    const compact = height < 650
+    const compact = height < 850
     const margin = Math.max(12, Math.min(26, width * 0.03))
     const headerHeight = compact ? 74 : 112
     const controlsHeight = compact ? 132 : 150
