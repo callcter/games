@@ -29,7 +29,7 @@ export class WhackMoleScene extends ActionScene {
         const scale = Math.max(768 / src.width, 900 / src.height)
         this.add.image(384, 450, WHACK_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
       }
-      // 画布外 letterbox 区域用同一张背景 cover 铺满（画布内不变形）。
+      // 画布外留白延伸草地主题底色，避免重复背景。
       setHostBackdrop('art/whack-bg.png')
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
       this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)

@@ -1,6 +1,5 @@
-// 游戏背景图在画布外的延伸：FIT 画布在手机竖屏/宽屏上会留出大块 letterbox，
-// 把同一张背景图以 cover 方式铺在 .game-host 上，画布外区域显示同图的裁切放大版，
-// 视觉满屏且画布内部（768×900）严格不变形。离开游戏时由 destroy() 摘除。
+// FIT 画布留白延伸主题底色，避免同一背景按两种比例重复铺图。
+// 离开游戏时由场景的 SHUTDOWN/DESTROY 幂等释放。
 let holder: HTMLElement | null = null
 
 export function setHostBackdrop(url: string): void {

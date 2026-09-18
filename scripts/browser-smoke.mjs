@@ -2,7 +2,7 @@
 // 独立临时 Chrome 配置，不读取或修改平时浏览器的存档。
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -47,8 +47,14 @@ try {
   }
   const until = async expression => {
     // 线上首次预缓存含本地图集，慢网络允许更长等待；本地仍快速暴露超时。
-    for(let i=0;i<(process.env.PRODUCTION_ONLY ? 600 : 100);i++){if(await evaluate(expression))return;await pause(100)}
-    throw new Error(`等待超时: ${expression}`)
+    for(let i=0;i<(process.env.PRODUCTION_ONLY ? 600 : 100);i++){
+      try { if(await evaluate(expression)) return }
+      catch(error) { if(error?.code !== -32000 || !/navigated|context|closed/i.test(error.message)) throw error }
+      await pause(100)
+    }
+    await screenshot('timeout')
+    console.log(await evaluate("({scene:window.__scene?.sys?.settings.key, alive:window.__scene?.alive, html:document.body.innerHTML.slice(0,1000),resources:performance.getEntriesByType('resource').slice(-12).map(e=>[e.name,e.duration])})"))
+    throw new Error(`等待超时: ${expression}\n${JSON.stringify(errors)}\n${await evaluate("document.body.innerText")}`)
   }
   const screenshot = async name => {
     const result = await send('Page.captureScreenshot')
@@ -77,7 +83,35 @@ try {
   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await send('Page.navigate',{url:base})
   await until("!!document.querySelector('.game-grid')")
-  if (process.env.PRODUCTION_ONLY) {
+  if (process.env.AUDIT_ONLY) {
+    await until("document.querySelectorAll('.game-grid [data-game]').length >= 24")
+    const ids = await evaluate("Array.from(document.querySelectorAll('.game-grid [data-game]'), e => e.dataset.game)")
+    assert.ok(ids.length >= 24, '全量审查必须覆盖所有游戏')
+    for (const [width,height] of [[768,1024],[1024,768]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
+      await pause(1800)
+      const layout = await send('Page.getLayoutMetrics')
+      const shot = await send('Page.captureScreenshot', { captureBeyondViewport: true, clip: { x: 0, y: 0, width, height: layout.cssContentSize.height, scale: 1 } })
+      await writeFile(join(artifacts, `home-${width}.png`), Buffer.from(shot.data, 'base64'))
+      for (const id of ids) {
+        await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
+        await until("!!document.querySelector('canvas')"); await pause(1200)
+        await screenshot(`${id}-${width}`)
+        if (['nonogram','sudoku','water-sort','parking','sokoban'].includes(id)) {
+          await click(260,480); await pause(300)
+          if(id==='sokoban') await click(128,216)
+          await screenshot(`${id}-board-${width}`)
+        }
+        if (['pop-bubbles','red-rain','whack-mole','fruit-slicer'].includes(id)) {
+          if(id==='fruit-slicer') await click(384,508)
+          else await click(160,400)
+          await pause(2200)
+          await screenshot(`${id}-playing-${width}`)
+        }
+        await evaluate('history.back()'); await until("!!document.querySelector('.game-grid')")
+      }
+    }
+  } else if (process.env.PRODUCTION_ONLY) {
     // 生产包不暴露场景对象；验证真实发布资源、点击启动、SW 接管和离线再打开。
     await until("(async()=>{const r=await navigator.serviceWorker.getRegistration();return r?.active?.state==='activated'})()")
     // prompt 模式首次安装不会强行接管当前页面；下一次导航才受新 SW 控制。
@@ -104,9 +138,20 @@ try {
     for (const [width,height] of [[768,1024],[1024,768]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:false})
       for (const id of ['2048','gomoku','tetris','merge-fruit','freecell','spider','minesweeper','maze']) {
+        if (!['minesweeper','maze'].includes(id)) {
+          await evaluate(`(async()=>{const m=await import('/src/games/${id==='2048'?'game-2048':id}/scene.ts');const C=Object.values(m).find(v=>typeof v==='function'&&v.prototype.create);if(!C.prototype.__audit){const create=C.prototype.create;C.prototype.create=function(){window.__legacy=this;return create.call(this)};C.prototype.__audit=true}})()`)
+        }
         await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
         await until("!!document.querySelector('canvas')"); await pause(600)
         assert.ok(await evaluate("(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect();return c.width/r.width>=1.9 && c.height/r.height>=1.9})()"),`${id}: Retina backing buffer`)
+        if (!['minesweeper','maze'].includes(id)) {
+          const tap = await evaluate(`(()=>{const s=window.__legacy, method=['freecell','spider'].includes('${id}')?'restartDeal':'restart';window.__restarts=0;const original=s[method];s[method]=function(...args){window.__restarts++;return original.apply(this,args)};const t=s.children.list.find(o=>o.type==='Text'&&['重新开始','重开本局'].includes(o.text));const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+t.x*r.width/s.scale.width,y:r.y+t.y*r.height/s.scale.height}})()`)
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',...tap})
+          await send('Input.dispatchMouseEvent',{type:'mousePressed',...tap,button:'left',clickCount:1})
+          await send('Input.dispatchMouseEvent',{type:'mouseReleased',...tap,button:'left',clickCount:1})
+          await pause(200)
+          assert.equal(await evaluate('window.__restarts'),1,`${id}: header control must remain clickable`)
+        }
         const shot = await screenshot(`retina-${id}-${width}`)
         const black = await evaluate(`new Promise(resolve=>{const image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d');ctx.drawImage(image,0,0);const r=document.querySelector('canvas').getBoundingClientRect();let black=0;for(let y=1;y<10;y++)for(let x=1;x<10;x++){const p=ctx.getImageData((r.x+r.width*x/10)*2,(r.y+r.height*y/10)*2,1,1).data;if(p[0]+p[1]+p[2]<10)black++}resolve(black)};image.src='data:image/png;base64,${shot}'})`)
         assert.ok(black<12,`${id}: render must fill the Retina buffer, black samples=${black}`)
@@ -293,6 +338,8 @@ try {
   }
   }
   assert.deepEqual(errors,[])
+  const pictures = (await readdir(artifacts)).filter(name => name.endsWith('.png')).sort()
+  await writeFile(join(artifacts, 'index.html'), `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>游戏屋 UI 截图审查</title><style>body{font-family:system-ui;background:#f3f0e7;color:#173f35;margin:24px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}figure{margin:0;background:white;padding:12px;border-radius:16px}img{width:100%;height:auto}figcaption{padding:8px}</style><h1>游戏屋 UI 截图审查</h1><p>点击图片查看原尺寸。</p><main>${pictures.map(name => `<figure><figcaption>${name}</figcaption><a href="${name}"><img loading="lazy" src="${name}" alt="${name}"></a></figure>`).join('')}</main></html>`)
   console.log(`通过；截图目录：${artifacts}`)
 } finally {
   ws?.close()

@@ -42,7 +42,7 @@ export class WaterSortScene extends PuzzleScene {
       const source = this.textures.get(WATER_BG_KEY).source[0]!
       const scale = Math.max(768 / source.width, 900 / source.height)
       this.add.image(384, 450, WATER_BG_KEY).setDisplaySize(source.width * scale, source.height * scale).setDepth(-10)
-      // 画布外 letterbox 区域用同一张背景 cover 铺满（画布内不变形）。
+      // 画布外留白延伸主题底色，避免重复窗户与桌面。
       setHostBackdrop('art/water-bg.png')
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
       this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
