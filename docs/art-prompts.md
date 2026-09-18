@@ -176,6 +176,163 @@ Constraints: no text, no watermark, no drop shadows, no gradients.
    SVG、Workbox 离线预缓存与 iPad 高分屏验证；
 3. 某张网格切歪或某格画错，只重生成那一张。
 
+# 游戏内素材（打地鼠 / 水排序，UI 升级第一批）
+
+大厅图标用平面风（48px 可读优先）；游戏内素材改为「软胶玩具质感」——
+有厚度、有柔光，但仍卡通圆润适合孩子。两套图各自的 Style 节一字不改，
+同会话连生成保持风格统一。
+
+## 打地鼠（whack-mole）
+
+| 文件 | 内容 | 网格 | size 参数 | 单格/尺寸 |
+| --- | --- | --- | --- | --- |
+| whack-moles.png | 地鼠 4 态 | 2 列 × 2 行 | `1024x1024` | 512×512 |
+| whack-hole.png | 立体土丘洞 | 单元素 | `1024x512` | 横幅 |
+| whack-bg.png | 草地场景背景 | 单张整图 | `1536x1792` | 768×900 画布拉伸 |
+
+### whack-moles.png（地鼠四态）
+
+```text
+Task: character sprite sheet for a children's whack-a-mole game.
+Grid: exactly 4 equal square cells, 2 columns by 2 rows, one mole per
+cell, centered, each mole filling about 75% of its cell, same scale
+and same body proportions in every cell.
+Sprites:
+Row 1 — 1) a chubby brown mole popping up chest-high, big happy eyes,
+rosy cheeks, two little paws resting on the ground, mouth open in a
+cheerful grin; 2) the same mole dizzy after being bonked: eyes as
+little stars, tongue slightly out, three tiny stars circling above
+its head, keeping the same pose and proportions.
+Row 2 — 3) a baby mole wearing a blue nightcap with a white pom-pom,
+eyes peacefully closed, tiny "zzz" floating beside the cap; 4) the
+same nightcap baby mole startled awake, eyes wide open, mouth a
+small surprised o, one paw lifting the nightcap.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, matte plastic-toy surface with gentle top light and soft
+ambient occlusion, warm pastel palette with rich brown fur, clean
+silhouette, no texture noise.
+Constraints: the "zzz" letters appear only beside the nightcap in
+cell 3; no other text anywhere; no watermark, no grid lines between
+cells, no background scenery, plain transparent background behind
+each character.
+```
+
+参数：quality `high`、background `transparent`（假透明退 `opaque` 白底，
+接入端整格圆角徽章兜底，不抠图）。
+
+### whack-hole.png（土丘洞）
+
+```text
+Task: a single game prop for a children's whack-a-mole game.
+Composition: one grassy mound viewed slightly from above, a soft
+rounded hill of layered green grass with a dark brown oval burrow
+opening in its center front, a few tiny grass blades and two small
+daisies on the rim, the hole interior a warm dark gradient so a mole
+can peek out of it.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, matte plastic-toy surface with gentle top light, warm pastel
+greens, clean silhouette, no texture noise.
+Constraints: single mound centered with clear margins all around;
+no mole, no text, no watermark, no frame, plain transparent
+background.
+```
+
+参数：quality `high`、background `transparent`（同上兜底）。
+
+### whack-bg.png（场景背景）
+
+```text
+Task: a full background painting for a children's whack-a-mole game,
+portrait orientation.
+Composition: a sunny backyard lawn filling the whole frame — short
+soft green grass with subtle mowing stripes in the lower two thirds,
+a low wooden picket fence and two round bushes along the horizon,
+clear sky with three fluffy clouds and a smiling sun in the top
+third; the center area of the lawn stays mostly open and even, as
+game holes will be placed there by code.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, matte surfaces with gentle top light, warm cheerful pastel
+palette, airy and calm, no harsh contrast.
+Constraints: no characters, no holes, no mounds, no UI, no text,
+no watermark, no border; the lawn center is clear of any object.
+```
+
+参数：quality `high`、background `opaque`（整图背景无需透明）。
+
+## 水排序（water-sort）
+
+| 文件 | 内容 | 网格/形式 | size 参数 | 说明 |
+| --- | --- | --- | --- | --- |
+| water-tube.png | 试管管身 | 单元素竖图 | `512x1536` | 不透明玻璃管，作水层底图 |
+| water-tube-gloss.png | 玻璃高光覆盖 | 单元素竖图 | `512x1536` | 两侧高光+管口沿，中部透明 |
+| water-bg.png | 桌面场景背景 | 单张整图 | `1536x1792` | 768×900 画布 |
+
+渲染次序（接入时）：背景 → 管身 → 程序色水层 → 高光覆盖 → 管口沿。
+水色仍由代码绘制，精灵只提供玻璃质感。
+
+### water-tube.png（管身）
+
+```text
+Task: a single game prop for a children's water sorting puzzle.
+Composition: one empty glass test tube standing upright, closed
+rounded bottom and open top, seen straight from the front; frosted
+pale-aqua glass with subtle vertical transparency, a soft inner rim
+shadow at the open mouth, the inner area lighter so colored liquid
+drawn over it will stay readable; tube width about one third of the
+image height's proportion, centered with clear margins.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, smooth glass with gentle top light and soft reflections,
+warm pastel palette, clean silhouette.
+Constraints: the tube is completely empty — no liquid inside; single
+tube only; no text, no watermark, no frame, plain transparent
+background around the tube.
+```
+
+### water-tube-gloss.png（高光覆盖）
+
+```text
+Task: a transparent overlay for a children's water sorting puzzle.
+Composition: only two narrow vertical glossy highlight stripes, one
+near the left edge and one thinner near the right edge of an
+invisible upright test tube shape, plus a soft elliptical rim highlight
+at the open top; everything except these highlights is fully
+transparent, so colored liquid underneath stays visible.
+Style: soft glass gloss for young children, airy white highlights
+with smooth rounded ends, no color tint.
+Constraints: highlights only, no tube outline, no liquid, no text,
+no watermark; fully transparent background elsewhere.
+```
+
+### water-bg.png（背景）
+
+```text
+Task: a full background painting for a children's water sorting
+puzzle, portrait orientation.
+Composition: a cozy kitchen counter scene — a warm honey-wood
+tabletop filling the lower two thirds with soft even lighting and
+gentle plank seams, a blurred sunny window with a plant on the
+windowsill and cream wall tiles in the upper third; the table center
+stays calm and uncluttered, as glass tubes will be placed there by
+code.
+Style: soft 3D toy-like rendering for young children, rounded shapes,
+matte surfaces with gentle top light, warm pastel palette, cozy and
+calm, no harsh contrast.
+Constraints: no tubes, no bottles, no hands, no UI, no text, no
+watermark, no border; the table center is clear of any object.
+```
+
+参数：三张均 quality `high`；water-tube / water-tube-gloss 用
+background `transparent`（假透明退白底：管身可直接用；高光图若退白底则
+接入端改用「screen 混合模式」压白，不抠图）；water-bg 用 `opaque`。
+
+## 交付与验收（游戏内素材）
+
+1. 五张 PNG（whack-moles / whack-hole / whack-bg / water-tube /
+   water-tube-gloss / water-bg 共六张）发我即可；
+2. 我负责：网格对齐校验、按上述渲染次序接入、768×1024 与 1024×768
+   双方向视觉验收、离线预缓存与体积检查；
+3. 单张不满意只重生成那张，四态地鼠要同会话连出保持同一只鼠。
+
 ## 网格不齐时的补救（追加到原提示词末尾重生成）
 
 ```text
