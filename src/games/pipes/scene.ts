@@ -19,11 +19,15 @@ export class PipesScene extends PuzzleScene {
       const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell - 5, cell - 5, reached.has(index) ? 0xd4ece3 : 0xe9dfca)
       this.content.add(tile)
       const g = this.add.graphics(); this.content.add(g)
-      g.lineStyle(cell * 0.17, reached.has(index) ? 0x58a897 : 0xa49e8e)
+      g.lineStyle(cell * 0.17, reached.has(index) ? 0x58a897 : 0x748779)
       DIRECTIONS.forEach((bit, d) => {
         if (mask & bit) g.lineBetween(x + cell / 2, y + cell / 2, x + cell / 2 + [0, 1, 0, -1][d]! * cell / 2, y + cell / 2 + [-1, 0, 1, 0][d]! * cell / 2)
       })
-      g.fillStyle(reached.has(index) ? 0x58a897 : 0xa49e8e); g.fillCircle(x + cell / 2, y + cell / 2, cell * 0.13)
+      g.fillStyle(reached.has(index) ? 0x58a897 : 0x748779); g.fillCircle(x + cell / 2, y + cell / 2, cell * 0.13)
+      g.lineStyle(cell * 0.055, reached.has(index) ? 0xb1e5dc : 0xc4d0c6)
+      DIRECTIONS.forEach((bit, d) => {
+        if (mask & bit) g.lineBetween(x + cell / 2, y + cell / 2, x + cell / 2 + [0, 1, 0, -1][d]! * cell / 2, y + cell / 2 + [-1, 0, 1, 0][d]! * cell / 2)
+      })
       if (index === 0) this.text(x + cell / 2, y + cell / 2, '💧', cell * 0.3, this.content)
       tile.setInteractive().on('pointerup', () => {
         const next = turn(this.state, index)
