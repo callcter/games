@@ -33,13 +33,13 @@ export function createHeaderButton(scene: Phaser.Scene, config: HeaderButtonConf
   if (anchor === 'right') x -= width / 2
   if (anchor === 'left') x += width / 2
 
-  const background = scene.add.rectangle(x, config.y, width, BUTTON_HEIGHT, tone === 'dark'
-    ? (enabled ? 0xfff6dd : 0x3f5c4c)
-    : (enabled ? 0xfffdf6 : 0xe4dccb))
-  background.setStrokeStyle(2, tone === 'dark' ? 0xfff6dd : 0xe3d9c2, tone === 'dark' ? 0.55 : 1)
-  background.setInteractive({ useHandCursor: enabled }).on('pointerup', () => {
-    if (enabled) config.onTap()
-  })
+  const background = scene.add.graphics({ x, y: config.y })
+  background.fillStyle(tone === 'dark' ? (enabled ? 0xfff6dd : 0x3f5c4c) : (enabled ? 0xfffdf6 : 0xe4dccb))
+  background.fillRoundedRect(-width / 2, -BUTTON_HEIGHT / 2, width, BUTTON_HEIGHT, 12)
+  background.lineStyle(1.5, tone === 'dark' ? 0xfff6dd : 0xd8dfd4, tone === 'dark' ? 0.55 : 1)
+  background.strokeRoundedRect(-width / 2, -BUTTON_HEIGHT / 2, width, BUTTON_HEIGHT, 12)
+  background.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -BUTTON_HEIGHT / 2, width, BUTTON_HEIGHT), Phaser.Geom.Rectangle.Contains)
+    .on('pointerup', () => { if (enabled) config.onTap() })
   text.setPosition(x, config.y)
   scene.children.bringToTop(text)
   return width
