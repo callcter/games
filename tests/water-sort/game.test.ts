@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canPour, greedySolves, MODES, newGame, pour, solvable, topRun, TUBE_CAPACITY, type WaterState } from '../../src/games/water-sort/core/game'
+import { canPour, MODES, newGame, pour, solvable, topRun, TUBE_CAPACITY, type WaterState } from '../../src/games/water-sort/core/game'
 import { restoreWaterSort } from '../../src/games/puzzle-kit/core/drafts'
 
 describe('水排序规则', () => {
@@ -50,6 +50,19 @@ describe('水排序规则', () => {
 })
 
 describe('水排序生成器', () => {
+  it('重设计后三档难度都要求认真规划（单空管 + 完备可解 + 满管无白送）', () => {
+    const mulberry32 = (seed: number) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+    for (const [mode, config] of MODES.entries()) {
+      expect(config.empties).toBe(1) // 难度核心：全程只有一根空管
+      for (const seed of [11, 42, 2026]) {
+        const state = newGame(mode, mulberry32(seed))
+        expect(state.tubes).toHaveLength(config.colors + config.empties)
+        expect(state.tubes.filter(tube => tube.length).every(tube => tube.length === TUBE_CAPACITY)).toBe(true)
+        expect(state.tubes.some(tube => tube.length === TUBE_CAPACITY && new Set(tube).size === 1)).toBe(false)
+        expect(solvable(state)).toBe(true) // 完备 DFS 复核可解
+      }
+    }
+  })
   it('三档难度固定随机下生成结构正确、无已完成管、重放解必胜的局面', () => {
     for (const [mode, config] of MODES.entries()) {
       let seed = 1 + mode * 1000
@@ -67,7 +80,7 @@ describe('水排序生成器', () => {
         expect(layers).toHaveLength(config.colors * TUBE_CAPACITY)
         for (let color = 0; color < config.colors; color++) expect(layers.filter(layer => layer === color)).toHaveLength(TUBE_CAPACITY)
         expect(state.tubes.some(tube => tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY)).toBe(false)
-        expect(greedySolves(state, random, 200)).toBe(true)
+        expect(solvable(state)).toBe(true)
       }
     }
   })

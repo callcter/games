@@ -12,6 +12,12 @@ const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x3689b0]
 const SYMBOLS = ['●', '▲', '■', '◆', '★', '✚']
 
 const TUBE_W = 66, TUBE_H = 204, LAYER_H = 46
+
+// 液体渲染的颜色微调：亮/暗因子 ∈ (-1, 1)，模拟液面反光与层底阴影。
+const shade = (color: number, factor: number): number => {
+  const channel = (value: number): number => Math.max(0, Math.min(255, Math.round(factor >= 0 ? value + (255 - value) * factor : value * (1 + factor))))
+  return (channel((color >> 16) & 255) << 16) | (channel((color >> 8) & 255) << 8) | channel(color & 255)
+}
 // 素材管区严格纵横比（132×407），显示宽度按高度等比推导，避免横向拉伸。
 const TUBE_ART_RATIO = 132 / 407
 const tubeArtWidth = (height: number): number => Math.round(height * TUBE_ART_RATIO)
@@ -115,15 +121,37 @@ export class WaterSortScene extends PuzzleScene {
       glass.strokeRoundedRect(-TUBE_W / 2 - 4, -TUBE_H / 2 - 4, TUBE_W + 8, TUBE_H + 8, { tl: 12, tr: 12, bl: 28, br: 28 })
     }
     body.add(glass)
+    // 液体渲染（2026-09-18 重做）：连续液柱 + 每层顶部反光带 + 层底暗带，
+    // 顶面画弯月面椭圆——去掉旧版「每层独立圆角块 + 1px 间隙」的格子感。
     tube.forEach((color, layer) => {
-      const top = -TUBE_H / 2 + 10 + (TUBE_CAPACITY - 1 - layer) * (LAYER_H + 1)
+      const top = -TUBE_H / 2 + 10 + (TUBE_CAPACITY - 1 - layer) * LAYER_H
+      const base = PALETTE[color] ?? 0x999999
+      const bottomLayer = layer === 0
       const water = this.add.graphics()
-      water.fillStyle(PALETTE[color] ?? 0x999999, 1)
-      water.fillRoundedRect(-TUBE_W / 2 + 5, top, TUBE_W - 10, LAYER_H, { tl: 4, tr: 4, bl: 4, br: 4 })
+      water.fillStyle(base, 1)
+      // +2 让层与层无缝衔接；最底层沿用试管底部圆角。
+      water.fillRoundedRect(-TUBE_W / 2 + 5, top, TUBE_W - 10, LAYER_H + 2, bottomLayer ? { tl: 0, tr: 0, bl: 18, br: 18 } : { tl: 0, tr: 0, bl: 0, br: 0 })
+      // 层顶反光带（液体上表面反光）
+      water.fillStyle(shade(base, 0.35), 0.55)
+      water.fillRect(-TUBE_W / 2 + 5, top + 2, TUBE_W - 10, 4)
+      // 层底暗带（厚度感）
+      water.fillStyle(shade(base, -0.25), 0.5)
+      water.fillRect(-TUBE_W / 2 + 5, top + LAYER_H - 5, TUBE_W - 10, 5)
       body.add(water)
       const symbol = this.add.text(0, top + LAYER_H / 2, SYMBOLS[color] ?? '?', { fontSize: '22px', color: '#fffdf6', fontStyle: 'bold' }).setOrigin(0.5)
       body.add(symbol)
     })
+    // 顶层液面：弯月面椭圆 + 中央高光，让「这是液体」一眼可读。
+    if (tube.length) {
+      const topColor = tube[tube.length - 1]!
+      const surfaceY = -TUBE_H / 2 + 10 + (TUBE_CAPACITY - tube.length) * LAYER_H
+      const surface = this.add.graphics()
+      surface.fillStyle(shade(PALETTE[topColor] ?? 0x999999, 0.25), 1)
+      surface.fillEllipse(0, surfaceY + 3, TUBE_W - 12, 11)
+      surface.fillStyle(0xffffff, 0.5)
+      surface.fillEllipse(-3, surfaceY + 2, TUBE_W - 26, 5)
+      body.add(surface)
+    }
     if (finished) {
       const badge = this.add.text(0, -TUBE_H / 2 - 18, '✓', { fontSize: '26px', color: '#2f8f6b', fontStyle: 'bold' }).setOrigin(0.5)
       body.add(badge)

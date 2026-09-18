@@ -120,7 +120,7 @@ try {
     await open('water-sort'); await resumeOrFresh(); await click(608,165)
     assert.equal(await evaluate('__scene.state.colors'),6)
     assert.equal(await evaluate("(()=>{let bad=0;const walk=o=>{if(o.type==='Text'&&o.text==='?')bad++;if(o.list)o.list.forEach(walk)};walk(__scene.content);return bad})()"),0)
-    const pourPoints = await evaluate(`(async()=>{const {canPour}=await import('/src/games/water-sort/core/game.ts');const s=__scene.state;for(let a=0;a<s.tubes.length;a++)for(let b=0;b<s.tubes.length;b++)if(canPour(s,a,b)){const point=i=>({x:384+((i%4)-1.5)*128,y:i<4?330:608});return [point(a),point(b)]}})()`)
+    const pourPoints = await evaluate(`(async()=>{const {canPour}=await import('/src/games/water-sort/core/game.ts');const s=__scene.state;for(let a=0;a<s.tubes.length;a++)for(let b=0;b<s.tubes.length;b++)if(canPour(s,a,b)){const at=i=>{const body=__scene.tubeBodies.get(i);return {x:body.x,y:body.y}};return [at(a),at(b)]}})()`)
     assert.ok(pourPoints)
     for(const p of pourPoints) await click(p.x,p.y)
     assert.equal(await evaluate('__scene.state.moves'),1)
