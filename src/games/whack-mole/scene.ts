@@ -23,7 +23,12 @@ export class WhackMoleScene extends ActionScene {
   create(): void {
     // 草地背景铺整张画布，垫在一切视图（intro/回合/结算）之下；素材缺失则保持米色底。
     if (this.textures.exists(WHACK_BG_KEY)) {
-      this.add.image(384, 450, WHACK_BG_KEY).setDisplaySize(768, 900).setDepth(-10)
+      // 等比缩放铺满画布（cover）：超出 768×900 的部分被画布裁掉，绝不压扁。
+      const src = this.textures.get(WHACK_BG_KEY).source[0]
+      if (src) {
+        const scale = Math.max(768 / src.width, 900 / src.height)
+        this.add.image(384, 450, WHACK_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+      }
       // 画布外 letterbox 区域用同一张背景 cover 铺满（画布内不变形）。
       setHostBackdrop('art/whack-bg.png')
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)

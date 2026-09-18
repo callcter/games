@@ -12,6 +12,9 @@ const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x3689b0]
 const SYMBOLS = ['●', '▲', '■', '◆', '★', '✚']
 
 const TUBE_W = 66, TUBE_H = 204, LAYER_H = 46
+// 素材管区严格纵横比（132×407），显示宽度按高度等比推导，避免横向拉伸。
+const TUBE_ART_RATIO = 132 / 407
+const tubeArtWidth = (height: number): number => Math.round(height * TUBE_ART_RATIO)
 
 export class WaterSortScene extends PuzzleScene {
   /** 试管容器视图，倒水反馈动画用；draw 时重建。 */
@@ -97,7 +100,7 @@ export class WaterSortScene extends PuzzleScene {
     const finished = tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY
     // 素材可用时：管身底图垫在水层下、高光覆盖叠在水层上；否则退回程序化玻璃。
     const useArt = this.textures.exists(WATER_TUBE_KEY)
-    if (useArt) body.add(this.add.image(0, 0, WATER_TUBE_KEY).setDisplaySize(TUBE_W + 8, TUBE_H + 2))
+    if (useArt) body.add(this.add.image(0, 0, WATER_TUBE_KEY).setDisplaySize(tubeArtWidth(TUBE_H + 2), TUBE_H + 2))
     const glass = this.add.graphics()
     if (!useArt) {
       glass.fillStyle(0xfffdf6, 0.6)
@@ -127,7 +130,7 @@ export class WaterSortScene extends PuzzleScene {
     }
     if (this.textures.exists(WATER_GLOSS_KEY)) {
       // 高光覆盖在最高层（水层、符号之上），两条竖高光与管口沿自带半透明。
-      body.add(this.add.image(0, 0, WATER_GLOSS_KEY).setDisplaySize(TUBE_W + 8, TUBE_H + 2))
+      body.add(this.add.image(0, 0, WATER_GLOSS_KEY).setDisplaySize(tubeArtWidth(TUBE_H + 2), TUBE_H + 2))
     }
     // 触控区域比管身大一圈，孩子的手指好点。
     // 先入容器再开交互：加入容器后输入矩阵才会随容器注册；alpha 极小但非 0，
