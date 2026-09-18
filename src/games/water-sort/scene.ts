@@ -3,6 +3,7 @@ import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { canPour, MODES, newGame, pour, topRun, TUBE_CAPACITY, type WaterState } from './core/game'
 import { restoreWaterSort } from '../puzzle-kit/core/drafts'
+import { preloadWaterArt, WATER_BG_KEY, WATER_GLOSS_KEY, WATER_TUBE_KEY } from './art'
 
 // 颜色与符号双重标识，色弱也能分辨；顺序与颜色索引一致。
 const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x3689b0]
@@ -19,6 +20,18 @@ export class WaterSortScene extends PuzzleScene {
   private selected = -1
 
   constructor(audio: GameAudio, exit: () => void) { super('water-sort', '水排序', audio, exit) }
+
+  preload(): void {
+    preloadWaterArt(this)
+  }
+
+  create(): void {
+    // 木桌台面铺整张画布垫底（续玩弹窗/棋盘全局生效）；素材缺失保持米色底。
+    if (this.textures.exists(WATER_BG_KEY)) {
+      this.add.image(384, 450, WATER_BG_KEY).setDisplaySize(768, 900).setDepth(-10)
+    }
+    super.create()
+  }
 
   protected start(): void {
     void this.offerResume('water-sort', restoreWaterSort, saved => {
@@ -76,13 +89,22 @@ export class WaterSortScene extends PuzzleScene {
       this.tweens.add({ targets: body, y: y - 12, angle: -6, duration: 170, ease: 'Back.Out' })
     }
     const finished = tube.length === TUBE_CAPACITY && topRun(tube) === TUBE_CAPACITY
+    // 素材可用时：管身底图垫在水层下、高光覆盖叠在水层上；否则退回程序化玻璃。
+    const useArt = this.textures.exists(WATER_TUBE_KEY)
+    if (useArt) body.add(this.add.image(0, 0, WATER_TUBE_KEY).setDisplaySize(TUBE_W + 8, TUBE_H + 2))
     const glass = this.add.graphics()
-    glass.fillStyle(0xfffdf6, 0.6)
-    glass.fillRoundedRect(-TUBE_W / 2, -TUBE_H / 2, TUBE_W, TUBE_H, { tl: 10, tr: 10, bl: 26, br: 26 })
-    glass.lineStyle(3, selected ? 0xe88065 : 0x527267, selected ? 1 : 0.8)
-    glass.strokeRoundedRect(-TUBE_W / 2, -TUBE_H / 2, TUBE_W, TUBE_H, { tl: 10, tr: 10, bl: 26, br: 26 })
-    glass.fillStyle(0xffffff, 0.35)
-    glass.fillRoundedRect(-TUBE_W / 2 + 7, -TUBE_H / 2 + 12, 8, TUBE_H - 60, 4)
+    if (!useArt) {
+      glass.fillStyle(0xfffdf6, 0.6)
+      glass.fillRoundedRect(-TUBE_W / 2, -TUBE_H / 2, TUBE_W, TUBE_H, { tl: 10, tr: 10, bl: 26, br: 26 })
+      glass.lineStyle(3, 0x527267, 0.8)
+      glass.strokeRoundedRect(-TUBE_W / 2, -TUBE_H / 2, TUBE_W, TUBE_H, { tl: 10, tr: 10, bl: 26, br: 26 })
+      glass.fillStyle(0xffffff, 0.35)
+      glass.fillRoundedRect(-TUBE_W / 2 + 7, -TUBE_H / 2 + 12, 8, TUBE_H - 60, 4)
+    }
+    if (selected) {
+      glass.lineStyle(4, 0xe88065, 1)
+      glass.strokeRoundedRect(-TUBE_W / 2 - 4, -TUBE_H / 2 - 4, TUBE_W + 8, TUBE_H + 8, { tl: 12, tr: 12, bl: 28, br: 28 })
+    }
     body.add(glass)
     tube.forEach((color, layer) => {
       const top = -TUBE_H / 2 + 10 + (TUBE_CAPACITY - 1 - layer) * (LAYER_H + 1)
@@ -96,6 +118,10 @@ export class WaterSortScene extends PuzzleScene {
     if (finished) {
       const badge = this.add.text(0, -TUBE_H / 2 - 18, '✓', { fontSize: '26px', color: '#2f8f6b', fontStyle: 'bold' }).setOrigin(0.5)
       body.add(badge)
+    }
+    if (this.textures.exists(WATER_GLOSS_KEY)) {
+      // 高光覆盖在最高层（水层、符号之上），两条竖高光与管口沿自带半透明。
+      body.add(this.add.image(0, 0, WATER_GLOSS_KEY).setDisplaySize(TUBE_W + 8, TUBE_H + 2))
     }
     // 触控区域比管身大一圈，孩子的手指好点。
     // 先入容器再开交互：加入容器后输入矩阵才会随容器注册；alpha 极小但非 0，
