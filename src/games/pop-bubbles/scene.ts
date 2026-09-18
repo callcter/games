@@ -2,12 +2,34 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene, FIELD } from '../action-kit/scene'
 import { hitTest, MODES, newGame, pop, step, type Bubble } from './core/game'
+import { POP_BG_KEY, POP_SHEET_KEY, popSheetReady, preloadPopArt } from './art'
+import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 
-type BubbleView = Phaser.GameObjects.Container & { orb: Phaser.GameObjects.Arc; glint: Phaser.GameObjects.Arc; shine: Phaser.GameObjects.Graphics }
+type BubbleView = Phaser.GameObjects.Container & { orb: Phaser.GameObjects.Arc; glint: Phaser.GameObjects.Arc; shine: Phaser.GameObjects.Graphics; sprite: Phaser.GameObjects.Image | null; hue: number }
 
 export class PopBubblesScene extends ActionScene {
   private state = newGame()
   private views: BubbleView[] = []
+  private useArt = false
+
+  preload(): void {
+    preloadPopArt(this)
+  }
+
+  create(): void {
+    if (this.textures.exists(POP_BG_KEY)) {
+      const src = this.textures.get(POP_BG_KEY).source[0]
+      if (src) {
+        const scale = Math.max(768 / src.width, 900 / src.height)
+        this.add.image(384, 450, POP_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+      }
+      setHostBackdrop('art/pop-bubbles-bg.png')
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+      this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
+    }
+    this.useArt = popSheetReady(this)
+    super.create()
+  }
   constructor(audio: GameAudio, exit: () => void) { super('pop-bubbles', '点泡泡', audio, exit) }
   protected modes(): readonly { label: string }[] {
     return MODES.map((entry, index) => ({ label: `${this.mode === index ? '✓ ' : ''}${entry.label}` }))
@@ -52,6 +74,8 @@ export class PopBubblesScene extends ActionScene {
     this.state.bubbles.forEach((bubble, index) => this.syncBubble(this.views[index]!, bubble))
   }
   private makeBubble(bubble: Bubble): BubbleView {
+    // 视觉四色按横坐标稳定取帧（金色固定第 5 帧）；颜色只是观感，规则仍只认金色。
+    const hue = bubble.golden ? 4 : Math.floor(((bubble.x / 768) * 4 + 0.5)) % 4
     const body = this.add.circle(0, 0, bubble.radius, bubble.golden ? 0xe6b84d : 0x7ec8e3, 0.72)
       .setStrokeStyle(4, bubble.golden ? 0xd9a12e : 0xffffff, 0.9)
     const glint = this.add.circle(0, 0, Math.max(3, bubble.radius * 0.22), 0xffffff, 0.85)
@@ -60,6 +84,14 @@ export class PopBubblesScene extends ActionScene {
     view.orb = body
     view.glint = glint
     view.shine = shine
+    view.hue = hue
+    view.sprite = null
+    if (this.useArt) {
+      const sprite = this.add.image(0, 0, POP_SHEET_KEY, hue).setDisplaySize(bubble.radius * 2.2, bubble.radius * 2.2)
+      view.addAt(sprite, 0)
+      view.orb.setFillStyle(0x000000, 0).setStrokeStyle(0, 0)
+      view.sprite = sprite
+    }
     this.entities.add(view)
     this.syncBubble(view, bubble)
     return view
@@ -70,6 +102,7 @@ export class PopBubblesScene extends ActionScene {
       .setFillStyle(bubble.golden ? 0xe6b84d : 0x7ec8e3, 0.35)
       .setStrokeStyle(3, bubble.golden ? 0xd9a12e : 0x58a9c8, 0.85)
     view.glint.setPosition(-bubble.radius * 0.35, -bubble.radius * 0.35).setRadius(Math.max(3, bubble.radius * 0.22))
+    if (view.sprite) view.sprite.setDisplaySize(bubble.radius * 2.2, bubble.radius * 2.2)
     const r = bubble.radius
     view.shine.clear().lineStyle(3, 0xffffff, 0.9)
       .beginPath().arc(0, 0, r * 0.8, Math.PI * 1.1, Math.PI * 1.55).strokePath()

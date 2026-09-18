@@ -2,10 +2,32 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene, FIELD } from '../action-kit/scene'
 import { comboFactor, MODES, newGame, step, tap, type Drop } from './core/game'
+import { RAIN_BG_KEY, RAIN_SHEET_KEY, preloadRainArt, rainSheetReady } from './art'
+import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 
 export class RedRainScene extends ActionScene {
   private state = newGame()
   private views: Phaser.GameObjects.Image[] = []
+  private useArt = false
+
+  preload(): void {
+    preloadRainArt(this)
+  }
+
+  create(): void {
+    if (this.textures.exists(RAIN_BG_KEY)) {
+      const src = this.textures.get(RAIN_BG_KEY).source[0]
+      if (src) {
+        const scale = Math.max(768 / src.width, 900 / src.height)
+        this.add.image(384, 450, RAIN_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+      }
+      setHostBackdrop('art/red-rain-bg.png')
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+      this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
+    }
+    this.useArt = rainSheetReady(this)
+    super.create()
+  }
   constructor(audio: GameAudio, exit: () => void) { super('red-rain', '红包雨', audio, exit) }
   protected modes(): readonly { label: string }[] {
     return MODES.map((entry, index) => ({ label: `${this.mode === index ? '✓ ' : ''}${entry.label}` }))
@@ -57,9 +79,17 @@ export class RedRainScene extends ActionScene {
       return
     }
     this.state.drops.forEach((drop, index) => {
-      const view = this.views[index]!, key = drop.cracker ? 'firecracker' : 'red-packet'
+      const view = this.views[index]!
+      const key = drop.cracker ? 'firecracker' : 'red-packet'
       view.setPosition(drop.x, drop.y)
-      if (view.texture.key !== key) view.setTexture(key).setDisplaySize(drop.cracker ? 54 : 80,drop.cracker ? 92 : 102)
+      const frame = drop.cracker ? 2 : 0
+      if (this.useArt) {
+        if (view.texture.key !== RAIN_SHEET_KEY || view.frame.name !== String(frame)) {
+          view.setTexture(RAIN_SHEET_KEY, frame).setDisplaySize(drop.cracker ? 58 : 88, drop.cracker ? 100 : 106)
+        }
+      } else if (view.texture.key !== key) {
+        view.setTexture(key).setDisplaySize(drop.cracker ? 54 : 80,drop.cracker ? 92 : 102)
+      }
     })
   }
   // 红包在持续下落，点击判定取点击瞬间最近的实体索引交给 core 的 tap 处理。
@@ -72,7 +102,9 @@ export class RedRainScene extends ActionScene {
     return best
   }
   private makeDrop(drop: Drop): Phaser.GameObjects.Image {
-    const view = this.add.image(drop.x, drop.y, drop.cracker ? 'firecracker' : 'red-packet').setDisplaySize(drop.cracker ? 54 : 80,drop.cracker ? 92 : 102)
+    const view = this.useArt
+      ? this.add.image(drop.x, drop.y, RAIN_SHEET_KEY, drop.cracker ? 2 : 0).setDisplaySize(drop.cracker ? 58 : 88, drop.cracker ? 100 : 106)
+      : this.add.image(drop.x, drop.y, drop.cracker ? 'firecracker' : 'red-packet').setDisplaySize(drop.cracker ? 54 : 80,drop.cracker ? 92 : 102)
     this.entities.add(view)
     return view
   }

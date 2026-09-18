@@ -1,13 +1,36 @@
+import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { isStuck, MODES, newMatch, pick, pickable, shuffle, SLOT_SIZE, undo, type MatchState } from './core/game'
+import { matchSheetReady, MATCH_BG_KEY, MATCH_SHEET_KEY, preloadMatchArt, TILE_KIND_FRAME } from './art'
+import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 
 // 图案与游戏主题一致：水果 emoji，前若干种按难度取用。
 const EMOJIS = ['🍎', '🍌', '🍇', '🍉', '🍊', '🍓', '🍒', '🥝', '🍍', '🥭']
 const TILE = 86, SPACING = 88
 
 export class TileMatchScene extends PuzzleScene {
+  private useArt = false
+
+  preload(): void {
+    preloadMatchArt(this)
+  }
+
+  create(): void {
+    if (this.textures.exists(MATCH_BG_KEY)) {
+      const src = this.textures.get(MATCH_BG_KEY).source[0]
+      if (src) {
+        const scale = Math.max(768 / src.width, 900 / src.height)
+        this.add.image(384, 450, MATCH_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+      }
+      setHostBackdrop('art/tile-match-bg.png')
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+      this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
+    }
+    this.useArt = matchSheetReady(this)
+    super.create()
+  }
   private mode = 0
   private state = newMatch(0)
   private busy = false
@@ -60,9 +83,16 @@ export class TileMatchScene extends PuzzleScene {
         body.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE, 16)
       }
       block.add(body)
-      const face = this.add.text(0, 0, EMOJIS[tile.kind] ?? '?', { fontSize: '44px' }).setOrigin(0.5)
-      face.setAlpha(free ? 1 : 0.45)
-      block.add(face)
+      const frame = this.useArt ? TILE_KIND_FRAME[tile.kind] ?? -1 : -1
+      if (frame >= 0) {
+        const face = this.add.image(0, 0, MATCH_SHEET_KEY, frame).setDisplaySize(TILE * 0.74, TILE * 0.74)
+        face.setAlpha(free ? 1 : 0.45)
+        block.add(face)
+      } else {
+        const face = this.add.text(0, 0, EMOJIS[tile.kind] ?? '?', { fontSize: '44px' }).setOrigin(0.5)
+        face.setAlpha(free ? 1 : 0.45)
+        block.add(face)
+      }
       block.setScale(1 - tile.layer * 0.03)
       if (free) {
         const hit = this.add.rectangle(x, y, TILE + 4, TILE + 4, 0xffffff, 0.001)
