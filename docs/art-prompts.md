@@ -325,6 +325,116 @@ watermark, no border; the table center is clear of any object.
 background `transparent`（假透明退白底：管身可直接用；高光图若退白底则
 接入端改用「screen 混合模式」压白，不抠图）；water-bg 用 `opaque`。
 
+## 第三批候选（点泡泡 / 红包雨 / 叠叠消）
+
+沿用「软胶玩具质感」风格节；同批同会话生成。
+
+### pop-bubbles（点泡泡）
+
+| 文件 | 内容 | 形式 | size |
+| --- | --- | --- | --- |
+| pop-bubbles-sheet.png | 泡泡四色＋金色 | 2×3 网格（6 格用 5） | `1536x1024` |
+| pop-bubbles-bg.png | 浴室/晴空泡泡背景 | 单张整图 | `1536x1792` |
+
+```text
+Task: sprite sheet for a children's bubble popping game.
+Grid: exactly 6 equal square cells, 3 columns by 2 rows, one bubble
+per cell, centered, each bubble about 70% of its cell, same scale.
+Sprites: five glossy soap bubbles — 1) sky-blue, 2) pink, 3) yellow,
+4) mint-green, 5) golden with tiny sparkles (the rare one); cell 6
+left empty with nothing in it.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, iridescent soap-bubble shine with gentle top light, warm
+pastel palette, clean silhouettes.
+Constraints: no text, no watermark, no grid lines between cells,
+plain transparent background behind each bubble.
+```
+
+```text
+Task: a full background painting for a children's bubble popping
+game, portrait orientation.
+Composition: a bright sunny sky filling the frame — soft gradient
+blue with three fluffy clouds and a distant green meadow strip at
+the very bottom; a few faint tiny bubbles drifting up the sides;
+the center stays open and airy for gameplay.
+Style: soft 3D toy-like rendering for young children, rounded
+shapes, gentle top light, warm cheerful pastel palette, calm and
+airy.
+Constraints: no characters, no UI, no text, no watermark; center
+clear of large objects.
+```
+
+### red-rain（红包雨）
+
+| 文件 | 内容 | 形式 | size |
+| --- | --- | --- | --- |
+| red-rain-sheet.png | 红包两态＋炮仗＋金币 | 2×2 网格 | `1024x1024` |
+| red-rain-bg.png | 节日街景背景 | 单张整图 | `1536x1792` |
+
+```text
+Task: sprite sheet for a children's lucky envelope catching game.
+Grid: exactly 4 equal square cells, 2 columns by 2 rows, one object
+per cell, centered, about 65% of each cell, same scale.
+Sprites: 1) a red Chinese lucky envelope with a golden coin seal,
+closed; 2) the same envelope burst open with golden light and two
+coins leaping out; 3) a red firecracker with a small spark on its
+fuse (the one to avoid); 4) a shiny gold coin with a square hole.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, matte paper-and-gold surfaces with gentle top light, warm
+festive palette, clean silhouettes.
+Constraints: no text on the envelope besides the coin-shaped seal,
+no letters anywhere, no watermark, no grid lines, plain transparent
+background behind each object.
+```
+
+```text
+Task: a full background painting for a children's lucky envelope
+game, portrait orientation.
+Composition: a festive night street with warm lanterns strung
+across the top, softly glowing windows of low shops along both
+sides, dark plum-purple sky with tiny stars; the center stays open
+for falling envelopes.
+Style: soft 3D toy-like rendering for young children, rounded
+shapes, warm lantern glow, cozy and calm, not loud.
+Constraints: no characters, no envelopes drawn in the sky, no UI,
+no text, no watermark; center clear.
+```
+
+### tile-match（叠叠消）
+
+| 文件 | 内容 | 形式 | size |
+| --- | --- | --- | --- |
+| tile-match-sheet.png | 牌面八种 | 3×3 网格（9 格用 8） | `1536x1536` |
+| tile-match-bg.png | 客厅桌面背景 | 单张整图 | `1536x1792` |
+
+```text
+Task: sprite sheet for a children's tile matching game.
+Grid: exactly 9 equal square cells, 3 columns by 3 rows, one tile
+per cell, centered, each tile about 80% of its cell, same scale.
+Sprites: eight rounded square tiles like thick game pieces —
+1) strawberry, 2) banana, 3) watermelon slice, 4) green apple,
+5) grape cluster, 6) orange, 7) blueberry muffin, 8) honey jar;
+cell 9 left empty.
+Style: soft 3D toy-like rendering for young children, rounded plump
+shapes, matte candy-like colors with gentle top light and soft
+shadow under each tile, clean silhouettes readable at 40 px.
+Constraints: no text, no watermark, no grid lines between cells,
+plain transparent background around each tile.
+```
+
+```text
+Task: a full background painting for a children's tile matching
+game, portrait orientation.
+Composition: a cozy living-room table viewed slightly from above —
+a warm wooden tabletop with a soft tablecloth covering the lower
+two thirds, a blurred sofa and bookshelf along the top edge; the
+table center stays open and uncluttered for tiles.
+Style: soft 3D toy-like rendering for young children, rounded
+shapes, gentle top light, warm pastel palette, cozy and calm.
+Constraints: no tiles, no objects on the table center, no UI, no
+text, no watermark.
+```
+
 ## 交付与验收（游戏内素材）
 
 1. 五张 PNG（whack-moles / whack-hole / whack-bg / water-tube /

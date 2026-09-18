@@ -1,9 +1,11 @@
+import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { canPour, MODES, newGame, pour, topRun, TUBE_CAPACITY, type WaterState } from './core/game'
 import { restoreWaterSort } from '../puzzle-kit/core/drafts'
 import { preloadWaterArt, WATER_BG_KEY, WATER_GLOSS_KEY, WATER_TUBE_KEY } from './art'
+import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 
 // 颜色与符号双重标识，色弱也能分辨；顺序与颜色索引一致。
 const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x3689b0]
@@ -29,6 +31,10 @@ export class WaterSortScene extends PuzzleScene {
     // 木桌台面铺整张画布垫底（续玩弹窗/棋盘全局生效）；素材缺失保持米色底。
     if (this.textures.exists(WATER_BG_KEY)) {
       this.add.image(384, 450, WATER_BG_KEY).setDisplaySize(768, 900).setDepth(-10)
+      // 画布外 letterbox 区域用同一张背景 cover 铺满（画布内不变形）。
+      setHostBackdrop('art/water-bg.png')
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+      this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     }
     super.create()
   }

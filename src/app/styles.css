@@ -139,7 +139,8 @@ button { font: inherit; }
 
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* 148px 让 390px 手机（扣滚动条与内边距后约 327px）也能放下两列。 */
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 18px;
 }
 
@@ -399,7 +400,8 @@ button { font: inherit; }
 }
 
 @media (max-width: 560px) {
-  .game-grid { grid-template-columns: 1fr; }
+  /* 手机两列（用户 2026-09-18 要求）：卡片仍保持可触控的最小高度。 */
+  .game-grid { grid-template-columns: repeat(2, 1fr); }
   .game-card { min-height: 160px; }
 }
 

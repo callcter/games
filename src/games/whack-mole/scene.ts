@@ -3,6 +3,7 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene } from '../action-kit/scene'
 import { comboFactor, MODES, newGame, step, whack } from './core/game'
 import { MOLE_SHEET_KEY, preloadWhackArt, whackMolesReady, WHACK_BG_KEY, WHACK_HOLE_KEY } from './art'
+import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 
 const HOLE_SPACING = 224
 const BOARD_X = 384, BOARD_Y = 528
@@ -23,6 +24,10 @@ export class WhackMoleScene extends ActionScene {
     // 草地背景铺整张画布，垫在一切视图（intro/回合/结算）之下；素材缺失则保持米色底。
     if (this.textures.exists(WHACK_BG_KEY)) {
       this.add.image(384, 450, WHACK_BG_KEY).setDisplaySize(768, 900).setDepth(-10)
+      // 画布外 letterbox 区域用同一张背景 cover 铺满（画布内不变形）。
+      setHostBackdrop('art/whack-bg.png')
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+      this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     }
     this.useArtMoles = whackMolesReady(this)
     super.create()

@@ -10,13 +10,17 @@ const bubbles = circle(23, 34, 13, '#a8dbeb') + circle(42, 23, 11, '#b9abde') + 
 const flag = path('M17 52V14m1 0h27l-7 9 7 9H18', coral)
 const mole = path('M14 45V32a18 18 0 0 1 36 0v13', '#bb896a') + circle(16, 22, 6, '#bb896a') + circle(48, 22, 6, '#bb896a') + circle(25, 31, 2, '#173f35') + circle(39, 31, 2, '#173f35') + circle(32, 38, 5, '#eea1a0') + path('M8 47q24 12 48 0', green)
 
-const matchTiles = rect(10, 14, 34, 30, coral, 8) + rect(24, 26, 32, 28, gold, 8) + label(40, 46, '🍎', 20)
+// 未接入精灵图的四款（lobby-e/f 素材待生成）：画成与精灵图一致的圆角徽章风，
+// 生成后被 installIconArt 自动替换。
+const badge = (fill: string) => rect(3, 3, 58, 58, fill, 13)
 
-const klondikeCard = rect(14, 10, 36, 48, cream) + rect(24, 20, 36, 48, cream) + path('M42 30C39 34 36 35 36 39a3 3 0 0 0 6 0c0-2-2-3-3-5 2 0 4-1 4-3a2 2 0 0 0-4 0c0 2 2 4 3 6', 'none') + label(42, 58, '♠', 24)
+const matchTiles = badge('#fdf3d9') + rect(12, 14, 30, 26, coral, 8) + rect(24, 26, 30, 26, gold, 8) + circle(27, 27, 5, cream) + circle(39, 39, 5, cream)
 
-const parkingCar = rect(8, 22, 42, 22, coral, 8) + rect(16, 14, 22, 12, '#a8dbeb', 5) + circle(16, 46, 4, '#36594b') + circle(42, 46, 4, '#36594b') + path('M52 14l8 6m-8 0l8-6', 'none')
+const klondikeCard = badge('#eaf1f7') + rect(13, 12, 30, 42, cream, 6) + rect(23, 18, 30, 42, cream, 6) + path('M40 30c-4 5-6 8-2 11q2 2 4-2 2 4 4 2c4-3 2-6-2-11', coral) + circle(46, 48, 2.5, coral)
 
-const testTube = path('M24 10h16v30a12 12 0 0 1-8 11 8 8 0 0 1-8-11Z', '#cfe8ef') + rect(24, 26, 16, 10, coral) + rect(24, 38, 16, 8, gold)
+const parkingCar = badge('#e4f2ea') + rect(10, 26, 44, 20, coral, 8) + rect(18, 18, 24, 12, '#a8dbeb', 5) + circle(19, 48, 4.5, '#36594b') + circle(45, 48, 4.5, '#36594b') + path('M12 16h8', green)
+
+const testTube = badge('#e9f3f6') + path('M26 10h12v30a10 10 0 0 1-6 12 7 4 0 0 1-6-12Z', '#cfe8ef') + rect(26, 26, 12, 10, coral) + rect(26, 38, 12, 8, gold)
 
 const art: Record<string, string> = {
   'water-sort': testTube,
