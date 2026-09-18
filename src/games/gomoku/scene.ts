@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import {
   BOARD_SIZE,
   chooseComputerMove,
@@ -39,6 +40,7 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   create(): void {
+    attachFirstRunHelp(this, '五子棋')
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.handleBoardTap(pointer))
     this.scale.on('resize', () => this.draw())
@@ -146,8 +148,11 @@ export class GomokuScene extends Phaser.Scene {
       fontSize: compact ? '28px' : '40px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    createHeaderButton(this, {
+    const actionsW = createHeaderButton(this, {
       x: width - margin, y: compact ? 34 : 42, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
+    createHeaderButton(this, {
+      x: width - margin - actionsW - 8, y: compact ? 34 : 42, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '五子棋') }
     })
 
     const status = `${this.scoreLabel()} · ${this.statusText()}`

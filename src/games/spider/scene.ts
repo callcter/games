@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createCardSlot, createCardView } from '../cards/card-view'
 import {
   dealStock,
@@ -45,6 +46,7 @@ export class SpiderScene extends Phaser.Scene {
   }
 
   create(): void {
+    attachFirstRunHelp(this, '蜘蛛纸牌')
     this.input.on('pointerdown', () => void this.audio.unlock())
     // 拖牌（Experience 2.0 Wave 1）：拿起跟手、松手按落点提交；轻点退回点选。
     this.input.on('dragstart', (_pointer: Phaser.Input.Pointer, object: unknown) => this.beginCardDrag(object))
@@ -134,6 +136,7 @@ export class SpiderScene extends Phaser.Scene {
     actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
     actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
     actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '? 怎么玩', onTap: () => { showHelpPanel(this, '蜘蛛纸牌') } }) + 10
     this.add.text(145, 20, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => { this.audio.toggleMuted(); this.draw() })

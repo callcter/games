@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GameAudio } from '../../platform/audio/game-audio'
 import { flushDraft, loadDraft, saveDraft } from './draft-storage'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 
 export const INK = '#173f35'
 export const COLORS = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x87b65e, 0x58b4d1]
@@ -14,6 +15,8 @@ export abstract class PuzzleScene extends Phaser.Scene {
   private status!: Phaser.GameObjects.Text
   protected alive = false
   private draftId?: string
+  /** 首次进入自动弹玩法说明；动作游戏有自己的开场说明，覆写为 false。 */
+  protected showFirstRunHelp = true
 
   constructor(key: string, title: string, audio: GameAudio, exit: () => void) {
     super(key)
@@ -45,12 +48,14 @@ export abstract class PuzzleScene extends Phaser.Scene {
     header.setDepth(-1)
     this.button(90, 45, '‹ 游戏屋', this.exit, 132)
     this.text(384, 45, this.heading, 34)
+    this.button(560, 45, '?', () => { showHelpPanel(this, this.heading) }, 52)
     const sound = this.button(680, 45, this.audio.isMuted ? '声音关' : '声音开', () => {
       this.audio.toggleMuted()
       sound.setText(this.audio.isMuted ? '声音关' : '声音开')
     }, 124)
     this.status = this.text(384, 103, '', 19)
     this.content = this.add.container(0, 0)
+    if (this.showFirstRunHelp) attachFirstRunHelp(this, this.heading)
     this.start()
   }
 

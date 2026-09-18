@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createCardSlot, createCardView } from '../cards/card-view'
 import { SUITS, suitSymbol, type Suit } from '../cards/core/cards'
 import { draw, newDeal, nextAutoMove, playColumn, playWaste, recall, stuck, type KlondikeState } from './core/game'
@@ -44,6 +45,7 @@ export class KlondikeScene extends Phaser.Scene {
   }
 
   create(): void {
+    attachFirstRunHelp(this, '经典纸牌')
     this.input.on('pointerdown', () => void this.audio.unlock())
     // 拖牌：拿起跟手，松手按落点提交；轻点（位移小）退回原点选路径。
     this.input.on('dragstart', (_pointer: Phaser.Input.Pointer, object: unknown) => this.beginCardDrag(object))
@@ -166,6 +168,7 @@ export class KlondikeScene extends Phaser.Scene {
     actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
     actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
     actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '翻一张', onTap: () => this.deal() })
+    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '? 怎么玩', onTap: () => { showHelpPanel(this, '经典纸牌') } }) + 10
     this.add.text(145, 22, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', () => {

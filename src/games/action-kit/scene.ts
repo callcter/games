@@ -22,6 +22,8 @@ export abstract class ActionScene extends PuzzleScene {
   private readonly gameId: string
   private roundInputs: Array<() => void> = []
   private bursts = new Map<string, Phaser.GameObjects.Particles.ParticleEmitter>()
+  // 选难度面板的 headline 已是首次引导，不再自动弹完整说明（顶栏"?"仍可打开）。
+  protected override readonly showFirstRunHelp = false
 
   protected onRoundInput(event: string, handler: (pointer: Phaser.Input.Pointer) => void): void {
     this.input.on(event, handler)

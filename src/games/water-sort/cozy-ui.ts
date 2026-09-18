@@ -37,6 +37,7 @@ export type WaterIcon =
   | 'undo'
   | 'hint'
   | 'new'
+  | 'help'
 
 export type RoundButton = GameIconButton
 export type ToolButton = GameToolButton

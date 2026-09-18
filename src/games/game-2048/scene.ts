@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { showFloatingText } from '../../experience/feedback/floating-text'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import {
   BOARD_SIZE,
   moveGame,
@@ -54,6 +55,7 @@ export class Game2048Scene extends Phaser.Scene {
   }
 
   create(): void {
+    attachFirstRunHelp(this, '2048')
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       void this.audio.unlock()
       this.pointerStart = new Phaser.Math.Vector2(pointer.x, pointer.y)
@@ -148,8 +150,11 @@ export class Game2048Scene extends Phaser.Scene {
       fontSize: compact ? '30px' : '44px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    createHeaderButton(this, {
+    const actionsW = createHeaderButton(this, {
       x: width - margin, y: compact ? 36 : 44, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
+    createHeaderButton(this, {
+      x: width - margin - actionsW - 8, y: compact ? 36 : 44, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '2048') }
     })
 
     this.add.text(margin, compact ? 48 : 76, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {

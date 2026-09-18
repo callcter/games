@@ -86,6 +86,9 @@ try {
   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await send('Page.navigate',{url:base})
   await until("!!document.querySelector('.game-grid')")
+  // 预置全部玩法说明为"已看过"：首弹面板会吞掉棋盘输入，回归专注原有链路
+  // （帮助面板本身由 help-verify 类脚本单独验收）。
+  await evaluate(`(async()=>{const m = await import('/src/ui/help-content.ts');try{localStorage.setItem('family-game-room-help-seen-v1',JSON.stringify(m.allHelpTitles))}catch(e){}return 1})()`)
   if (process.env.AUDIT_ONLY) {
     await until("document.querySelectorAll('.game-grid [data-game]').length >= 24")
     const ids = await evaluate("Array.from(document.querySelectorAll('.game-grid [data-game]'), e => e.dataset.game)")

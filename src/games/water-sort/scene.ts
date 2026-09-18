@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 import { flushDraft, loadDraft, saveDraft } from '../puzzle-kit/draft-storage'
@@ -86,6 +87,7 @@ export class WaterSortScene extends Phaser.Scene {
 
   private backButton!: RoundButton
   private soundButton!: RoundButton
+  private helpButton!: RoundButton
   private modeButton!: ModePill
   private movesChip!: StatChip
   private doneChip!: StatChip
@@ -117,6 +119,7 @@ export class WaterSortScene extends Phaser.Scene {
     this.veil = this.add.rectangle(0, 0, 1, 1, 0x5a3c25, 0.055).setOrigin(0).setDepth(-20)
 
     this.input.on('pointerdown', () => void this.audio.unlock())
+    attachFirstRunHelp(this, '水排序')
     this.createChrome()
     this.layoutScene()
 
@@ -164,6 +167,12 @@ export class WaterSortScene extends Phaser.Scene {
       if (this.busy) return
       this.playLocal(WATER_SFX.ui, 0.22)
       this.exitGame()
+    }, 35)
+
+    this.helpButton = createRoundButton(this, 'help', () => {
+      if (this.busy) return
+      this.playLocal(WATER_SFX.ui, 0.20)
+      showHelpPanel(this, '水排序')
     }, 35)
 
     this.soundButton = createRoundButton(this, this.audio.isMuted ? 'muted' : 'sound', () => {
@@ -220,6 +229,7 @@ export class WaterSortScene extends Phaser.Scene {
     this.veil?.setSize(DESIGN_WIDTH, height)
 
     this.backButton?.setPosition(58, topY)
+    this.helpButton?.setPosition(128, topY)
     this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
     this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
 

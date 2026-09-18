@@ -36,6 +36,7 @@ export type CozyIconName =
   | 'undo'
   | 'shuffle'
   | 'restart'
+  | 'help'
 
 export type CozyIconButton = GameIconButton
 export type CozyToolButton = GameToolButton

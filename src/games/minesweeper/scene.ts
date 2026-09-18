@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   chordCell,
@@ -36,6 +37,7 @@ export class MinesweeperScene extends Phaser.Scene {
   }
 
   create(): void {
+    attachFirstRunHelp(this, '扫雷')
     this.input.mouse?.disableContextMenu()
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.timer = this.time.addEvent({
@@ -78,6 +80,10 @@ export class MinesweeperScene extends Phaser.Scene {
     this.add.text(384, 18, '扫雷', {
       color: '#344b43', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '40px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
+    this.add.text(445, 24, '?', {
+      color: '#50655d', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '24px', fontStyle: 'bold',
+      backgroundColor: '#e8efe9', padding: { x: 12, y: 6 }
+    }).setInteractive({ useHandCursor: true }).on('pointerup', () => { showHelpPanel(this, '扫雷') })
     this.add.text(740, 27, this.audio.isMuted ? '♪ 关' : '♫ 开', {
       color: '#73857e', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '18px', fontStyle: 'bold'
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => {

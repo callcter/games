@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   BOARD_HEIGHT,
@@ -81,6 +82,11 @@ export class TetrisScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 方块开局即下落：首弹说明期间暂停，关闭后继续。
+    attachFirstRunHelp(this, '俄罗斯方块', 700, {
+      onOpen: () => { if (!this.paused) this.togglePause() },
+      onClose: () => { if (this.paused) this.togglePause() }
+    })
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.on('pointerup', () => this.stopControlRepeat())
     this.input.on('gameout', () => this.stopControlRepeat())
@@ -286,8 +292,11 @@ export class TetrisScene extends Phaser.Scene {
       fontSize: compact ? '25px' : '36px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    createHeaderButton(this, {
+    const actionsW = createHeaderButton(this, {
       x: width - margin, y: compact ? 32 : 40, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
+    createHeaderButton(this, {
+      x: width - margin - actionsW - 8, y: compact ? 32 : 40, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '俄罗斯方块') }
     })
 
     if (!compact) {

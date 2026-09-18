@@ -13,6 +13,7 @@ import homeSvg from '@phosphor-icons/core/bold/house-bold.svg?raw'
 import settingsSvg from '@phosphor-icons/core/bold/gear-six-bold.svg?raw'
 import crownSvg from '@phosphor-icons/core/bold/crown-bold.svg?raw'
 import caretRightSvg from '@phosphor-icons/core/bold/caret-right-bold.svg?raw'
+import questionSvg from '@phosphor-icons/core/bold/question-bold.svg?raw'
 
 // Phaser 4 的 XHRLoader 对 data: URI 一律走 base64 解码分支，
 // 因此必须用 base64 形式（Phosphor SVG 均为 ASCII，btoa 安全）。
@@ -37,6 +38,7 @@ export type GameUiIconName =
   | 'settings'
   | 'difficulty'
   | 'next'
+  | 'help'
 
 interface IconDefinition {
   key: string
@@ -57,7 +59,8 @@ const ICONS: Readonly<Record<GameUiIconName, IconDefinition>> = {
   home: { key: 'game-ui-icon-home', url: dataUri(homeSvg) },
   settings: { key: 'game-ui-icon-settings', url: dataUri(settingsSvg) },
   difficulty: { key: 'game-ui-icon-difficulty', url: dataUri(crownSvg) },
-  next: { key: 'game-ui-icon-next', url: dataUri(caretRightSvg) }
+  next: { key: 'game-ui-icon-next', url: dataUri(caretRightSvg) },
+  help: { key: 'game-ui-icon-help', url: dataUri(questionSvg) }
 }
 
 const UNIQUE_ICONS = Object.values(ICONS).filter(

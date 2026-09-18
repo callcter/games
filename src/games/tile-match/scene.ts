@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 import { recordFlag } from '../puzzle-kit/progress'
@@ -81,6 +82,7 @@ export class TileMatchScene extends Phaser.Scene {
 
   private backButton!: CozyIconButton
   private soundButton!: CozyIconButton
+  private helpButton!: CozyIconButton
   private undoButton!: CozyToolButton
   private shuffleButton!: CozyToolButton
   private restartButton!: CozyToolButton
@@ -116,6 +118,7 @@ export class TileMatchScene extends Phaser.Scene {
     this.input.on('pointerdown', () => void this.audio.unlock())
 
     this.createControls()
+    attachFirstRunHelp(this, '叠叠消')
     this.createTray()
     this.layoutScene()
     this.rebuildBoard(false)
@@ -159,6 +162,7 @@ export class TileMatchScene extends Phaser.Scene {
     this.tint?.setSize(DESIGN_WIDTH, height)
 
     this.backButton?.setPosition(58, topY)
+    this.helpButton?.setPosition(128, topY)
     this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
     this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
 
@@ -176,6 +180,11 @@ export class TileMatchScene extends Phaser.Scene {
     this.backButton = createCozyIconButton(this, 'back', () => {
       this.playLocal(MATCH_SFX.ui, 0.24)
       this.exitGame()
+    }, 31)
+
+    this.helpButton = createCozyIconButton(this, 'help', () => {
+      this.playLocal(MATCH_SFX.ui, 0.22)
+      showHelpPanel(this, '叠叠消')
     }, 31)
 
     this.soundButton = createCozyIconButton(this, this.audio.isMuted ? 'muted' : 'sound', () => {

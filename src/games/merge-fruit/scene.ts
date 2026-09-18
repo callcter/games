@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import { showFloatingText } from '../../experience/feedback/floating-text'
@@ -67,6 +68,7 @@ export class MergeFruitScene extends Phaser.Scene {
   }
 
   create(): void {
+    attachFirstRunHelp(this, '合成水果')
     this.useArtFruits = ensureFruitArtFrames(this)
     this.createFruitTextures()
     this.createWorld()
@@ -338,8 +340,11 @@ export class MergeFruitScene extends Phaser.Scene {
     this.add.text(SCENE_WIDTH / 2, 30, '合成水果', {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '42px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    createHeaderButton(this, {
+    const actionsW = createHeaderButton(this, {
       x: SCENE_WIDTH - 28, y: 56, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    })
+    createHeaderButton(this, {
+      x: SCENE_WIDTH - 28 - actionsW - 8, y: 56, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '合成水果') }
     })
 
     this.scoreText = this.add.text(34, 102, this.scoreLabel(), {
