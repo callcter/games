@@ -11,7 +11,7 @@ import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/hos
 const PALETTE = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x3689b0]
 const SYMBOLS = ['●', '▲', '■', '◆', '★', '✚']
 
-const TUBE_W = 66, TUBE_H = 204, LAYER_H = 46
+const TUBE_W = 66, TUBE_H = 204, LAYER_H = 42
 
 // 液体渲染的颜色微调：亮/暗因子 ∈ (-1, 1)，模拟液面反光与层底阴影。
 const shade = (color: number, factor: number): number => {
@@ -39,7 +39,9 @@ export class WaterSortScene extends PuzzleScene {
   create(): void {
     // 木桌台面铺整张画布垫底（续玩弹窗/棋盘全局生效）；素材缺失保持米色底。
     if (this.textures.exists(WATER_BG_KEY)) {
-      this.add.image(384, 450, WATER_BG_KEY).setDisplaySize(768, 900).setDepth(-10)
+      const source = this.textures.get(WATER_BG_KEY).source[0]!
+      const scale = Math.max(768 / source.width, 900 / source.height)
+      this.add.image(384, 450, WATER_BG_KEY).setDisplaySize(source.width * scale, source.height * scale).setDepth(-10)
       // 画布外 letterbox 区域用同一张背景 cover 铺满（画布内不变形）。
       setHostBackdrop('art/water-bg.png')
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
@@ -73,6 +75,12 @@ export class WaterSortScene extends PuzzleScene {
       this.mode = index; this.restart()
     }, 190, this.content))
 
+    const mat = this.add.graphics()
+    mat.fillStyle(0xfffdf6, 0.88)
+    mat.fillRoundedRect(70, 212, 628, 550, 32)
+    mat.lineStyle(2, 0xffffff, 0.8)
+    mat.strokeRoundedRect(70, 212, 628, 550, 32)
+    this.content.add(mat)
     const total = this.state.tubes.length
     const topRow = Math.ceil(total / 2), bottomRow = total - topRow
     this.state.tubes.forEach((tube, index) => {
@@ -124,7 +132,7 @@ export class WaterSortScene extends PuzzleScene {
     // 液体渲染（2026-09-18 重做）：连续液柱 + 每层顶部反光带 + 层底暗带，
     // 顶面画弯月面椭圆——去掉旧版「每层独立圆角块 + 1px 间隙」的格子感。
     tube.forEach((color, layer) => {
-      const top = -TUBE_H / 2 + 10 + (TUBE_CAPACITY - 1 - layer) * LAYER_H
+      const top = -TUBE_H / 2 + 24 + (TUBE_CAPACITY - 1 - layer) * LAYER_H
       const base = PALETTE[color] ?? 0x999999
       const bottomLayer = layer === 0
       const water = this.add.graphics()
@@ -136,7 +144,7 @@ export class WaterSortScene extends PuzzleScene {
       water.fillRect(-TUBE_W / 2 + 5, top + 2, TUBE_W - 10, 4)
       // 层底暗带（厚度感）
       water.fillStyle(shade(base, -0.25), 0.5)
-      water.fillRect(-TUBE_W / 2 + 5, top + LAYER_H - 5, TUBE_W - 10, 5)
+      if (!bottomLayer) water.fillRect(-TUBE_W / 2 + 5, top + LAYER_H - 3, TUBE_W - 10, 3)
       body.add(water)
       const symbol = this.add.text(0, top + LAYER_H / 2, SYMBOLS[color] ?? '?', { fontSize: '22px', color: '#fffdf6', fontStyle: 'bold' }).setOrigin(0.5)
       body.add(symbol)
@@ -144,7 +152,7 @@ export class WaterSortScene extends PuzzleScene {
     // 顶层液面：弯月面椭圆 + 中央高光，让「这是液体」一眼可读。
     if (tube.length) {
       const topColor = tube[tube.length - 1]!
-      const surfaceY = -TUBE_H / 2 + 10 + (TUBE_CAPACITY - tube.length) * LAYER_H
+      const surfaceY = -TUBE_H / 2 + 24 + (TUBE_CAPACITY - tube.length) * LAYER_H
       const surface = this.add.graphics()
       surface.fillStyle(shade(PALETTE[topColor] ?? 0x999999, 0.25), 1)
       surface.fillEllipse(0, surfaceY + 3, TUBE_W - 12, 11)
