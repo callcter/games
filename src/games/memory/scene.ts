@@ -1,3 +1,4 @@
+import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordBest } from '../puzzle-kit/progress'
@@ -28,11 +29,18 @@ export class MemoryScene extends PuzzleScene {
     const cell = Math.min(148, 570 / cols, 450 / rows)
     s.cards.forEach((value, index) => {
       const x = 384 + ((index % cols) - (cols - 1) / 2) * (cell + 12)
-      const y = 270 + Math.floor(index / cols) * (cell + 12)
+      const y = 490 + (Math.floor(index / cols) - (rows - 1) / 2) * (cell + 12)
       const shown = s.open.includes(index) || s.matched.includes(index)
-      const tile = this.add.rectangle(x, y, cell, cell, s.matched.includes(index) ? 0xcce4d1 : shown ? 0xfffdf6 : 0x58a897).setStrokeStyle(3, 0xffffff)
+      const tile = this.add.graphics({ x, y })
+      tile.fillStyle(0x173f35, 0.12)
+      tile.fillRoundedRect(-cell / 2, -cell / 2 + 4, cell, cell, 12)
+      tile.fillStyle(s.matched.includes(index) ? 0xdcebdc : shown ? 0xfffdf6 : 0x388573)
+      tile.fillRoundedRect(-cell / 2, -cell / 2, cell, cell, 12)
+      tile.lineStyle(2, 0xffffff, 0.8)
+      tile.strokeRoundedRect(-cell / 2 + 6, -cell / 2 + 6, cell - 12, cell - 12, 8)
       this.content.add(tile)
       const label = this.text(x, y, shown ? (this.animals ? ANIMALS : FRUITS)[value]! : '✦', cell * 0.46, this.content)
+      if (!shown) label.setColor('#dbeee5')
       if (index === animatedIndex) {
         if (s.matched.includes(index)) {
           // 新配对：两张牌欢快地弹一下。
@@ -43,7 +51,7 @@ export class MemoryScene extends PuzzleScene {
           this.tweens.add({ targets: [tile, label], scaleX: 1, duration: 140, ease: 'Cubic.Out' })
         }
       }
-      tile.setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      tile.setInteractive(new Phaser.Geom.Rectangle(-cell / 2, -cell / 2, cell, cell), Phaser.Geom.Rectangle.Contains).on('pointerup', () => {
         const next = flip(this.state, index)
         if (next === this.state) return
         const matchedBefore = this.state.matched.length
