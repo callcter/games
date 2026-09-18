@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { preloadGameUi } from '../../ui'
 
 export const WATER_BG_KEY = 'water-sort-bg'
 
@@ -12,9 +13,12 @@ export const WATER_SFX = {
 } as const
 
 export function preloadWaterSortArt(scene: Phaser.Scene): void {
+  preloadGameUi(scene)
+
   if (!scene.textures.exists(WATER_BG_KEY)) {
     scene.load.image(WATER_BG_KEY, 'art/water-sort-bg.jpg')
   }
+
   scene.load.audio(WATER_SFX.ui, 'audio/water-sort/ui-tap.wav')
   scene.load.audio(WATER_SFX.lift, 'audio/water-sort/lift.wav')
   scene.load.audio(WATER_SFX.pour, 'audio/water-sort/pour.wav')

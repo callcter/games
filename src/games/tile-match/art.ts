@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { preloadGameUi } from '../../ui'
 
 export const MATCH_SHEET_KEY = 'tile-match-sheet-v2'
 export const MATCH_BG_KEY = 'tile-match-bg'
@@ -18,6 +19,8 @@ const SHEET_CELL = 256
 export const TILE_KIND_FRAME: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 export function preloadMatchArt(scene: Phaser.Scene): void {
+  preloadGameUi(scene)
+
   if (!scene.textures.exists(MATCH_SHEET_KEY)) {
     scene.load.spritesheet(MATCH_SHEET_KEY, 'art/tile-match-sheet-v2.png', {
       frameWidth: SHEET_CELL,

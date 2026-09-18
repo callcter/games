@@ -6,5 +6,6 @@ playwright-report/
 test-results/
 
 art-raw/
+artifacts/
 
 .zcode/

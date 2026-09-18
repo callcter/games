@@ -158,13 +158,13 @@ export class TileMatchScene extends Phaser.Scene {
     }
     this.tint?.setSize(DESIGN_WIDTH, height)
 
-    this.backButton?.setPosition(52, topY)
-    this.soundButton?.setPosition(DESIGN_WIDTH - 52, topY)
+    this.backButton?.setPosition(58, topY)
+    this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
     this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
 
-    this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 160, bottomY)
+    this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 162, bottomY)
     this.shuffleButton?.setPosition(DESIGN_WIDTH / 2, bottomY)
-    this.restartButton?.setPosition(DESIGN_WIDTH / 2 + 160, bottomY)
+    this.restartButton?.setPosition(DESIGN_WIDTH / 2 + 162, bottomY)
 
     this.paintTray()
     this.trayBase?.setPosition(0, trayY)
