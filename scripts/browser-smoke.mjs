@@ -201,7 +201,8 @@ try {
     assert.ok(pourPoints)
     for(const p of pourPoints){ await wsClick(p.x, p.y) }
     console.log('ws-stage: poured')
-    await pause(900)
+    // 倒水动画跨排可达 ~1s，固定 900ms 会压线竞态；轮询等动画完成。
+    await until("__scene.busy === false && __scene.state.moves >= 1")
     assert.equal(Number(await evaluate('JSON.stringify(__scene.state.moves)')),1)
     await screenshot(`water-sort-${width}`)
     const toolY = Number(await evaluate('JSON.stringify(__scene.layout.toolY)'))
@@ -210,25 +211,42 @@ try {
     await evaluate(`(async()=>{const {saveDraft}=await import('/src/games/puzzle-kit/draft-storage.ts');saveDraft('water-sort',null);try{localStorage.removeItem('game-puzzle-draft-water-sort-v1')}catch(e){}return 1})()`)
     await wsClick(58, topY)  // v1 顶栏左上 Cozy 返回
     await until("!!document.querySelector('.game-grid')")
+    // parking 段自己会动一步车并存 draft；不清档会让下一轮恢复出非初始局面，
+    // 视图重建竞态时 carViews 缺失。开新局前显式清档并等视图就绪。
+    await evaluate(`(async()=>{const {saveDraft}=await import('/src/games/puzzle-kit/draft-storage.ts');saveDraft('parking',null);try{localStorage.removeItem('game-puzzle-draft-parking-v1')}catch(e){}return 1})()`)
     await open('parking');await resumeOrFresh()
+    await until(`__scene.state.cars.length>0 && __scene.state.cars.every(c=>!!__scene.carViews.get(c.id))`)
     assert.ok(await evaluate(`__scene.state.cars.every(c=>{const v=__scene.carViews.get(c.id);return v.x===110+(c.x+(c.horizontal?c.len/2:.5))*92&&v.y===235+(c.y+(c.horizontal?.5:c.len/2))*92})`))
     const carMove = await evaluate(`(async()=>{const {legalTargets}=await import('/src/games/parking/core/game.ts');for(const c of [...__scene.state.cars].reverse()){const targets=legalTargets(__scene.state,c.id);if(targets.length){const t=targets[0],v=__scene.carViews.get(c.id);return {x:v.x,y:v.y,tx:110+(c.horizontal?t+c.len/2:c.x+.5)*92,ty:235+(c.horizontal?c.y+.5:t+c.len/2)*92}}}})()`)
     assert.ok(carMove);await click(carMove.x,carMove.y);await click(carMove.tx,carMove.ty)
     assert.equal(await evaluate('__scene.state.moves'),1)
     await screenshot(`parking-${width}`);await home()
     await open('tile-match')
+    // tile-match 是 portrait-fluid mount（逻辑高 960~1720 随宿主），全局 click 的
+    // /900 换算在逻辑高 1024 时 y 系统性偏 13.8%，方块位置随机时会点飞；
+    // 这里按场景实际逻辑高换算，按钮坐标从 layout 读取。
+    const tmH = Number(await evaluate('JSON.stringify(__scene.scale.height)'))
+    const tmClick = async (lx, ly) => {
+      const raw = await evaluate(`(()=>{const c=document.querySelector('canvas');const r=c.getBoundingClientRect();return {x:r.x+${lx}*r.width/768,y:r.y+${ly}*r.height/${tmH}}})()`)
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',...raw});await pause(30)
+      await send('Input.dispatchMouseEvent',{type:'mousePressed',...raw,button:'left',clickCount:1});await pause(40)
+      await send('Input.dispatchMouseEvent',{type:'mouseReleased',...raw,button:'left',clickCount:1})
+      await pause(500)
+    }
     await evaluate(`(async()=>{const {pick}=await import('/src/games/tile-match/core/game.ts');let s={tiles:Array.from({length:12},(_,id)=>({id,kind:Math.floor(id/3),layer:0,gx:id%4,gy:Math.floor(id/4)})),gone:[],slot:[],cleared:0,undoLog:[],undos:5,shuffles:1,won:false};for(const id of [0,1,3,4,6,7,9])s=pick(s,id).state;__scene.state=s;__scene.rebuildBoard(false)})()`)
-    await click(384,842)
+    const tmBottom = Number(await evaluate('JSON.stringify(__scene.layout.bottomY)'))
+    await tmClick(384, tmBottom)  // 工具行中央洗牌钮
+    await until("__scene.busy === false")
     assert.equal(await evaluate('__scene.state.slot.length'),0)
     assert.equal(await evaluate('__scene.state.shuffles'),0)
     const tmPick = await evaluate(`(()=>{const id=__scene.available.values().next().value;const pos=__scene.boardPositions.get(id);const view=__scene.tileViews.get(id);return {x:pos.x,y:pos.y,loc:view?view.location:'none',free:view?view.free:null}})()`)
     assert.equal(tmPick.loc,'board');assert.equal(tmPick.free,true)
-    await click(tmPick.x,tmPick.y)
-    await until(`__scene.state.slot.length===1 || __scene.busy === false && __scene.state.slot.length===0 && false`)
+    await tmClick(tmPick.x,tmPick.y)
     await until(`__scene.state.slot.length===1`)
     await pause(300)
     await screenshot(`tile-match-${width}`)
-    await click(48,46)  // v2 顶栏左上圆钮退出
+    const tmTop = Number(await evaluate('JSON.stringify(__scene.layout.topY)'))
+    await tmClick(58, tmTop)  // v3 顶栏左上返回（位置补丁 x=58）
     await until("!!document.querySelector('.game-grid')")
     await evaluate("document.querySelector('[data-category=logic]').click()")
     assert.equal(await evaluate("document.querySelectorAll('.game-card:not([hidden])').length"),6)

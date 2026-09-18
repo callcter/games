@@ -71,7 +71,10 @@ const UNIQUE_ICONS = Object.values(ICONS).filter(
 export function preloadGameUi(scene: Phaser.Scene): void {
   for (const icon of UNIQUE_ICONS) {
     if (!scene.textures.exists(icon.key)) {
-      scene.load.svg(icon.key, icon.url)
+      // Phosphor SVG 只有 viewBox 没有显式宽高；不传 svgConfig 时 Phaser
+      // 按原文光栅化，Image 自然尺寸为 0×0，WebGL 建纹理报 bad image data
+      // （图标全部空白）。传入宽高让 SVGFile 注入尺寸后再光栅化。
+      scene.load.svg(icon.key, icon.url, { width: 256, height: 256 })
     }
   }
 }
