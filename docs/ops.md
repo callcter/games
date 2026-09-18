@@ -123,6 +123,13 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-18 发布 `5209b89`（1 个提交）：叠叠消 Mobile Polish v2——独立 portrait-fluid
+  mount（逻辑高随宿主纵横比 960~1720 自适应，消除手机上下约 400px letterbox）、
+  Cozy UI 设计语言（森林绿/奶油/蜂蜜金、线性图标、数量徽章、厚托盘金边、
+  胜利卡同体系）、独立 PNG 大厅图标＋ui-tap 音效。集成修正五处中心对称 hitArea
+  （Phaser 4 displayOrigin 语义）与 icon-art 合并笔误。四尺寸视口实测全满宿主、
+  实玩通关/再玩/退出通过；222 项测试全绿、回归跑绿；74 文件 SHA-256 一致。
+  发布后已推送 GitHub。
 - 2026-09-18 发布 `363c7f6`（1 个提交）：叠叠消接入 GPT 重构的「产品级纵切」——
   独立场景（不再继承 PuzzleScene 外壳）、主玩法持久 TileView 零整盘重建、十种
   水果精灵全量覆盖＋五个触感 WAV 音效、胜利结算卡。集成修正：Phaser 4 Container
