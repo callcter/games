@@ -17,6 +17,11 @@ export const LOBBY_SHEETS: readonly LobbySheet[] = [
   { url: 'art/lobby-d.png', cols: 2, rows: 1, ids: ['sudoku', 'nonogram'] }
 ]
 
+// 不需要为了单个新图标重新生成整张 lobby sheet。
+const STANDALONE_ICONS: Readonly<Record<string, string>> = {
+  'tile-match': 'art/icons/tile-match.png'
+}
+
 const BADGE = 128
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
@@ -77,4 +82,17 @@ export async function installIconArt(root: ParentNode): Promise<void> {
       })
     })
   }
+
+  await Promise.all(Object.entries(STANDALONE_ICONS).map(async ([id, url]) => {
+    const image = await loadImage(url)
+    if (!image || !image.naturalWidth) return
+    root.querySelectorAll<SVGElement>(`svg.game-icon[data-icon="${id}"]`).forEach(svg => {
+      const img = document.createElement('img')
+      img.className = 'game-icon'
+      img.alt = ''
+      img.draggable = false
+      img.src = url
+      svg.replaceWith(img)
+    })
+  }))
 }

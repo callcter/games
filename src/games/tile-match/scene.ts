@@ -21,17 +21,31 @@ import {
   preloadMatchArt,
   TILE_KIND_FRAME
 } from './art'
+import {
+  COZY,
+  createCozyIconButton,
+  createCozyPillButton,
+  type CozyIconButton,
+  type CozyPillButton
+} from './cozy-ui'
 
-const TILE = 86
-const SPACING = 88
-const SLOT_GAP = 78
-const SLOT_Y = 716
-const BOARD_TOP = 106
-const BOARD_HEIGHT = 500
+const DESIGN_WIDTH = 768
+const TILE = 96
+const SPACING = 98
+const SLOT_GAP = 80
 const FONT = 'Avenir Next, PingFang SC, sans-serif'
 
 const FALLBACK = ['🍏', '🍌', '🍇', '🍉', '🍊', '🍓', '🍒', '🥝', '🍍', '🥭']
 const BURST_COLORS = [0x9ccd45, 0xf2cf45, 0x8f62c8, 0xef6262, 0xf59b38, 0xef5770, 0xd6404f, 0x76bf4f, 0xe7b73d, 0xf18b35]
+
+interface Layout {
+  height: number
+  topY: number
+  boardTop: number
+  boardBottom: number
+  trayY: number
+  bottomY: number
+}
 
 interface TileView {
   tile: Tile
@@ -52,15 +66,24 @@ export class TileMatchScene extends Phaser.Scene {
   private readonly audio: GameAudio
   private readonly exitGame: () => void
 
+  private background?: Phaser.GameObjects.Image
+  private tint?: Phaser.GameObjects.Rectangle
+  private layout!: Layout
+
   private tileViews = new Map<number, TileView>()
-  private boardPositions = new Map<number, { x: number; y: number }>()
+  private boardPositions = new Map<number, { x: number; y: number; scale: number }>()
   private available = new Set<number>()
 
   private trayBase!: Phaser.GameObjects.Graphics
-  private modeText!: Phaser.GameObjects.Text
-  private soundText!: Phaser.GameObjects.Text
-  private undoText!: Phaser.GameObjects.Text
-  private shuffleText!: Phaser.GameObjects.Text
+  private trayDecor!: Phaser.GameObjects.Graphics
+
+  private backButton!: CozyIconButton
+  private soundButton!: CozyIconButton
+  private undoButton!: CozyIconButton
+  private shuffleButton!: CozyIconButton
+  private restartButton!: CozyIconButton
+  private modeButton!: CozyPillButton
+
   private toast?: Phaser.GameObjects.Container
   private resultOverlay?: Phaser.GameObjects.Container
 
@@ -75,162 +98,143 @@ export class TileMatchScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor('#d8c4a1')
+    this.cameras.main.setBackgroundColor('#c88a4b')
     this.useArt = matchSheetReady(this)
 
     if (this.textures.exists(MATCH_BG_KEY)) {
-      const source = this.textures.get(MATCH_BG_KEY).source[0]
-      if (source) {
-        const scale = Math.max(768 / source.width, 900 / source.height)
-        this.add
-          .image(384, 450, MATCH_BG_KEY)
-          .setDisplaySize(source.width * scale, source.height * scale)
-          .setDepth(-30)
-      }
+      this.background = this.add.image(0, 0, MATCH_BG_KEY).setOrigin(0.5).setDepth(-30)
       setHostBackdrop('art/tile-match-bg.png')
       const release = (): void => releaseHostBackdrop()
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, release)
       this.events.once(Phaser.Scenes.Events.DESTROY, release)
     }
 
-    // 只做轻微暗化，保证桌面背景能看见、牌仍然清楚。
-    this.add.rectangle(384, 450, 768, 900, 0x5c432d, 0.08).setDepth(-20)
-
+    this.tint = this.add.rectangle(0, 0, 1, 1, 0x5f412d, 0.055).setOrigin(0).setDepth(-20)
     this.input.on('pointerdown', () => void this.audio.unlock())
 
-    this.createTopControls()
+    this.createControls()
     this.createTray()
-    this.createBottomControls()
+    this.layoutScene()
     this.rebuildBoard(false)
+
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+    })
   }
 
-  private createTopControls(): void {
-    this.makeRoundButton(48, 46, '‹', () => this.exitGame(), 28)
+  private handleResize(): void {
+    this.layoutScene()
+    if (!this.busy) this.reflowViews()
+  }
 
-    const sound = this.makeRoundButton(720, 46, this.audio.isMuted ? '×' : '♪', () => {
-      this.audio.toggleMuted()
-      this.soundText.setText(this.audio.isMuted ? '×' : '♪')
-    }, 23)
-    this.soundText = sound.label
+  private currentLayout(): Layout {
+    const h = this.scale.height
+    // 横向仍维持 768；高度在手机上通常落在 1150~1700，iPad 约 1020。
+    const topY = Phaser.Math.Clamp(h * 0.058, 58, 82)
+    const bottomY = h - Phaser.Math.Clamp(h * 0.062, 68, 102)
+    const trayY = Math.min(bottomY - 145, Phaser.Math.Clamp(h * 0.755, 735, 1260))
+    const boardTop = topY + 78
+    const boardBottom = trayY - 125
+    return { height: h, topY, boardTop, boardBottom, trayY, bottomY }
+  }
 
-    const chip = this.add.container(384, 46).setDepth(300)
-    const bg = this.add.graphics()
-    const paint = (pressed = false): void => {
-      bg.clear()
-      bg.fillStyle(0x173f35, pressed ? 0.92 : 0.82)
-      bg.fillRoundedRect(-72, -25, 144, 50, 25)
+  private layoutScene(): void {
+    this.layout = this.currentLayout()
+    const { height, topY, trayY, bottomY } = this.layout
+
+    if (this.background) {
+      const source = this.textures.get(MATCH_BG_KEY).source[0]
+      if (source) {
+        const cover = Math.max(DESIGN_WIDTH / source.width, height / source.height)
+        this.background
+          .setPosition(DESIGN_WIDTH / 2, height / 2)
+          .setDisplaySize(source.width * cover, source.height * cover)
+      }
     }
-    paint()
-    chip.add(bg)
-    this.modeText = this.add.text(0, 0, `${MODES[this.mode]?.label ?? '基础'}  ›`, {
-      fontFamily: FONT,
-      fontSize: '20px',
-      color: '#fffdf6',
-      fontStyle: 'bold'
-    }).setOrigin(0.5)
-    chip.add(this.modeText)
-    chip.setSize(144, 50)
-    chip.setInteractive(new Phaser.Geom.Rectangle(0, 0, 144, 50), Phaser.Geom.Rectangle.Contains)
-      .on('pointerdown', () => { paint(true); chip.setScale(0.97) })
-      .on('pointerup', () => {
-        paint(false)
-        chip.setScale(1)
-        if (this.busy) return
-        this.mode = (this.mode + 1) % MODES.length
-        this.modeText.setText(`${MODES[this.mode]?.label ?? '基础'}  ›`)
-        this.state = newMatch(this.mode)
-        this.playLocal(MATCH_SFX.shuffle, 0.28)
-        this.rebuildBoard(true)
-      })
-      .on('pointerout', () => { paint(false); chip.setScale(1) })
+    this.tint?.setSize(DESIGN_WIDTH, height)
+
+    this.backButton?.setPosition(58, topY)
+    this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
+    this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
+
+    this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 106, bottomY)
+    this.shuffleButton?.setPosition(DESIGN_WIDTH / 2, bottomY)
+    this.restartButton?.setPosition(DESIGN_WIDTH / 2 + 106, bottomY)
+
+    this.paintTray()
+    this.trayBase?.setPosition(0, trayY)
+    this.trayDecor?.setPosition(0, trayY)
+  }
+
+  private createControls(): void {
+    this.backButton = createCozyIconButton(this, 'back', () => {
+      this.playLocal(MATCH_SFX.ui, 0.24)
+      this.exitGame()
+    }, 35)
+
+    this.soundButton = createCozyIconButton(this, this.audio.isMuted ? 'muted' : 'sound', () => {
+      const wasMuted = this.audio.isMuted
+      this.audio.toggleMuted()
+      this.soundButton.setIcon(this.audio.isMuted ? 'muted' : 'sound')
+      if (wasMuted && !this.audio.isMuted) this.playLocal(MATCH_SFX.ui, 0.22)
+    }, 35)
+
+    this.modeButton = createCozyPillButton(this, MODES[this.mode]?.label ?? '基础', () => {
+      if (this.busy) return
+      this.playLocal(MATCH_SFX.ui, 0.25)
+      this.mode = (this.mode + 1) % MODES.length
+      this.modeButton.setLabel(MODES[this.mode]?.label ?? '基础')
+      this.state = newMatch(this.mode)
+      this.playLocal(MATCH_SFX.shuffle, 0.25)
+      this.rebuildBoard(true)
+    })
+
+    this.undoButton = createCozyIconButton(this, 'undo', () => this.undoMove(), 35)
+    this.shuffleButton = createCozyIconButton(this, 'shuffle', () => this.shuffleBoard(), 35)
+    this.restartButton = createCozyIconButton(this, 'restart', () => this.restart(), 35)
   }
 
   private createTray(): void {
     this.trayBase = this.add.graphics().setDepth(2)
-    this.paintTray(false)
+    this.trayDecor = this.add.graphics().setDepth(4)
+    this.paintTray()
+  }
 
+  private paintTray(alert = isStuck(this.state)): void {
+    if (!this.trayBase || !this.trayDecor) return
+
+    this.trayBase.clear()
+    this.trayBase.fillStyle(COZY.cocoa, 0.22)
+    this.trayBase.fillRoundedRect(54, -55 + 10, 660, 128, 34)
+    this.trayBase.fillStyle(alert ? 0xffe6d9 : COZY.cream, 0.985)
+    this.trayBase.fillRoundedRect(54, -58, 660, 128, 34)
+    this.trayBase.lineStyle(4, alert ? COZY.coral : COZY.honey, alert ? 0.95 : 0.82)
+    this.trayBase.strokeRoundedRect(56, -56, 656, 124, 32)
+    // 顶部“木牌”装饰，让托盘不再是一个纯白矩形。
+    this.trayBase.fillStyle(COZY.forest, 0.98)
+    this.trayBase.fillRoundedRect(326, -72, 116, 30, 15)
+    this.trayBase.fillStyle(COZY.honey, 1)
+    this.trayBase.fillEllipse(346, -57, 18, 9)
+    this.trayBase.fillEllipse(361, -57, 18, 9)
+
+    this.trayDecor.clear()
     for (let index = 0; index < SLOT_SIZE; index++) {
       const x = this.slotX(index)
-      const base = this.add.graphics().setDepth(3)
-      base.fillStyle(0xfffbf2, 0.55)
-      base.fillRoundedRect(x - 33, SLOT_Y - 33, 66, 66, 17)
-      base.lineStyle(1.5, 0xffffff, 0.58)
-      base.strokeRoundedRect(x - 33, SLOT_Y - 33, 66, 66, 17)
+      this.trayDecor.fillStyle(0xb9894f, 0.20)
+      this.trayDecor.fillRoundedRect(x - 34, -30 + 5, 68, 68, 16)
+      this.trayDecor.fillStyle(0xfffdf2, 0.72)
+      this.trayDecor.fillRoundedRect(x - 34, -30, 68, 68, 16)
+      this.trayDecor.lineStyle(2, 0xe0cfa4, 0.72)
+      this.trayDecor.strokeRoundedRect(x - 33, -29, 66, 66, 15)
     }
-  }
-
-  private paintTray(alert: boolean): void {
-    this.trayBase.clear()
-    this.trayBase.fillStyle(0x2c2119, 0.12)
-    this.trayBase.fillRoundedRect(72, 650, 624, 138, 31)
-    this.trayBase.fillStyle(alert ? 0xffeee6 : 0xfff9ea, 0.91)
-    this.trayBase.fillRoundedRect(76, 646, 616, 136, 30)
-    this.trayBase.lineStyle(alert ? 3 : 2, alert ? 0xe88065 : 0xffffff, alert ? 0.9 : 0.65)
-    this.trayBase.strokeRoundedRect(76, 646, 616, 136, 30)
-  }
-
-  private createBottomControls(): void {
-    const undoButton = this.makeRoundButton(284, 842, '↶', () => this.undoMove(), 27, 30)
-    this.undoText = this.add.text(307, 858, '', {
-      fontFamily: FONT, fontSize: '14px', color: '#173f35', fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(305)
-
-    const shuffleButton = this.makeRoundButton(384, 842, '⌁', () => this.shuffleBoard(), 27, 30)
-    this.shuffleText = this.add.text(407, 858, '', {
-      fontFamily: FONT, fontSize: '14px', color: '#173f35', fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(305)
-
-    this.makeRoundButton(484, 842, '↻', () => this.restart(), 27, 30)
-
-    undoButton.container.setDepth(300)
-    shuffleButton.container.setDepth(300)
-    this.refreshControls()
-  }
-
-  private makeRoundButton(
-    x: number,
-    y: number,
-    glyph: string,
-    action: () => void,
-    fontSize = 26,
-    radius = 32
-  ): { container: Phaser.GameObjects.Container; label: Phaser.GameObjects.Text } {
-    const container = this.add.container(x, y).setDepth(300)
-    const bg = this.add.graphics()
-    const paint = (pressed = false): void => {
-      bg.clear()
-      bg.fillStyle(0x2c2119, 0.13)
-      bg.fillCircle(0, 4, radius)
-      bg.fillStyle(pressed ? 0xe9f0e8 : 0xfffdf6, 0.96)
-      bg.fillCircle(0, 0, radius)
-      bg.lineStyle(1.5, 0xffffff, 0.8)
-      bg.strokeCircle(0, 0, radius)
-    }
-    paint()
-    const label = this.add.text(0, -1, glyph, {
-      fontFamily: FONT,
-      fontSize: `${fontSize}px`,
-      color: '#173f35',
-      fontStyle: 'bold'
-    }).setOrigin(0.5)
-    container.add([bg, label])
-    container.setSize(radius * 2, radius * 2)
-    container
-      .setInteractive(new Phaser.Geom.Circle(radius, radius, radius), Phaser.Geom.Circle.Contains)
-      .on('pointerdown', () => { paint(true); container.setScale(0.91) })
-      .on('pointerup', () => {
-        paint(false)
-        this.tweens.add({ targets: container, scale: 1, duration: 120, ease: 'Back.Out' })
-        action()
-      })
-      .on('pointerout', () => { paint(false); container.setScale(1) })
-    return { container, label }
   }
 
   private restart(): void {
     if (this.busy) return
+    this.playLocal(MATCH_SFX.ui, 0.22)
     this.state = newMatch(this.mode)
-    this.playLocal(MATCH_SFX.shuffle, 0.22)
+    this.playLocal(MATCH_SFX.shuffle, 0.20)
     this.rebuildBoard(true)
   }
 
@@ -241,6 +245,7 @@ export class TileMatchScene extends Phaser.Scene {
       this.showToast(this.state.undos <= 0 ? '撤销次数用完啦' : '还没有可以撤销的牌')
       return
     }
+    this.playLocal(MATCH_SFX.ui, 0.22)
     this.state = restored
     this.audio.playMove()
     this.rebuildBoard(true)
@@ -259,8 +264,7 @@ export class TileMatchScene extends Phaser.Scene {
   }
 
   /**
-   * 低频操作（重开/撤销/洗牌）允许重建；
-   * 主玩法 take() 路径绝不调用这里。
+   * 低频操作允许重建；正常“点牌→飞入→凑三”路径不调用此方法。
    */
   private rebuildBoard(animated: boolean): void {
     this.busy = false
@@ -274,27 +278,26 @@ export class TileMatchScene extends Phaser.Scene {
 
     this.computeBoardPositions()
     this.available = new Set(pickable(this.state))
-
     const gone = new Set(this.state.gone)
 
     const boardTiles = this.state.tiles
-      .filter(tile => !gone.has(tile.id))
+      .filter(tile => !gone.has(tile.id) && !this.state.slot.includes(tile.id))
       .sort((a, b) => a.layer - b.layer)
 
     for (const tile of boardTiles) {
       const pos = this.boardPositions.get(tile.id)
       if (!pos) continue
-      const view = this.createTileView(tile, pos.x, pos.y, 'board')
+      const view = this.createTileView(tile, pos.x, pos.y, 'board', pos.scale)
       this.tileViews.set(tile.id, view)
       this.setTileFree(view, this.available.has(tile.id), false)
       if (animated) {
         const target = view.baseScale
-        view.container.setScale(target * 0.88).setAlpha(0)
+        view.container.setScale(target * 0.86).setAlpha(0)
         this.tweens.add({
           targets: view.container,
           scale: target,
           alpha: 1,
-          duration: 180 + tile.layer * 22,
+          duration: 180 + tile.layer * 20,
           ease: 'Back.Out'
         })
       }
@@ -303,8 +306,7 @@ export class TileMatchScene extends Phaser.Scene {
     this.state.slot.forEach((id, index) => {
       const tile = this.state.tiles.find(entry => entry.id === id)
       if (!tile) return
-      const view = this.createTileView(tile, this.slotX(index), SLOT_Y, 'slot')
-      view.container.setScale(0.74)
+      const view = this.createTileView(tile, this.slotX(index), this.layout.trayY, 'slot', 0.70)
       view.container.disableInteractive()
       this.tileViews.set(id, view)
     })
@@ -313,25 +315,61 @@ export class TileMatchScene extends Phaser.Scene {
     this.refreshStuckState()
   }
 
+  private reflowViews(): void {
+    this.computeBoardPositions()
+
+    for (const view of this.tileViews.values()) {
+      if (view.location === 'slot') continue
+      const pos = this.boardPositions.get(view.tile.id)
+      if (!pos) continue
+      view.baseScale = pos.scale
+      view.container.setPosition(pos.x, pos.y).setScale(pos.scale)
+    }
+
+    this.state.slot.forEach((id, index) => {
+      const view = this.tileViews.get(id)
+      if (!view) return
+      view.container.setPosition(this.slotX(index), this.layout.trayY).setScale(0.70)
+    })
+  }
+
   private computeBoardPositions(): void {
     this.boardPositions.clear()
     const maxX = Math.max(...this.state.tiles.map(tile => tile.gx + tile.layer * 0.34))
     const maxY = Math.max(...this.state.tiles.map(tile => tile.gy + tile.layer * 0.34))
-    const boardWidth = maxX * SPACING + TILE
-    const boardHeight = maxY * SPACING + TILE
-    const left = 384 - boardWidth / 2
-    const top = Math.max(BOARD_TOP, BOARD_TOP + (BOARD_HEIGHT - boardHeight) / 2)
+    const minX = Math.min(...this.state.tiles.map(tile => tile.gx + tile.layer * 0.34))
+    const minY = Math.min(...this.state.tiles.map(tile => tile.gy + tile.layer * 0.34))
+
+    const rawWidth = (maxX - minX) * SPACING + TILE
+    const rawHeight = (maxY - minY) * SPACING + TILE
+    const areaWidth = 690
+    const areaHeight = Math.max(280, this.layout.boardBottom - this.layout.boardTop)
+    const boardScale = Math.min(1.08, areaWidth / rawWidth, areaHeight / rawHeight)
+
+    const boardWidth = rawWidth * boardScale
+    const boardHeight = rawHeight * boardScale
+    const left = (DESIGN_WIDTH - boardWidth) / 2
+    const top = this.layout.boardTop + (areaHeight - boardHeight) * 0.42
 
     for (const tile of this.state.tiles) {
+      const gx = tile.gx + tile.layer * 0.34
+      const gy = tile.gy + tile.layer * 0.34
       this.boardPositions.set(tile.id, {
-        x: left + (tile.gx + tile.layer * 0.34) * SPACING + TILE / 2,
-        y: top + (tile.gy + tile.layer * 0.34) * SPACING + TILE / 2
+        x: left + ((gx - minX) * SPACING + TILE / 2) * boardScale,
+        y: top + ((gy - minY) * SPACING + TILE / 2) * boardScale,
+        scale: boardScale * (1 - tile.layer * 0.024)
       })
     }
   }
 
-  private createTileView(tile: Tile, x: number, y: number, location: 'board' | 'slot'): TileView {
-    const container = this.add.container(x, y).setDepth(10 + tile.layer)
+  private createTileView(
+    tile: Tile,
+    x: number,
+    y: number,
+    location: 'board' | 'slot',
+    baseScale: number
+  ): TileView {
+    const container = this.add.container(x, y).setDepth(location === 'board' ? 20 + tile.layer : 120)
     const body = this.add.graphics()
     container.add(body)
 
@@ -340,18 +378,14 @@ export class TileMatchScene extends Phaser.Scene {
     if (frame >= 0) {
       face = this.add.image(0, -2, MATCH_SHEET_KEY, frame).setDisplaySize(TILE * 0.69, TILE * 0.69)
     } else {
-      face = this.add.text(0, -1, FALLBACK[tile.kind] ?? '?', {
-        fontSize: '43px'
-      }).setOrigin(0.5)
+      face = this.add.text(0, -1, FALLBACK[tile.kind] ?? '?', { fontSize: '47px' }).setOrigin(0.5)
     }
     container.add(face)
 
-    const baseScale = location === 'board' ? 1 - tile.layer * 0.025 : 0.74
     container.setScale(baseScale)
     container.setSize(TILE, TILE)
     container
       .setInteractive(
-        // Phaser 4 Container 的 displayOrigin = size/2：hitArea 以左上角为原点。
         new Phaser.Geom.Rectangle(0, 0, TILE, TILE),
         Phaser.Geom.Rectangle.Contains
       )
@@ -380,38 +414,39 @@ export class TileMatchScene extends Phaser.Scene {
     const g = view.body
     g.clear()
 
-    // 厚玩具牌：下沿阴影 + 温暖象牙色本体。
-    g.fillStyle(0x4b3829, free ? 0.18 : 0.11)
-    g.fillRoundedRect(-TILE / 2, -TILE / 2 + 5, TILE, TILE, 18)
-    g.fillStyle(free ? 0xfffcf3 : 0xe3dac8, 0.98)
-    g.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE, 18)
-    g.lineStyle(2.2, free ? 0xffffff : 0xb8ac98, free ? 0.92 : 0.55)
-    g.strokeRoundedRect(-TILE / 2 + 1, -TILE / 2 + 1, TILE - 2, TILE - 2, 17)
+    // 厚牌底层阴影 + 蜂蜜色侧边，比纯白卡片更像实体玩具。
+    g.fillStyle(COZY.cocoa, free ? 0.23 : 0.14)
+    g.fillRoundedRect(-TILE / 2, -TILE / 2 + 8, TILE, TILE, 21)
+    g.fillStyle(0xd49a49, free ? 0.95 : 0.58)
+    g.fillRoundedRect(-TILE / 2, -TILE / 2 + 5, TILE, TILE - 1, 21)
+    g.fillStyle(free ? COZY.creamLight : 0xe9e0cc, 0.995)
+    g.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE - 7, 20)
+    g.lineStyle(2.4, free ? 0xffffff : 0xc7bba6, free ? 0.94 : 0.60)
+    g.strokeRoundedRect(-TILE / 2 + 1, -TILE / 2 + 1, TILE - 2, TILE - 9, 19)
 
     if (!free && view.location === 'board') {
-      g.fillStyle(0x4f4438, 0.19)
-      g.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE, 18)
+      g.fillStyle(0x5b5146, 0.16)
+      g.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE - 7, 20)
     }
 
-    view.face.setAlpha(free ? 1 : 0.42)
+    view.face.setAlpha(free ? 1 : 0.38)
   }
 
   private setTileFree(view: TileView, free: boolean, animateNew: boolean): void {
     const wasFree = view.free
     this.paintTile(view, free)
-
     if (view.location !== 'board') return
+
     if (view.container.input) view.container.input.enabled = free && !isStuck(this.state)
 
     if (free && !wasFree && animateNew) {
       const target = view.baseScale
-      view.container.setScale(target * 0.93)
       this.tweens.add({
         targets: view.container,
-        scale: target * 1.045,
-        duration: 115,
-        ease: 'Sine.Out',
+        scale: { from: target * 0.91, to: target * 1.055 },
+        duration: 120,
         yoyo: true,
+        ease: 'Sine.Out',
         onComplete: () => view.container.setScale(target)
       })
     }
@@ -443,20 +478,21 @@ export class TileMatchScene extends Phaser.Scene {
 
     view.location = 'slot'
     view.container.disableInteractive()
-    this.children.bringToTop(view.container)
+    view.container.setDepth(220)
 
     this.playLocal(MATCH_SFX.pick, 0.38)
 
     this.tweens.add({
       targets: view.container,
       x: targetX,
-      y: SLOT_Y,
+      y: this.layout.trayY,
+      scale: 0.70,
       angle: 0,
-      scale: 0.74,
-      duration: 215,
+      duration: 225,
       ease: 'Cubic.Out',
       onComplete: () => {
         this.state = result.state
+        view.container.setDepth(120)
         this.paintTile(view, true)
 
         if (result.cleared.length) {
@@ -479,22 +515,25 @@ export class TileMatchScene extends Phaser.Scene {
       .filter((view): view is TileView => Boolean(view))
 
     this.playLocal(MATCH_SFX.match, 0.45)
-    this.burstMatch(this.slotX(Math.min(this.state.slot.length, SLOT_SIZE - 1)), SLOT_Y, kind)
 
-    // 先“碰”一下，再三张一起 pop；这三张就是原来的 TileView，不创建替身。
+    const centerX = views.length
+      ? views.reduce((sum, view) => sum + view.container.x, 0) / views.length
+      : DESIGN_WIDTH / 2
+    this.burstMatch(centerX, this.layout.trayY, kind)
+
     this.tweens.add({
       targets: views.map(view => view.container),
-      y: SLOT_Y - 8,
-      scale: 0.82,
-      duration: 90,
+      y: this.layout.trayY - 9,
+      scale: 0.78,
+      duration: 85,
       ease: 'Sine.Out',
       onComplete: () => {
         this.tweens.add({
           targets: views.map(view => view.container),
           scale: 1.02,
           alpha: 0,
-          y: SLOT_Y - 20,
-          duration: 170,
+          y: this.layout.trayY - 27,
+          duration: 175,
           ease: 'Back.In',
           onComplete: () => {
             for (const view of views) {
@@ -521,11 +560,12 @@ export class TileMatchScene extends Phaser.Scene {
       if (!view) return
       view.location = 'slot'
       view.container.disableInteractive()
+      view.container.setDepth(120)
       this.tweens.add({
         targets: view.container,
         x: this.slotX(index),
-        y: SLOT_Y,
-        scale: 0.74,
+        y: this.layout.trayY,
+        scale: 0.70,
         duration: 175,
         ease: 'Cubic.Out'
       })
@@ -544,9 +584,9 @@ export class TileMatchScene extends Phaser.Scene {
     if (stuck) {
       this.showToast('槽满啦，撤销一步或洗牌吧')
       this.tweens.add({
-        targets: this.trayBase,
-        alpha: { from: 0.68, to: 1 },
-        duration: 180,
+        targets: [this.trayBase, this.trayDecor],
+        alpha: { from: 0.67, to: 1 },
+        duration: 175,
         yoyo: true,
         repeat: 1
       })
@@ -554,12 +594,14 @@ export class TileMatchScene extends Phaser.Scene {
   }
 
   private refreshControls(): void {
-    this.undoText.setText(String(this.state.undos))
-    this.shuffleText.setText(String(this.state.shuffles))
+    this.undoButton.setBadge(this.state.undos)
+    this.shuffleButton.setBadge(this.state.shuffles)
+    this.undoButton.setEnabled(!this.busy)
+    this.shuffleButton.setEnabled(!this.busy)
   }
 
   private slotX(index: number): number {
-    return 384 + (index - (SLOT_SIZE - 1) / 2) * SLOT_GAP
+    return DESIGN_WIDTH / 2 + (index - (SLOT_SIZE - 1) / 2) * SLOT_GAP
   }
 
   private playLocal(key: string, volume: number): void {
@@ -567,24 +609,23 @@ export class TileMatchScene extends Phaser.Scene {
     try {
       this.sound.play(key, { volume })
     } catch {
-      // Phaser/WebAudio 在个别浏览器还未 unlock 时静默失败即可；
-      // 下一次用户手势会正常播放，不阻断游戏。
+      // 首个用户手势前 WebAudio 可能还未解锁：静默跳过，不阻断游戏。
     }
   }
 
   private burstMatch(x: number, y: number, kind: number): void {
     const color = BURST_COLORS[kind] ?? 0xf2c94c
-    for (let i = 0; i < 10; i++) {
-      const angle = (i / 10) * Math.PI * 2 + 0.2
-      const distance = 42 + (i % 3) * 10
-      const dot = this.add.circle(x, y, i % 2 ? 6 : 4, color, 0.95).setDepth(220)
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2 + 0.15
+      const distance = 44 + (i % 3) * 12
+      const dot = this.add.circle(x, y, i % 2 ? 6 : 4, color, 0.96).setDepth(260)
       this.tweens.add({
         targets: dot,
         x: x + Math.cos(angle) * distance,
         y: y + Math.sin(angle) * distance,
         alpha: 0,
-        scale: 0.3,
-        duration: 330,
+        scale: 0.25,
+        duration: 340,
         ease: 'Cubic.Out',
         onComplete: () => dot.destroy()
       })
@@ -593,19 +634,23 @@ export class TileMatchScene extends Phaser.Scene {
 
   private showToast(message: string): void {
     this.hideToast()
-    const toast = this.add.container(384, 620).setDepth(260)
+    const y = this.layout.trayY - 102
+    const toast = this.add.container(DESIGN_WIDTH / 2, y).setDepth(300)
+    const shadow = this.add.graphics()
+    shadow.fillStyle(COZY.cocoa, 0.24)
+    shadow.fillRoundedRect(-184, -25 + 6, 368, 54, 27)
     const bg = this.add.graphics()
-    bg.fillStyle(0x173f35, 0.90)
-    bg.fillRoundedRect(-170, -27, 340, 54, 27)
+    bg.fillStyle(COZY.forest, 0.96)
+    bg.fillRoundedRect(-184, -27, 368, 54, 27)
     const text = this.add.text(0, 0, message, {
       fontFamily: FONT,
       fontSize: '18px',
       color: '#fffdf6',
       fontStyle: 'bold'
     }).setOrigin(0.5)
-    toast.add([bg, text])
+    toast.add([shadow, bg, text])
     toast.setScale(0.92).setAlpha(0)
-    this.tweens.add({ targets: toast, scale: 1, alpha: 1, duration: 150, ease: 'Back.Out' })
+    this.tweens.add({ targets: toast, scale: 1, alpha: 1, duration: 145, ease: 'Back.Out' })
     this.toast = toast
 
     if (!isStuck(this.state)) {
@@ -614,7 +659,7 @@ export class TileMatchScene extends Phaser.Scene {
         this.tweens.add({
           targets: toast,
           alpha: 0,
-          y: 612,
+          y: y - 8,
           duration: 170,
           onComplete: () => {
             if (this.toast === toast) this.toast = undefined
@@ -636,47 +681,55 @@ export class TileMatchScene extends Phaser.Scene {
     recordFlag('tile-match-clear')
     this.playLocal(MATCH_SFX.victory, 0.48)
 
+    const h = this.scale.height
     const overlay = this.add.container(0, 0).setDepth(500)
-    const shade = this.add.rectangle(384, 450, 768, 900, 0x173f35, 0.30)
+    const shade = this.add.rectangle(DESIGN_WIDTH / 2, h / 2, DESIGN_WIDTH, h, COZY.forestDark, 0.34)
       .setInteractive()
+
+    const card = this.add.container(DESIGN_WIDTH / 2, h / 2)
+    const shadow = this.add.graphics()
+    shadow.fillStyle(COZY.cocoa, 0.25)
+    shadow.fillRoundedRect(-266, -176 + 12, 532, 354, 42)
     const panel = this.add.graphics()
-    panel.fillStyle(0x2b2119, 0.16)
-    panel.fillRoundedRect(126, 294, 524, 330, 38)
-    panel.fillStyle(0xfffdf6, 0.985)
-    panel.fillRoundedRect(122, 288, 524, 330, 38)
+    panel.fillStyle(COZY.creamLight, 0.995)
+    panel.fillRoundedRect(-266, -176, 532, 354, 42)
+    panel.lineStyle(4, COZY.honey, 0.82)
+    panel.strokeRoundedRect(-264, -174, 528, 350, 40)
 
-    const sparkle = this.add.text(384, 355, '✦  ✦  ✦', {
+    const decor = this.add.graphics()
+    decor.fillStyle(COZY.sage, 1)
+    decor.fillEllipse(-196, -137, 48, 20)
+    decor.fillEllipse(196, -137, 48, 20)
+    decor.fillStyle(COZY.honey, 1)
+    decor.fillCircle(-183, -137, 7)
+    decor.fillCircle(183, -137, 7)
+
+    const title = this.add.text(0, -82, '全都配对啦！', {
       fontFamily: FONT,
-      fontSize: '28px',
-      color: '#e0ad36',
+      fontSize: '37px',
+      color: '#285c50',
       fontStyle: 'bold'
     }).setOrigin(0.5)
 
-    const title = this.add.text(384, 420, '全都配对啦！', {
-      fontFamily: FONT,
-      fontSize: '36px',
-      color: '#173f35',
-      fontStyle: 'bold'
-    }).setOrigin(0.5)
-
-    const replay = this.makeOverlayButton(384, 510, '再玩一次', () => {
+    const replay = this.makeResultButton(0, 8, '再玩一次', () => {
       overlay.destroy(true)
       this.resultOverlay = undefined
       this.restart()
     }, true)
 
-    const home = this.makeOverlayButton(384, 578, '回游戏屋', () => this.exitGame(), false)
+    const home = this.makeResultButton(0, 82, '回游戏屋', () => this.exitGame(), false)
 
-    overlay.add([shade, panel, sparkle, title, replay, home])
+    card.add([shadow, panel, decor, title, replay, home])
+    card.setScale(0.92)
+    overlay.add([shade, card])
     overlay.setAlpha(0)
-    panel.setScale(0.94)
 
-    this.tweens.add({ targets: overlay, alpha: 1, duration: 180 })
-    this.tweens.add({ targets: panel, scale: 1, duration: 260, ease: 'Back.Out' })
+    this.tweens.add({ targets: overlay, alpha: 1, duration: 170 })
+    this.tweens.add({ targets: card, scale: 1, duration: 280, ease: 'Back.Out' })
     this.resultOverlay = overlay
   }
 
-  private makeOverlayButton(
+  private makeResultButton(
     x: number,
     y: number,
     label: string,
@@ -684,24 +737,41 @@ export class TileMatchScene extends Phaser.Scene {
     primary: boolean
   ): Phaser.GameObjects.Container {
     const button = this.add.container(x, y)
-    const bg = this.add.graphics()
-    const paint = (pressed = false): void => {
-      bg.clear()
-      bg.fillStyle(primary ? (pressed ? 0x245f50 : 0x2f7865) : (pressed ? 0xe6e0d3 : 0xf5f0e4), 1)
-      bg.fillRoundedRect(-145, -28, 290, 56, 19)
-    }
-    paint()
-    const text = this.add.text(0, 0, label, {
+    const shadow = this.add.graphics()
+    const face = this.add.graphics()
+    const text = this.add.text(0, -1, label, {
       fontFamily: FONT,
       fontSize: '21px',
-      color: primary ? '#fffdf6' : '#173f35',
+      color: primary ? '#fffdf6' : '#285c50',
       fontStyle: 'bold'
     }).setOrigin(0.5)
-    button.add([bg, text])
-    button.setSize(290, 56)
-    button.setInteractive(new Phaser.Geom.Rectangle(0, 0, 290, 56), Phaser.Geom.Rectangle.Contains)
-      .on('pointerdown', () => { paint(true); button.setScale(0.97) })
-      .on('pointerup', () => { paint(false); button.setScale(1); action() })
+
+    const paint = (pressed = false): void => {
+      shadow.clear()
+      shadow.fillStyle(COZY.cocoa, 0.22)
+      shadow.fillRoundedRect(-154, -28 + 7, 308, 58, 22)
+      face.clear()
+      face.fillStyle(
+        primary ? (pressed ? COZY.forestDark : COZY.forest) : (pressed ? 0xeadfbe : COZY.cream),
+        1
+      )
+      face.fillRoundedRect(-154, -30 + (pressed ? 4 : 0), 308, 58, 22)
+      face.lineStyle(2, primary ? 0xffffff : COZY.honey, primary ? 0.12 : 0.70)
+      face.strokeRoundedRect(-152, -28 + (pressed ? 4 : 0), 304, 54, 20)
+      text.y = pressed ? 3 : -1
+    }
+    paint()
+
+    button.add([shadow, face, text])
+    button.setSize(308, 58)
+    button.setInteractive(new Phaser.Geom.Rectangle(0, 0, 308, 58), Phaser.Geom.Rectangle.Contains)
+      .on('pointerdown', () => { paint(true); button.setScale(0.98) })
+      .on('pointerup', () => {
+        paint(false)
+        button.setScale(1)
+        this.playLocal(MATCH_SFX.ui, 0.23)
+        action()
+      })
       .on('pointerout', () => { paint(false); button.setScale(1) })
     return button
   }
