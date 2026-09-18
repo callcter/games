@@ -73,6 +73,7 @@ try {
     await evaluate(`(async()=>{const {PuzzleScene}=await import('/src/games/puzzle-kit/scene.ts');if(!PuzzleScene.prototype.__test){const create=PuzzleScene.prototype.create;PuzzleScene.prototype.create=function(){window.__scene=this;return create.call(this)};PuzzleScene.prototype.__test=true}})()`)
     // 叠叠消 v2 不再继承 PuzzleScene，单独挂 __scene 观察句柄。
     await evaluate(`(async()=>{const mod=await import('/src/games/tile-match/scene.ts');const cls=mod.TileMatchScene;if(!cls.prototype.__test){const create=cls.prototype.create;cls.prototype.create=function(){window.__scene=this;return create.call(this)};cls.prototype.__test=true}})()`)
+    await evaluate(`(async()=>{const mod=await import('/src/games/water-sort/scene.ts');const cls=mod.WaterSortScene;if(!cls.prototype.__test){const create=cls.prototype.create;cls.prototype.create=function(){window.__scene=this;return create.call(this)};cls.prototype.__test=true}})()`)
     // reload/导航后大厅卡片可能尚未渲染完成，先等卡片再点（修复随机 null.click）。
     await until(`!!document.querySelector('.game-grid [data-game="${id}"]')`)
     await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
@@ -80,7 +81,7 @@ try {
     await pause(400)
   }
   const home = async () => { await click(90,45); await until("!!document.querySelector('.game-grid')") }
-  const resumeOrFresh = async () => { if(await evaluate("__scene.message.includes('找到')"))await click(510,480) }
+  const resumeOrFresh = async () => { const m = await evaluate("__scene.message ?? ''"); if(String(m).includes('找到')) await click(510,480) }
   await send('Runtime.enable')
   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await send('Page.navigate',{url:base})
@@ -164,14 +165,51 @@ try {
   for(const [width,height] of [[768,1024],[1024,768]]){
     await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:Number(process.env.DEVICE_SCALE ?? 1),mobile:false})
     await pause()
-    await open('water-sort'); await resumeOrFresh(); await click(608,165)
-    assert.equal(await evaluate('__scene.state.colors'),6)
-    assert.equal(await evaluate("(()=>{let bad=0;const walk=o=>{if(o.type==='Text'&&o.text==='?')bad++;if(o.list)o.list.forEach(walk)};walk(__scene.content);return bad})()"),0)
-    const pourPoints = await evaluate(`(async()=>{const {canPour}=await import('/src/games/water-sort/core/game.ts');const s=__scene.state;for(let a=0;a<s.tubes.length;a++)for(let b=0;b<s.tubes.length;b++)if(canPour(s,a,b)){const at=i=>{const body=__scene.tubeBodies.get(i);return {x:body.x,y:body.y}};return [at(a),at(b)]}})()`)
+    console.log('ws-stage: enter')
+    // 清掉历次回归残留的水排序草稿，保证进入默认基础档
+    await evaluate(`(async()=>{const {saveDraft}=await import('/src/games/puzzle-kit/draft-storage.ts');saveDraft('water-sort',null);try{localStorage.removeItem('game-puzzle-draft-water-sort-v1')}catch(e){}return 1})()`)
+    await open('water-sort')
+    console.log('ws-stage: opened')
+    // v1 异步 initialize（loadDraft 后 startFresh / 弹「继续上次吗」panel）
+    await until("(__scene.state.colors > 0) || (!!__scene.overlay)")
+    console.log('ws-stage: initialized')
+    const resumeShown = await evaluate("JSON.stringify(!!__scene.overlay)") === 'true'
+    if (resumeShown) {
+      const hL = Number(await evaluate('JSON.stringify(__scene.scale.height)'))
+      const raw = await evaluate(`(()=>{const c=document.querySelector('canvas');const r=c.getBoundingClientRect();return {x:r.x+384*r.width/768,y:r.y+(hL__placeholder__/2+42)*r.height/hL__placeholder__}})()`.replace(/hL__placeholder__/g, String(hL)))
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',...raw});await pause(30)
+      await send('Input.dispatchMouseEvent',{type:'mousePressed',...raw,button:'left',clickCount:1});await pause(40)
+      await send('Input.dispatchMouseEvent',{type:'mouseReleased',...raw,button:'left',clickCount:1})
+      await pause(1000)
+    }
+    await until("__scene.state.colors > 0")
+    assert.equal(Number(await evaluate('JSON.stringify(__scene.state.colors)')),3)  // v1 默认基础档
+    const wsH = Number(await evaluate('JSON.stringify(__scene.scale.height)'))
+    const wsClick = async (lx, ly) => {
+      const raw = await evaluate(`(()=>{const c=document.querySelector('canvas');const r=c.getBoundingClientRect();return {x:r.x+${lx}*r.width/768,y:r.y+${ly}*r.height/${wsH}}})()`)
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',...raw});await pause(30)
+      await send('Input.dispatchMouseEvent',{type:'mousePressed',...raw,button:'left',clickCount:1});await pause(40)
+      await send('Input.dispatchMouseEvent',{type:'mouseReleased',...raw,button:'left',clickCount:1})
+      await pause(800)
+    }
+    // Cozy UI：难度 pill 在 (384, topY)，点两下切到挑战 6 色
+    const topY = Number(await evaluate('JSON.stringify(__scene.layout.topY)'))
+    await wsClick(384, topY); await wsClick(384, topY)
+    assert.equal(Number(await evaluate('JSON.stringify(__scene.state.colors)')),6)
+    const pourPoints = await evaluate(`(async()=>{const {canPour}=await import('/src/games/water-sort/core/game.ts');const s=__scene.state;for(let a=0;a<s.tubes.length;a++)for(let b=0;b<s.tubes.length;b++)if(canPour(s,a,b)){const at=i=>{const view=__scene.tubeViews.get(i);const v=view?view.container:null;return v?{x:v.x,y:v.y}:null};const A=at(a),B=at(b);return (A&&B)?[A,B]:null}})()`)
+    console.log('ws-stage: pourPoints', JSON.stringify(pourPoints))
     assert.ok(pourPoints)
-    for(const p of pourPoints) await click(p.x,p.y)
-    assert.equal(await evaluate('__scene.state.moves'),1)
-    await screenshot(`water-sort-${width}`);await home()
+    for(const p of pourPoints){ await wsClick(p.x, p.y) }
+    console.log('ws-stage: poured')
+    await pause(900)
+    assert.equal(Number(await evaluate('JSON.stringify(__scene.state.moves)')),1)
+    await screenshot(`water-sort-${width}`)
+    const toolY = Number(await evaluate('JSON.stringify(__scene.layout.toolY)'))
+    await wsClick(384-162, toolY)  // 撤销还原
+    // 场景自身清档（saveDraft 同步清模块缓存），另一方向循环从基础档开始
+    await evaluate(`(async()=>{const {saveDraft}=await import('/src/games/puzzle-kit/draft-storage.ts');saveDraft('water-sort',null);try{localStorage.removeItem('game-puzzle-draft-water-sort-v1')}catch(e){}return 1})()`)
+    await wsClick(58, topY)  // v1 顶栏左上 Cozy 返回
+    await until("!!document.querySelector('.game-grid')")
     await open('parking');await resumeOrFresh()
     assert.ok(await evaluate(`__scene.state.cars.every(c=>{const v=__scene.carViews.get(c.id);return v.x===110+(c.x+(c.horizontal?c.len/2:.5))*92&&v.y===235+(c.y+(c.horizontal?.5:c.len/2))*92})`))
     const carMove = await evaluate(`(async()=>{const {legalTargets}=await import('/src/games/parking/core/game.ts');for(const c of [...__scene.state.cars].reverse()){const targets=legalTargets(__scene.state,c.id);if(targets.length){const t=targets[0],v=__scene.carViews.get(c.id);return {x:v.x,y:v.y,tx:110+(c.horizontal?t+c.len/2:c.x+.5)*92,ty:235+(c.horizontal?c.y+.5:t+c.len/2)*92}}}})()`)
@@ -186,8 +224,9 @@ try {
     const tmPick = await evaluate(`(()=>{const id=__scene.available.values().next().value;const pos=__scene.boardPositions.get(id);const view=__scene.tileViews.get(id);return {x:pos.x,y:pos.y,loc:view?view.location:'none',free:view?view.free:null}})()`)
     assert.equal(tmPick.loc,'board');assert.equal(tmPick.free,true)
     await click(tmPick.x,tmPick.y)
+    await until(`__scene.state.slot.length===1 || __scene.busy === false && __scene.state.slot.length===0 && false`)
     await until(`__scene.state.slot.length===1`)
-    await pause(200)
+    await pause(300)
     await screenshot(`tile-match-${width}`)
     await click(48,46)  // v2 顶栏左上圆钮退出
     await until("!!document.querySelector('.game-grid')")

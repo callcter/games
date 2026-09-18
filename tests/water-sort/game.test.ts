@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canPour, MODES, newGame, pour, solvable, topRun, TUBE_CAPACITY, type WaterState } from '../../src/games/water-sort/core/game'
+import { canPour, MODES, newGame, pour, solvable, solvePath, topRun, TUBE_CAPACITY, type WaterState } from '../../src/games/water-sort/core/game'
 import { restoreWaterSort } from '../../src/games/puzzle-kit/core/drafts'
 
 describe('水排序规则', () => {
@@ -50,19 +50,25 @@ describe('水排序规则', () => {
 })
 
 describe('水排序生成器', () => {
-  it('重设计后三档难度都要求认真规划（单空管 + 完备可解 + 满管无白送）', () => {
+  it('垂直切片 v1：两根空瓶 + 解路径长度带 + 真实求解验证（每档 20 局）', () => {
     const mulberry32 = (seed: number) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
     for (const [mode, config] of MODES.entries()) {
-      expect(config.empties).toBe(1) // 难度核心：全程只有一根空管
-      for (const seed of [11, 42, 2026]) {
+      expect(config.empties).toBe(2) // v1 设计：难度靠颜色数+解路径长度，不靠减空瓶制造挫败
+      for (let seed = 1; seed <= 20; seed++) {
         const state = newGame(mode, mulberry32(seed))
-        expect(state.tubes).toHaveLength(config.colors + config.empties)
+        expect(state.tubes).toHaveLength(config.colors + 2)
         expect(state.tubes.filter(tube => tube.length).every(tube => tube.length === TUBE_CAPACITY)).toBe(true)
         expect(state.tubes.some(tube => tube.length === TUBE_CAPACITY && new Set(tube).size === 1)).toBe(false)
-        expect(solvable(state)).toBe(true) // 完备 DFS 复核可解
+        // 真实求解：solvePath 非空且按路径倒完必胜
+        const path = solvePath(state)
+        expect(path).not.toBeNull()
+        expect(path!.length).toBeGreaterThanOrEqual(config.minSolution)
+        let current = state
+        for (const move of path!) current = pour(current, move.from, move.to)!.state
+        expect(current.won).toBe(true)
       }
     }
-  })
+  }, 120000)
   it('三档难度固定随机下生成结构正确、无已完成管、重放解必胜的局面', () => {
     for (const [mode, config] of MODES.entries()) {
       let seed = 1 + mode * 1000
