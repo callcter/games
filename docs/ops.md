@@ -123,6 +123,14 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-19 发布 `b9d3a92`（1 个提交）：全部 24 款游戏接入玩法说明系统——共享面板组件
+  （emoji+目标句+步骤+贴士，遮罩点击关闭）+ 集中文案注册表；首次进入自动弹一次
+  （localStorage family-game-room-help-seen-v1），顶栏"?"随时重开；PuzzleScene 一处
+  覆盖 14 款、动作系仅"?"不首弹、10 款独立场景分别接入，俄罗斯方块首弹期间暂停下落。
+  修复帮助遮罩中心原点 hitArea 左上半屏点不到的问题；回归脚本预置 seen 防首弹吞输入。
+  验证：八款代表五种接入形态全链路通过（首弹/遮罩关闭/"?"/seen 标记）、browser-smoke
+  横竖屏两轮全绿、225 测试全绿；线上清 SW 后水排序首弹成功、浏览器错误 0；84 个构建
+  产物 SHA-256 与本地 dist 一致。发布后已推送 GitHub。
 - 2026-09-18 发布 `7e3bd91`（1 个提交）：修复线上叠叠消/水排序图标全部空白——Phosphor
   SVG 只有 viewBox 无显式宽高，Phaser SVGFile 不传 svgConfig 时光栅化得 0×0 Image，
   WebGL 报 texImage2D bad image data；preloadGameUi 改传 {width:256,height:256}。
