@@ -123,6 +123,16 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-18 发布 `ff06935`（1 个提交）：共享 UI Foundation（game-ui-foundation-v1）——
+  新增 src/ui（设计 tokens、Phosphor Bold 图标语义映射、七个 Phaser 组件：
+  icon-button/tool-button/mode-selector/stat-chip/top-bar/toast/dialog），叠叠消与
+  水排序的 cozy-ui.ts 收敛为兼容 bridge，art.ts 预加载共享图标；新增依赖
+  @phosphor-icons/core 2.1.1（构建时打包，无 CDN 请求）。集成修复 Phaser 4
+  XHRLoader 对 data: URI 强制 base64 解码导致的图标加载崩溃（?raw 内联 + base64
+  dataURI）。225 测试全绿、browser-smoke 横竖屏回归跑绿（期间定位到改 icons.ts
+  后需重启 dev 服务，否则 HMR 模块分叉使回归 hook 失效）、并排截图确认两款视觉
+  一致；84 个构建产物 SHA-256 与本地 dist 一致（本地 dist 内 .DS_Store 为
+  Finder 垃圾文件，glob 不上传属预期）。发布后已推送 GitHub。
 - 2026-09-18 发布 `5e9999f`（1 个提交）：水排序垂直切片 v1——core 重写（打散+
   solvePath 求解验证+解路径长度难度带，两根空瓶，安全固定 fallback 替代丢液体的
   旧修补式）、独立 Cozy UI 场景与 portrait-fluid mount（手机全屏）、持久试管
