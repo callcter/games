@@ -65,9 +65,14 @@ export class NonogramScene extends PuzzleScene {
     this.resetView(`第 ${level + 1} / ${PATTERNS.length} 幅 · 数字表示连续填色格数`)
     this.tiles = []; this.crosses = []; this.rowClues = []; this.columnClues = []
     this.text(384, size === 5 ? 157 : 137, '可以按住划格 · 一次撤销一整笔 · 淡色线索表示已凑齐', 18, this.content)
+    const bands = this.add.graphics()
+    bands.fillStyle(0xe6ebde)
+    bands.fillRoundedRect(boardLeft, boardTop - (size === 5 ? 84 : 68), cell * size, size === 5 ? 76 : 60, 12)
+    bands.fillRoundedRect(boardLeft - (size === 5 ? 84 : 108), boardTop, size === 5 ? 76 : 100, cell * size, 12)
+    this.content.add(bands)
     for (let i = 0; i < size; i++) {
-      this.rowClues.push(this.text(boardLeft - (size === 5 ? 63 : 55), boardTop + i * cell + cell / 2, clues(target.slice(i * size, i * size + size)).join(' '), size === 5 ? 25 : 16, this.content))
-      this.columnClues.push(this.text(boardLeft + i * cell + cell / 2, boardTop - (size === 5 ? 70 : 38), clues(Array.from({ length: size }, (_, y) => target[y * size + i]!)).join('\n'), size === 5 ? 24 : 15, this.content))
+      this.rowClues.push(this.text(boardLeft - (size === 5 ? 44 : 55), boardTop + i * cell + cell / 2, clues(target.slice(i * size, i * size + size)).join(' '), size === 5 ? 25 : 16, this.content))
+      this.columnClues.push(this.text(boardLeft + i * cell + cell / 2, boardTop - (size === 5 ? 44 : 38), clues(Array.from({ length: size }, (_, y) => target[y * size + i]!)).join('\n'), size === 5 ? 24 : 15, this.content))
     }
     this.state.marks.forEach((value, index) => {
       const x = boardLeft + index % size * cell + cell / 2, y = boardTop + Math.floor(index / size) * cell + cell / 2
