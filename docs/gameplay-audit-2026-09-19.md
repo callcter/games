@@ -121,3 +121,37 @@
 2. **第二批（P1 前半）**：动作四款默认档统一 + 数独 4×4 + 迷宫 5×5 + 数织选图页
 3. **第三批（P2）**：七个规则层修复（各自带复现测试，遵循"先测试后实现"）
 4. **第四批（P1 后半）**：2048 三档 / 纸牌翻三 / 五子棋 AI 分档 / 方块起始等级（产品行为变更，交付时需明示）
+
+## 六、外部调研对照（2026-09-19 联网核实）
+
+### 6.1 我们的做法 vs 业界标准
+
+| 主题 | 业界做法 | 我们现状 | 结论 |
+|---|---|---|---|
+| 水排序生成 | NP-complete（[Ito 2022](https://arxiv.org/abs/2207.03520)）；标准模式 = 生成+求解验证，2 万步内无解即弃（generate-and-test，如 [itch.io 实例](https://kalaybeytullah.itch.io)、[octo/watersort 求解器](https://github.com)） | 正向打散 + solvePath 验证 + 步数带 + 备用局自检 | **与业界标准同源且更严格**（多了步数带与 fallback 自检） |
+| 叠叠消（三消叠放） | 反向生成保证可解：先构造解路径再反推棋盘；难度靠层数/槽位/花色数（[羊了个羊类分析](https://radii.co)、[Match-3 关卡构建研究](https://www.mdpi.com)、[ASP 约束生成](https://scholarworks.gvsu.edu)） | 构造式拓扑序（buildRemovalOrder 即解路径）+ interleave 调难度 + 洗牌重验证 | **即业界反向生成**，且拒绝羊了个羊式 0.1% 通关的恶意难度，符合儿童定位 |
+| 停车场（Rush Hour） | PSPACE-complete，最难已知 93 步（[Wikipedia](https://en.wikipedia.org/wiki/Rush_Hour_(puzzle))）；难度 = 最优步数，经典 40 关按步数分组（[101computing](https://www.101computing.net)）；进阶生成用模拟退火（[Fogleman 2018](https://www.michaelfogleman.com)） | BFS 步数带（求解与走子同源）+ 备用关 | **同源做法**；模拟退火可造更刁钻关卡，对儿童 BFS 带足够 |
+| 数独难度 | 主流 = 技术分级：naked single → hidden single → locked candidates → X-Wing…最难技术定级，而非挖空数（[sudoku.coach](https://sudoku.coach)、[Conceptis](https://www.conceptispuzzles.com)、[SudokuWiki 候选密度法](https://www.sudokuwiki.org)） | 挖空数粗分（同尺寸无分档） | **差距点**：P1 的"同尺寸分轻松/标准"应升级为技术分级——至少区分"仅裸单/隐单可解（轻松）"与"需区块排除（标准）" |
+| 扫雷 | 商业实现普遍只有首点安全；进阶产品有 no-guess 模式 = 求解器验证每一步都可推理（[minesweeper.online](https://minesweeper.online)、[Cicvárek 2017 论文](https://minesweepergame.com)、[TU Berlin 2024 论文](https://doc.neuro.tu-berlin.de)） | 首点安全（首点+8 邻） | 符合主流；**可选升级**：中级/高级档加"无猜模式"（生成后求解器验证免猜，失败重布雷） |
+| 经典纸牌可解局 | 随机局仅 18%-43% 可解；业界"每日挑战"用 solve-then-deal（求解器验证后发牌，[arXiv 2024 可解性论文](https://arxiv.org/abs/2408.16844)），Thoughtful Solitaire 求解器 4 秒解 80% 局 | 无保证 + stuck 死局提示（有漏判 bug） | 求解器方案对我们过重（孩子单机场景）；**修好 stuck 检测 + 无限撤销兜底即可** |
+| 空当接龙 | 微软 32000 编号局是事实标准 | 同源（跳过 11982） | 业界标准 ✓ |
+| 数织 | 唯一解 ≠ 逻辑可解（可能需盲猜，[分析文章](https://liuhao04.github.io)）；通用求解 NP-complete（[UPC](https://web.mat.upc.edu)） | 50 幅唯一解经求解器验证（测试期）+ 具象图案 | 对儿童实际友好（图案直觉）；**未来扩库时应加"逐行列推理可解"（line-solvable）验证**，避免需要盲猜的图 |
+| 儿童游戏引导 | 一次只教一个机制；视觉/互动引导优于文字（学龄前识字有限）；教程可跳过；coach marks（[Adrian Crook 儿童游戏咨询](https://adriancrook.com)、[BBC onboarding 指南](https://www.bbc.co.uk)） | 一行文字提示为主 | **P0 方案据此修正**：帮助面板文字精简到 2-3 短句 + 优先配小图示（切水果手势动画已是标杆模板）；首次自动弹一次且明确可跳过 |
+
+### 6.2 对前文方案的修正
+
+1. **P1 数独分档**：从"按挖空数分档"升级为"按解题技术分级"——轻松 = 全程裸单/隐单可解（生成时用只含这两种技术的求解器验证），标准 = 允许区块排除。这与孩子"一步步推理"的心智模型一致，挖空数只是副产品。
+2. **P0 帮助面板**：每款"一张小图示 + 2-3 短句"，不写长规则文本；动作游戏复用切水果的手势动画模式；面板可随时从"?"再次打开。
+3. **新增 P3 项**：扫雷"无猜模式"进阶档（业界 no-guess 实现参考：生成后用受限求解器逐步推理，卡住即换布雷重试，限制重试次数防性能问题）。
+4. **数织扩库规范**：未来新增图案时，唯一解验证之外补充 line-solvable 检查（逐行/列约束传播可确定所有格）。
+
+### 6.3 参考来源
+
+- 水排序复杂度：[Sorting Balls and Water (arXiv 2207.03520)](https://arxiv.org/abs/2207.03520) · [octo/watersort](https://github.com) · [chromaoracle 在线求解器](https://chromaoracle.com)
+- Rush Hour：[Wikipedia](https://en.wikipedia.org/wiki/Rush_Hour_(puzzle)) · [Fogleman: Solving Rush Hour](https://www.michaelfogleman.com) · [BFS 求解教程](https://blog.devgenius.io)
+- 数独分级：[sudoku.coach](https://sudoku.coach) · [Conceptis](https://www.conceptispuzzles.com) · [SudokuWiki](https://www.sudokuwiki.org)
+- 扫雷免猜：[Cicvárek 2017](https://minesweepergame.com) · [TU Berlin 2024](https://doc.neuro.tu-berlin.de) · [minesweeper.online](https://minesweeper.online)
+- 纸牌可解性：[Klondike 可解性 (arXiv 2024)](https://arxiv.org/abs/2408.16844) · [Board Games SE 讨论](https://boardgames.stackexchange.com)
+- 数织：[唯一解≠逻辑可解](https://liuhao04.github.io) · [Berend et al. 2014](https://www.sciencedirect.com) · [UPC NP-complete](https://web.mat.upc.edu)
+- 三消生成：[MDPI 关卡构建与平衡](https://www.mdpi.com) · [EA 条件生成 (2024)](https://media.contentapi.ea.com) · [羊了个羊报道](https://radii.co)
+- 儿童引导：[Adrian Crook & Associates](https://adriancrook.com) · [BBC 游戏引导设计](https://www.bbc.co.uk)
