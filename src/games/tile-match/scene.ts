@@ -25,13 +25,15 @@ import {
   COZY,
   createCozyIconButton,
   createCozyPillButton,
+  createCozyToolButton,
   type CozyIconButton,
-  type CozyPillButton
+  type CozyPillButton,
+  type CozyToolButton
 } from './cozy-ui'
 
 const DESIGN_WIDTH = 768
-const TILE = 96
-const SPACING = 98
+const TILE = 100
+const SPACING = 100
 const SLOT_GAP = 80
 const FONT = 'Avenir Next, PingFang SC, sans-serif'
 
@@ -79,10 +81,11 @@ export class TileMatchScene extends Phaser.Scene {
 
   private backButton!: CozyIconButton
   private soundButton!: CozyIconButton
-  private undoButton!: CozyIconButton
-  private shuffleButton!: CozyIconButton
-  private restartButton!: CozyIconButton
+  private undoButton!: CozyToolButton
+  private shuffleButton!: CozyToolButton
+  private restartButton!: CozyToolButton
   private modeButton!: CozyPillButton
+  private trayLabel!: Phaser.GameObjects.Text
 
   private toast?: Phaser.GameObjects.Container
   private resultOverlay?: Phaser.GameObjects.Container
@@ -130,12 +133,13 @@ export class TileMatchScene extends Phaser.Scene {
 
   private currentLayout(): Layout {
     const h = this.scale.height
-    // 横向仍维持 768；高度在手机上通常落在 1150~1700，iPad 约 1020。
-    const topY = Phaser.Math.Clamp(h * 0.058, 58, 82)
-    const bottomY = h - Phaser.Math.Clamp(h * 0.062, 68, 102)
-    const trayY = Math.min(bottomY - 145, Phaser.Math.Clamp(h * 0.755, 735, 1260))
-    const boardTop = topY + 78
-    const boardBottom = trayY - 125
+    // v2 在长屏手机把 trayY 封顶到 1260，导致托盘和底部工具之间被拉出几百像素空档。
+    // v3 把“托盘 + 工具”作为一个底部控制簇整体锚定，长屏只把更多空间让给棋盘/背景。
+    const topY = Phaser.Math.Clamp(h * 0.056, 62, 86)
+    const bottomY = h - Phaser.Math.Clamp(h * 0.067, 82, 112)
+    const trayY = bottomY - 150
+    const boardTop = topY + 92
+    const boardBottom = trayY - 112
     return { height: h, topY, boardTop, boardBottom, trayY, bottomY }
   }
 
@@ -154,78 +158,84 @@ export class TileMatchScene extends Phaser.Scene {
     }
     this.tint?.setSize(DESIGN_WIDTH, height)
 
-    this.backButton?.setPosition(58, topY)
-    this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
+    this.backButton?.setPosition(52, topY)
+    this.soundButton?.setPosition(DESIGN_WIDTH - 52, topY)
     this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
 
-    this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 106, bottomY)
+    this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 160, bottomY)
     this.shuffleButton?.setPosition(DESIGN_WIDTH / 2, bottomY)
-    this.restartButton?.setPosition(DESIGN_WIDTH / 2 + 106, bottomY)
+    this.restartButton?.setPosition(DESIGN_WIDTH / 2 + 160, bottomY)
 
     this.paintTray()
     this.trayBase?.setPosition(0, trayY)
     this.trayDecor?.setPosition(0, trayY)
+    this.trayLabel?.setPosition(DESIGN_WIDTH / 2, trayY - 58)
   }
 
   private createControls(): void {
     this.backButton = createCozyIconButton(this, 'back', () => {
       this.playLocal(MATCH_SFX.ui, 0.24)
       this.exitGame()
-    }, 35)
+    }, 31)
 
     this.soundButton = createCozyIconButton(this, this.audio.isMuted ? 'muted' : 'sound', () => {
       const wasMuted = this.audio.isMuted
       this.audio.toggleMuted()
       this.soundButton.setIcon(this.audio.isMuted ? 'muted' : 'sound')
       if (wasMuted && !this.audio.isMuted) this.playLocal(MATCH_SFX.ui, 0.22)
-    }, 35)
+    }, 31)
 
-    this.modeButton = createCozyPillButton(this, MODES[this.mode]?.label ?? '基础', () => {
+    this.modeButton = createCozyPillButton(this, this.mode, MODES.length, MODES[this.mode]?.label ?? '基础', () => {
       if (this.busy) return
       this.playLocal(MATCH_SFX.ui, 0.25)
       this.mode = (this.mode + 1) % MODES.length
-      this.modeButton.setLabel(MODES[this.mode]?.label ?? '基础')
+      this.modeButton.setMode(this.mode, MODES.length, MODES[this.mode]?.label ?? '基础')
       this.state = newMatch(this.mode)
       this.playLocal(MATCH_SFX.shuffle, 0.25)
       this.rebuildBoard(true)
     })
 
-    this.undoButton = createCozyIconButton(this, 'undo', () => this.undoMove(), 35)
-    this.shuffleButton = createCozyIconButton(this, 'shuffle', () => this.shuffleBoard(), 35)
-    this.restartButton = createCozyIconButton(this, 'restart', () => this.restart(), 35)
+    this.undoButton = createCozyToolButton(this, 'undo', '撤销', () => this.undoMove())
+    this.shuffleButton = createCozyToolButton(this, 'shuffle', '洗牌', () => this.shuffleBoard())
+    this.restartButton = createCozyToolButton(this, 'restart', '重开', () => this.restart())
   }
 
   private createTray(): void {
     this.trayBase = this.add.graphics().setDepth(2)
     this.trayDecor = this.add.graphics().setDepth(4)
+    this.trayLabel = this.add.text(0, 0, '', {
+      fontFamily: FONT,
+      fontSize: '16px',
+      color: '#fff8df',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(7)
     this.paintTray()
   }
 
   private paintTray(alert = isStuck(this.state)): void {
     if (!this.trayBase || !this.trayDecor) return
-
     this.trayBase.clear()
-    this.trayBase.fillStyle(COZY.cocoa, 0.22)
+    this.trayBase.fillStyle(COZY.cocoa, 0.24)
     this.trayBase.fillRoundedRect(54, -55 + 10, 660, 128, 34)
-    this.trayBase.fillStyle(alert ? 0xffe6d9 : COZY.cream, 0.985)
+    this.trayBase.fillStyle(alert ? 0xffe5d9 : COZY.cream, 0.99)
     this.trayBase.fillRoundedRect(54, -58, 660, 128, 34)
-    this.trayBase.lineStyle(4, alert ? COZY.coral : COZY.honey, alert ? 0.95 : 0.82)
+    this.trayBase.lineStyle(4, alert ? COZY.coral : COZY.honey, alert ? 0.96 : 0.90)
     this.trayBase.strokeRoundedRect(56, -56, 656, 124, 32)
-    // 顶部“木牌”装饰，让托盘不再是一个纯白矩形。
-    this.trayBase.fillStyle(COZY.forest, 0.98)
-    this.trayBase.fillRoundedRect(326, -72, 116, 30, 15)
-    this.trayBase.fillStyle(COZY.honey, 1)
-    this.trayBase.fillEllipse(346, -57, 18, 9)
-    this.trayBase.fillEllipse(361, -57, 18, 9)
+
+    // v2 顶部两个椭圆像“花生”，没有语义。v3 改成明确的收集状态标签。
+    this.trayBase.fillStyle(COZY.forest, 0.99)
+    this.trayBase.fillRoundedRect(309, -76, 150, 36, 18)
+    this.trayBase.lineStyle(2, COZY.honey, 0.74)
+    this.trayBase.strokeRoundedRect(311, -74, 146, 32, 16)
 
     this.trayDecor.clear()
     for (let index = 0; index < SLOT_SIZE; index++) {
       const x = this.slotX(index)
-      this.trayDecor.fillStyle(0xb9894f, 0.20)
+      this.trayDecor.fillStyle(0x9b6f3d, 0.25)
       this.trayDecor.fillRoundedRect(x - 34, -30 + 5, 68, 68, 16)
-      this.trayDecor.fillStyle(0xfffdf2, 0.72)
+      this.trayDecor.fillStyle(0xfffdf2, 0.84)
       this.trayDecor.fillRoundedRect(x - 34, -30, 68, 68, 16)
-      this.trayDecor.lineStyle(2, 0xe0cfa4, 0.72)
+      this.trayDecor.lineStyle(2.2, 0xd6bd83, 0.88)
       this.trayDecor.strokeRoundedRect(x - 33, -29, 66, 66, 15)
     }
   }
@@ -335,16 +345,16 @@ export class TileMatchScene extends Phaser.Scene {
 
   private computeBoardPositions(): void {
     this.boardPositions.clear()
-    const maxX = Math.max(...this.state.tiles.map(tile => tile.gx + tile.layer * 0.34))
-    const maxY = Math.max(...this.state.tiles.map(tile => tile.gy + tile.layer * 0.34))
-    const minX = Math.min(...this.state.tiles.map(tile => tile.gx + tile.layer * 0.34))
-    const minY = Math.min(...this.state.tiles.map(tile => tile.gy + tile.layer * 0.34))
+    const maxX = Math.max(...this.state.tiles.map(tile => tile.gx))
+    const maxY = Math.max(...this.state.tiles.map(tile => tile.gy))
+    const minX = Math.min(...this.state.tiles.map(tile => tile.gx))
+    const minY = Math.min(...this.state.tiles.map(tile => tile.gy))
 
     const rawWidth = (maxX - minX) * SPACING + TILE
     const rawHeight = (maxY - minY) * SPACING + TILE
-    const areaWidth = 690
+    const areaWidth = 660
     const areaHeight = Math.max(280, this.layout.boardBottom - this.layout.boardTop)
-    const boardScale = Math.min(1.08, areaWidth / rawWidth, areaHeight / rawHeight)
+    const boardScale = Math.min(1.15, areaWidth / rawWidth, areaHeight / rawHeight)
 
     const boardWidth = rawWidth * boardScale
     const boardHeight = rawHeight * boardScale
@@ -352,8 +362,8 @@ export class TileMatchScene extends Phaser.Scene {
     const top = this.layout.boardTop + (areaHeight - boardHeight) * 0.42
 
     for (const tile of this.state.tiles) {
-      const gx = tile.gx + tile.layer * 0.34
-      const gy = tile.gy + tile.layer * 0.34
+      const gx = tile.gx
+      const gy = tile.gy
       this.boardPositions.set(tile.id, {
         x: left + ((gx - minX) * SPACING + TILE / 2) * boardScale,
         y: top + ((gy - minY) * SPACING + TILE / 2) * boardScale,
@@ -415,9 +425,9 @@ export class TileMatchScene extends Phaser.Scene {
     g.clear()
 
     // 厚牌底层阴影 + 蜂蜜色侧边，比纯白卡片更像实体玩具。
-    g.fillStyle(COZY.cocoa, free ? 0.23 : 0.14)
+    g.fillStyle(COZY.cocoa, free ? 0.22 : 0.12)
     g.fillRoundedRect(-TILE / 2, -TILE / 2 + 8, TILE, TILE, 21)
-    g.fillStyle(0xd49a49, free ? 0.95 : 0.58)
+    g.fillStyle(0xc88a43, free ? 0.82 : 0.42)
     g.fillRoundedRect(-TILE / 2, -TILE / 2 + 5, TILE, TILE - 1, 21)
     g.fillStyle(free ? COZY.creamLight : 0xe9e0cc, 0.995)
     g.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE - 7, 20)
@@ -425,11 +435,11 @@ export class TileMatchScene extends Phaser.Scene {
     g.strokeRoundedRect(-TILE / 2 + 1, -TILE / 2 + 1, TILE - 2, TILE - 9, 19)
 
     if (!free && view.location === 'board') {
-      g.fillStyle(0x5b5146, 0.16)
+      g.fillStyle(0x4b443d, 0.24)
       g.fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE - 7, 20)
     }
 
-    view.face.setAlpha(free ? 1 : 0.38)
+    view.face.setAlpha(free ? 1 : 0.27)
   }
 
   private setTileFree(view: TileView, free: boolean, animateNew: boolean): void {
@@ -598,6 +608,7 @@ export class TileMatchScene extends Phaser.Scene {
     this.shuffleButton.setBadge(this.state.shuffles)
     this.undoButton.setEnabled(!this.busy)
     this.shuffleButton.setEnabled(!this.busy)
+    this.trayLabel.setText(`收集 ${this.state.slot.length}/${SLOT_SIZE}`)
   }
 
   private slotX(index: number): number {

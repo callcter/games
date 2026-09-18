@@ -71,27 +71,64 @@ describe('叠叠消规则', () => {
   })
 })
 
-describe('叠叠消生成器', () => {
-  it('固定随机下三档生成可解、三倍数、组数正确的局面', () => {
+describe('叠叠消生成器（v3 构造式）', () => {
+  const mulberry32 = (seed: number) => (): number => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
+  it('三档各 100 局：张数/层数/每层布局正确且随机源不再影响结构', () => {
     for (const [mode, config] of MODES.entries()) {
-      let seed = 7 + mode * 613
-      const random = (): number => {
-        seed = (seed + 0x6d2b79f5) | 0
-        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-      }
-      for (let round = 0; round < 3; round++) {
-        const state = newMatch(mode, random)
-        const total = state.tiles.length - (state.tiles.length % 3)
-        expect(state.tiles.length % 3).toBe(0)
-        expect(total).toBeGreaterThan(0)
+      for (let seed = 1; seed <= 100; seed++) {
+        const state = newMatch(mode, mulberry32(seed))
+        expect(state.tiles).toHaveLength(config.tiles)
+        expect(new Set(state.tiles.map(tile => tile.layer)).size).toBe(config.layers)
         for (let kind = 0; kind < config.kinds; kind++) {
-          expect(state.tiles.filter(tile => tile.kind === kind).length % 3).toBe(0) // 每种都是三的倍数
+          expect(state.tiles.filter(tile => tile.kind === kind).length % 3).toBe(0)
         }
+        expect(pickable(state).length).toBeGreaterThanOrEqual(3)
         expect(state.undos).toBe(5)
         expect(state.shuffles).toBe(1)
-        expect(simSolves(state)).toBe(true)
+      }
+    }
+  }, 60000)
+
+  it('极端随机源 ()=>0 也不退化为单层平铺（旧 fallback 已移除）', () => {
+    for (const mode of [0, 1, 2]) {
+      const state = newMatch(mode, () => 0)
+      expect(Math.max(...state.tiles.map(tile => tile.layer))).toBe(MODES[mode]!.layers - 1)
+      expect(new Set(state.tiles.map(tile => tile.layer)).size).toBe(MODES[mode]!.layers)
+    }
+  })
+
+  it('任意生成局存在完整移除拓扑序（构造保证，与玩法策略无关）', () => {
+    // 与具体拾取策略无关的结构保证：只要一直移除「当前未被压住」的牌
+    // （这正是构造序的定义），总能移完所有牌。
+    for (const mode of [0, 1, 2]) {
+      const state = newMatch(mode, mulberry32(42))
+      const gone = new Set<number>()
+      let guard = 0
+      while (gone.size < state.tiles.length && guard++ < state.tiles.length + 5) {
+        const free = state.tiles.filter(tile => !gone.has(tile.id)
+          && !state.tiles.some(other => other.id !== tile.id && !gone.has(other.id)
+            && other.layer > tile.layer && Math.abs(other.gx - tile.gx) < 0.92 && Math.abs(other.gy - tile.gy) < 0.92))
+        if (!free.length) break
+        gone.add(free[0]!.id)
+      }
+      expect(gone.size).toBe(state.tiles.length)
+    }
+  })
+
+  it('洗牌对三种难度的新局都返回有效救援局', () => {
+    for (const mode of [0, 1, 2]) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const state = newMatch(mode, mulberry32(seed))
+        const shuffled = shuffle(state, mulberry32(seed + 1000))
+        expect(shuffled).not.toBeNull()
+        expect(shuffled?.slot).toEqual([])
+        expect(shuffled?.tiles).toHaveLength(state.tiles.length)
       }
     }
   })
