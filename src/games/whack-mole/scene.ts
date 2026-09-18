@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene } from '../action-kit/scene'
 import { comboFactor, MODES, newGame, step, whack } from './core/game'
+import { MOLE_SHEET_KEY, preloadWhackArt, whackMolesReady, WHACK_BG_KEY, WHACK_HOLE_KEY } from './art'
 
 const HOLE_SPACING = 224
 const BOARD_X = 384, BOARD_Y = 528
@@ -12,6 +13,20 @@ type HoleView = { mole: Phaser.GameObjects.Image; holeIndex: number }
 export class WhackMoleScene extends ActionScene {
   private state = newGame()
   private holes: HoleView[] = []
+  private useArtMoles = false
+
+  preload(): void {
+    preloadWhackArt(this)
+  }
+
+  create(): void {
+    // 草地背景铺整张画布，垫在一切视图（intro/回合/结算）之下；素材缺失则保持米色底。
+    if (this.textures.exists(WHACK_BG_KEY)) {
+      this.add.image(384, 450, WHACK_BG_KEY).setDisplaySize(768, 900).setDepth(-10)
+    }
+    this.useArtMoles = whackMolesReady(this)
+    super.create()
+  }
   constructor(audio: GameAudio, exit: () => void) { super('whack-mole', '打地鼠', audio, exit) }
   protected modes(): readonly { label: string }[] {
     return MODES.map((entry, index) => ({ label: `${this.mode === index ? '✓ ' : ''}${entry.label}` }))
@@ -46,14 +61,14 @@ export class WhackMoleScene extends ActionScene {
       this.state = result.state
       if (result.kind === 'hit') {
         const view = this.holes.find(entry => entry.holeIndex === hole)
-        if (view) this.retract(view, true)
+        if (view) this.hitThenRetract(view, this.useArtMoles ? 1 : undefined)
         this.audio.playPlace(1)
         this.audio.playPop(2.4)
         this.spray('mole-star', pointer.x, pointer.y - 20, 10, 200)
         this.floatText(pointer.x, pointer.y - 50, `+${this.state.score - before}`, '#2f6f8f')
       } else if (result.kind === 'sleeper') {
         const view = this.holes.find(entry => entry.holeIndex === hole)
-        if (view) this.retract(view, true)
+        if (view) this.hitThenRetract(view, this.useArtMoles ? 3 : undefined)
         this.audio.playBurst()
         this.floatText(pointer.x, pointer.y - 50, '鼠宝宝在睡觉…', '#c0392b', 20)
       } else {
@@ -79,9 +94,14 @@ export class WhackMoleScene extends ActionScene {
     for (let index = 0; index < 9; index++) {
       const x = BOARD_X + (index % 3 - 1) * HOLE_SPACING
       const y = BOARD_Y + (Math.floor(index / 3) - 1) * HOLE_SPACING
-      const hole = this.add.ellipse(x, y, HOLE_W, HOLE_H, 0x6b4f3a).setStrokeStyle(4, 0x527267)
+      // 素材可用时用立体土丘洞（洞口仍按 HOLE_W×HOLE_H 对齐遮罩与命中判定）。
+      const hole = this.textures.exists(WHACK_HOLE_KEY)
+        ? this.add.image(x, y, WHACK_HOLE_KEY).setDisplaySize(HOLE_W + 84, HOLE_H + 96)
+        : this.add.ellipse(x, y, HOLE_W, HOLE_H, 0x6b4f3a).setStrokeStyle(4, 0x527267)
       this.entities.add(hole)
-      const mole = this.add.image(x, y + HOLE_H * 0.55, 'mole-normal').setDisplaySize(96,96).setVisible(false)
+      const mole = this.useArtMoles
+        ? this.add.image(x, y + HOLE_H * 0.55, MOLE_SHEET_KEY, 0).setDisplaySize(112, 112).setVisible(false)
+        : this.add.image(x, y + HOLE_H * 0.55, 'mole-normal').setDisplaySize(96,96).setVisible(false)
       this.entities.add(mole)
       // 遮罩：洞口平面以上 + 洞椭圆内部可见，实现「从洞里钻出来」
       const maskShape = this.make.graphics()
@@ -97,11 +117,20 @@ export class WhackMoleScene extends ActionScene {
     const view = this.holes.find(entry => entry.holeIndex === index)
     if (!view) return
     const centerY = this.holeCenterY(index)
-    view.mole.setTexture(sleeper ? 'mole-sleeper' : 'mole-normal').setDisplaySize(96,96).setVisible(true)
+    if (this.useArtMoles) view.mole.setTexture(MOLE_SHEET_KEY, sleeper ? 2 : 0).setDisplaySize(112, 112).setVisible(true)
+    else view.mole.setTexture(sleeper ? 'mole-sleeper' : 'mole-normal').setDisplaySize(96,96).setVisible(true)
     this.tweens.killTweensOf(view.mole)
     view.mole.y = centerY + HOLE_H * 0.55
     this.tweens.add({ targets: view.mole, y: centerY - 34, duration: 190, ease: 'Back.Out' })
   }
+  /** 打中/打错时先定格反馈帧（晕头/惊醒）一小会儿，再缩回洞里。 */
+  private hitThenRetract(view: HoleView, frame: number | undefined): void {
+    if (frame === undefined) { this.retract(view, true); return }
+    this.tweens.killTweensOf(view.mole)
+    view.mole.setFrame(frame)
+    this.time.delayedCall(260, () => this.retract(view, true))
+  }
+
   private retract(view: HoleView, fast: boolean): void {
     this.tweens.killTweensOf(view.mole)
     this.tweens.add({
