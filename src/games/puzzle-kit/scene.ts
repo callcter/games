@@ -39,6 +39,10 @@ export abstract class PuzzleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#f8f1df')
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.keyboard?.on('keydown', () => void this.audio.unlock())
+    const header = this.add.graphics()
+    header.fillStyle(0xfffdf6, 0.96)
+    header.fillRoundedRect(16, 12, 736, 116, 24)
+    header.setDepth(-1)
     this.button(90, 45, '‹ 游戏屋', this.exit, 132)
     this.text(384, 45, this.heading, 34)
     const sound = this.button(680, 45, this.audio.isMuted ? '声音关' : '声音开', () => {
@@ -81,14 +85,28 @@ export abstract class PuzzleScene extends Phaser.Scene {
   }
 
   protected button(x: number, y: number, label: string, action: () => void, width = 140, parent?: Phaser.GameObjects.Container): Phaser.GameObjects.Text {
-    const background = this.add.rectangle(x, y, width, 60, 0xfffdf6).setStrokeStyle(2, 0xd8cdbb)
+    const selected = label.startsWith('✓')
+    const primary = /^(开\s*始|继续上次|再来一次)/.test(label)
+    const filled = selected || primary
+    const background = this.add.graphics({ x, y })
+    const paint = (down = false): void => {
+      background.clear()
+      background.fillStyle(0x173f35, 0.10)
+      background.fillRoundedRect(-width / 2, -27, width, 60, 16)
+      background.fillStyle(down ? 0xd7e9df : filled ? 0x2f7865 : 0xfffdf6)
+      background.fillRoundedRect(-width / 2, -30, width, 60, 16)
+      background.lineStyle(1.5, filled ? 0x2f7865 : 0xd8dfd4)
+      background.strokeRoundedRect(-width / 2, -30, width, 60, 16)
+    }
+    paint()
     parent?.add(background)
     const text = this.text(x, y, label, 21, parent)
+    if (filled) text.setColor('#fffdf6')
     let pressed = false
-    background.setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => { pressed = true })
-      .on('pointerout', () => { pressed = false })
-      .on('pointerup', () => { if (pressed) { pressed = false; action() } })
+    background.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -30, width, 60), Phaser.Geom.Rectangle.Contains)
+      .on('pointerdown', () => { pressed = true; paint(true); text.setColor(INK) })
+      .on('pointerout', () => { pressed = false; paint(); text.setColor(filled ? '#fffdf6' : INK) })
+      .on('pointerup', () => { if (pressed) { pressed = false; paint(); text.setColor(filled ? '#fffdf6' : INK); action() } })
     return text
   }
 

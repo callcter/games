@@ -96,7 +96,13 @@ export abstract class ActionScene extends PuzzleScene {
     this.running = false
     this.best=Math.max(...[0,1,2].map(mode=>this.readBest(mode)))
     this.resetView('选一个难度开始')
-    this.text(384, 268, this.headline(), 23, this.content).setWordWrapWidth(660)
+    const panel = this.add.graphics()
+    panel.fillStyle(0xfffdf6, 0.96)
+    panel.fillRoundedRect(40, 214, 688, 390, 32)
+    this.content.add(panel)
+    this.text(384, 268, this.headline(), 23, this.content).setWordWrapWidth(610)
+    this.text(384, 344, '点选难度，马上开玩', 20, this.content).setColor('#527267')
+    this.text(384, 470, '基础 · 慢慢来     进阶 · 练练手     挑战 · 试身手', 18, this.content).setColor('#527267')
     this.modes().forEach((entry, index) => {
       this.button(160 + index * 224, 400, entry.label, () => this.launch(index, this.roundSeconds(index)), 204, this.content)
     })

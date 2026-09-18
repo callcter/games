@@ -8,10 +8,12 @@ export function setHostBackdrop(url: string): void {
   if (!host) return
   releaseHostBackdrop()
   holder = host
-  host.style.backgroundImage = `url(${new URL(url, document.baseURI).href})`
-  host.style.backgroundSize = 'cover'
-  host.style.backgroundPosition = 'center'
-  host.style.backgroundRepeat = 'no-repeat'
+  // 画布外只延伸主题色，避免同图不同缩放造成重复物件与硬接缝。
+  const tone = url.includes('red-rain') ? '#34253f'
+    : url.includes('pop-bubbles') ? '#caebf5'
+    : url.includes('whack') ? '#dceac6' : '#eee3cf'
+  host.style.backgroundImage = `linear-gradient(${tone}, ${tone})`
+
 }
 
 export function releaseHostBackdrop(): void {
