@@ -71,10 +71,12 @@ try {
   // 只在开发服中观察场景状态，不在产品中暴露调试入口。
   const open = async id => {
     await evaluate(`(async()=>{const {PuzzleScene}=await import('/src/games/puzzle-kit/scene.ts');if(!PuzzleScene.prototype.__test){const create=PuzzleScene.prototype.create;PuzzleScene.prototype.create=function(){window.__scene=this;return create.call(this)};PuzzleScene.prototype.__test=true}})()`)
+    // 叠叠消 v2 不再继承 PuzzleScene，单独挂 __scene 观察句柄。
+    await evaluate(`(async()=>{const mod=await import('/src/games/tile-match/scene.ts');const cls=mod.TileMatchScene;if(!cls.prototype.__test){const create=cls.prototype.create;cls.prototype.create=function(){window.__scene=this;return create.call(this)};cls.prototype.__test=true}})()`)
     // reload/导航后大厅卡片可能尚未渲染完成，先等卡片再点（修复随机 null.click）。
     await until(`!!document.querySelector('.game-grid [data-game="${id}"]')`)
     await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
-    await until(`window.__scene?.sys?.settings.key==='${id}' && __scene.alive`)
+    await until(`window.__scene?.sys?.settings.key==='${id}' && (__scene.alive === undefined || __scene.alive)`)
     await pause(400)
   }
   const home = async () => { await click(90,45); await until("!!document.querySelector('.game-grid')") }
@@ -177,13 +179,18 @@ try {
     assert.equal(await evaluate('__scene.state.moves'),1)
     await screenshot(`parking-${width}`);await home()
     await open('tile-match')
-    await evaluate(`(async()=>{const {pick}=await import('/src/games/tile-match/core/game.ts');let s={tiles:Array.from({length:12},(_,id)=>({id,kind:Math.floor(id/3),layer:0,gx:id%4,gy:Math.floor(id/4)})),gone:[],slot:[],cleared:0,undoLog:[],undos:5,shuffles:1,won:false};for(const id of [0,1,3,4,6,7,9])s=pick(s,id).state;__scene.state=s;__scene.draw()})()`)
-    await click(384,850)
+    await evaluate(`(async()=>{const {pick}=await import('/src/games/tile-match/core/game.ts');let s={tiles:Array.from({length:12},(_,id)=>({id,kind:Math.floor(id/3),layer:0,gx:id%4,gy:Math.floor(id/4)})),gone:[],slot:[],cleared:0,undoLog:[],undos:5,shuffles:1,won:false};for(const id of [0,1,3,4,6,7,9])s=pick(s,id).state;__scene.state=s;__scene.rebuildBoard(false)})()`)
+    await click(384,842)
     assert.equal(await evaluate('__scene.state.slot.length'),0)
     assert.equal(await evaluate('__scene.state.shuffles'),0)
-    await click(252,386)
-    assert.equal(await evaluate('__scene.state.slot.length'),1)
-    await screenshot(`tile-match-${width}`);await home()
+    const tmPick = await evaluate(`(()=>{const id=__scene.available.values().next().value;const pos=__scene.boardPositions.get(id);const view=__scene.tileViews.get(id);return {x:pos.x,y:pos.y,loc:view?view.location:'none',free:view?view.free:null}})()`)
+    assert.equal(tmPick.loc,'board');assert.equal(tmPick.free,true)
+    await click(tmPick.x,tmPick.y)
+    await until(`__scene.state.slot.length===1`)
+    await pause(200)
+    await screenshot(`tile-match-${width}`)
+    await click(48,46)  // v2 顶栏左上圆钮退出
+    await until("!!document.querySelector('.game-grid')")
     await evaluate("document.querySelector('[data-category=logic]').click()")
     assert.equal(await evaluate("document.querySelectorAll('.game-card:not([hidden])').length"),6)
     await open('sudoku'); await resumeOrFresh(); await click(568,165)
