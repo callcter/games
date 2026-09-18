@@ -123,6 +123,15 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-18 发布 `7e3bd91`（1 个提交）：修复线上叠叠消/水排序图标全部空白——Phosphor
+  SVG 只有 viewBox 无显式宽高，Phaser SVGFile 不传 svgConfig 时光栅化得 0×0 Image，
+  WebGL 报 texImage2D bad image data；preloadGameUi 改传 {width:256,height:256}。
+  之前验证只监听 console 域而该错误走浏览器 Log 域，dev 下同样坏但漏检。回归脚本
+  同步修三处被掩盖的时序缺陷：水排序倒水改轮询 busy/moves（跨排动画约 1s）、
+  tile-match 按场景实际逻辑高换算点击（portrait-fluid 下 /900 换算 y 偏 13.8%）、
+  parking 段开新局前清 draft 并等 carViews 就绪。验证：preview 与线上（清 SW 后）
+  bad image data 均 0 条、截图逐按钮确认 glyph；browser-smoke 连续两次全绿
+  （监听器 55→55）；84 个构建产物 SHA-256 与本地 dist 一致。发布后已推送 GitHub。
 - 2026-09-18 发布 `ff06935`（1 个提交）：共享 UI Foundation（game-ui-foundation-v1）——
   新增 src/ui（设计 tokens、Phosphor Bold 图标语义映射、七个 Phaser 组件：
   icon-button/tool-button/mode-selector/stat-chip/top-bar/toast/dialog），叠叠消与
