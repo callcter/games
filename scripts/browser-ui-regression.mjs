@@ -113,6 +113,7 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
     await home()
   }
 
+  await send('Emulation.setDeviceMetricsOverride',{width:768,height:1024,deviceScaleFactor:1,mobile:false})
   await open('gomoku','gomoku','GomokuScene')
   await until("!!document.querySelector('.game-help-dialog[open]')")
   await closeHelp()
@@ -147,9 +148,12 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
   await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
   await until(`__scene.boardZoom>${preZoom}`)
   assert.equal(await evaluate('JSON.stringify(__scene.state)'),prePinch,'双指手势不落子')
-  await canvasTap(299,46)
+  // 旋转循环结束在 390 窄视口；重开/返回点击坐标按 768 宽布局，先恢复视口。
+  await send('Emulation.setDeviceMetricsOverride',{width:768,height:1024,deviceScaleFactor:2,mobile:false})
+  await pause(250)
+  await canvasTap(564,69)
   await until('__scene.boardZoom===1 && __scene.state.board.every(c=>c===0)')
-  await canvasTap(41,46)
+  await canvasTap(62,70)
   await until("!!document.querySelector('.game-grid')")
   console.log('新用户帮助、输入隔离、计时恢复、监听清理、棋盘缩放与旋转通过')
 })
