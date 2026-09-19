@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
+import { createPuzzleChrome, preloadGameUi } from '../../ui'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { releaseHostBackdrop, setHostBackdrop } from '../../platform/display/host-backdrop'
 import { recordFlag } from '../puzzle-kit/progress'
@@ -24,10 +25,8 @@ import {
 } from './art'
 import {
   COZY,
-  createCozyIconButton,
   createCozyPillButton,
   createCozyToolButton,
-  type CozyIconButton,
   type CozyPillButton,
   type CozyToolButton
 } from './cozy-ui'
@@ -80,9 +79,7 @@ export class TileMatchScene extends Phaser.Scene {
   private trayBase!: Phaser.GameObjects.Graphics
   private trayDecor!: Phaser.GameObjects.Graphics
 
-  private backButton!: CozyIconButton
-  private soundButton!: CozyIconButton
-  private helpButton!: CozyIconButton
+  private chrome: import('../../ui').PuzzleChrome | null = null
   private undoButton!: CozyToolButton
   private shuffleButton!: CozyToolButton
   private restartButton!: CozyToolButton
@@ -100,6 +97,7 @@ export class TileMatchScene extends Phaser.Scene {
 
   preload(): void {
     preloadMatchArt(this)
+    preloadGameUi(this)
   }
 
   create(): void {
@@ -138,10 +136,10 @@ export class TileMatchScene extends Phaser.Scene {
     const h = this.scale.height
     // v2 在长屏手机把 trayY 封顶到 1260，导致托盘和底部工具之间被拉出几百像素空档。
     // v3 把“托盘 + 工具”作为一个底部控制簇整体锚定，长屏只把更多空间让给棋盘/背景。
-    const topY = Phaser.Math.Clamp(h * 0.056, 62, 86)
+    const topY = h >= 1180 ? 90 : 70
     const bottomY = h - Phaser.Math.Clamp(h * 0.067, 82, 112)
     const trayY = bottomY - 150
-    const boardTop = topY + 92
+    const boardTop = topY + 104
     const boardBottom = trayY - 112
     return { height: h, topY, boardTop, boardBottom, trayY, bottomY }
   }
@@ -161,10 +159,8 @@ export class TileMatchScene extends Phaser.Scene {
     }
     this.tint?.setSize(DESIGN_WIDTH, height)
 
-    this.backButton?.setPosition(58, topY)
-    this.helpButton?.setPosition(128, topY)
-    this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
-    this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
+    this.chrome?.layout(DESIGN_WIDTH, height)
+    this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY + 66)
 
     this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 162, bottomY)
     this.shuffleButton?.setPosition(DESIGN_WIDTH / 2, bottomY)
@@ -177,22 +173,20 @@ export class TileMatchScene extends Phaser.Scene {
   }
 
   private createControls(): void {
-    this.backButton = createCozyIconButton(this, 'back', () => {
-      this.playLocal(MATCH_SFX.ui, 0.24)
-      this.exitGame()
-    }, 31)
-
-    this.helpButton = createCozyIconButton(this, 'help', () => {
-      this.playLocal(MATCH_SFX.ui, 0.22)
-      showHelpPanel(this, '叠叠消')
-    }, 31)
-
-    this.soundButton = createCozyIconButton(this, this.audio.isMuted ? 'muted' : 'sound', () => {
-      const wasMuted = this.audio.isMuted
-      this.audio.toggleMuted()
-      this.soundButton.setIcon(this.audio.isMuted ? 'muted' : 'sound')
-      if (wasMuted && !this.audio.isMuted) this.playLocal(MATCH_SFX.ui, 0.22)
-    }, 31)
+    // 全站统一顶栏；难度 pill 放标题下状态行（layoutScene 定位）。
+    this.chrome = createPuzzleChrome(this, {
+      title: '叠叠消',
+      audio: this.audio,
+      onBack: () => {
+        this.playLocal(MATCH_SFX.ui, 0.24)
+        this.exitGame()
+      },
+      onHelp: () => {
+        this.playLocal(MATCH_SFX.ui, 0.22)
+        showHelpPanel(this, '叠叠消')
+      }
+    })
+    this.chrome.setStatus('')
 
     this.modeButton = createCozyPillButton(this, this.mode, MODES.length, MODES[this.mode]?.label ?? '基础', () => {
       if (this.busy) return

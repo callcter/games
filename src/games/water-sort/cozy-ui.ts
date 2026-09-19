@@ -7,11 +7,9 @@
 import Phaser from 'phaser'
 import {
   GAME_UI,
-  createIconButton,
   createModeSelector,
   createStatChip as createSharedStatChip,
   createToolButton as createSharedToolButton,
-  type GameIconButton,
   type GameModeSelector,
   type GameStatChip,
   type GameToolButton
@@ -39,7 +37,6 @@ export type WaterIcon =
   | 'new'
   | 'help'
 
-export type RoundButton = GameIconButton
 export type ToolButton = GameToolButton
 export type StatChip = GameStatChip
 
@@ -51,15 +48,6 @@ function modeIndex(label: string): number {
   if (label === '进阶') return 1
   if (label === '挑战') return 2
   return 0
-}
-
-export function createRoundButton(
-  scene: Phaser.Scene,
-  icon: WaterIcon,
-  action: () => void,
-  _legacyRadius?: number
-): RoundButton {
-  return createIconButton(scene, icon, action)
 }
 
 export function createToolButton(

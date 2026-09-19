@@ -18,15 +18,14 @@ import {
 import { preloadWaterSortArt, WATER_BG_KEY, WATER_SFX } from './art'
 import {
   createModePill,
-  createRoundButton,
   createStatChip,
   createToolButton,
   WATER_UI,
   type ModePill,
-  type RoundButton,
   type StatChip,
   type ToolButton
 } from './cozy-ui'
+import { createPuzzleChrome, preloadGameUi } from '../../ui'
 
 const DESIGN_WIDTH = 768
 const FONT = 'Avenir Next, PingFang SC, sans-serif'
@@ -85,9 +84,7 @@ export class WaterSortScene extends Phaser.Scene {
   private veil?: Phaser.GameObjects.Rectangle
   private readonly tubeViews = new Map<number, TubeView>()
 
-  private backButton!: RoundButton
-  private soundButton!: RoundButton
-  private helpButton!: RoundButton
+  private chrome: import('../../ui').PuzzleChrome | null = null
   private modeButton!: ModePill
   private movesChip!: StatChip
   private doneChip!: StatChip
@@ -106,6 +103,7 @@ export class WaterSortScene extends Phaser.Scene {
 
   preload(): void {
     preloadWaterSortArt(this)
+    preloadGameUi(this)
   }
 
   create(): void {
@@ -163,24 +161,23 @@ export class WaterSortScene extends Phaser.Scene {
   }
 
   private createChrome(): void {
-    this.backButton = createRoundButton(this, 'back', () => {
-      if (this.busy) return
-      this.playLocal(WATER_SFX.ui, 0.22)
-      this.exitGame()
-    }, 35)
-
-    this.helpButton = createRoundButton(this, 'help', () => {
-      if (this.busy) return
-      this.playLocal(WATER_SFX.ui, 0.20)
-      showHelpPanel(this, '水排序')
-    }, 35)
-
-    this.soundButton = createRoundButton(this, this.audio.isMuted ? 'muted' : 'sound', () => {
-      const wasMuted = this.audio.isMuted
-      this.audio.toggleMuted()
-      this.soundButton.setIcon(this.audio.isMuted ? 'muted' : 'sound')
-      if (wasMuted && !this.audio.isMuted) this.playLocal(WATER_SFX.ui, 0.20)
-    }, 35)
+    // 全站统一顶栏；难度 pill 与统计 chips 组成状态行（layoutScene 定位）。
+    this.chrome = createPuzzleChrome(this, {
+      title: '水排序',
+      audio: this.audio,
+      onBack: () => {
+        if (this.busy) return
+        this.playLocal(WATER_SFX.ui, 0.22)
+        this.exitGame()
+      },
+      onHelp: () => {
+        if (this.busy) return
+        this.playLocal(WATER_SFX.ui, 0.20)
+        showHelpPanel(this, '水排序')
+      }
+    })
+    this.chrome.setStatus('')
+    this.chrome.layout(DESIGN_WIDTH, this.scale.height)
 
     this.modeButton = createModePill(this, MODES[this.mode]?.label ?? '基础', () => {
       if (this.busy) return
@@ -205,7 +202,7 @@ export class WaterSortScene extends Phaser.Scene {
 
   private currentLayout(): Layout {
     const height = this.scale.height
-    const topY = Phaser.Math.Clamp(height * 0.055, 58, 82)
+    const topY = height >= 1180 ? 90 : 70
     const statsY = topY + 66
     const toolY = height - Phaser.Math.Clamp(height * 0.062, 74, 104)
     const boardTop = statsY + 50
@@ -215,7 +212,7 @@ export class WaterSortScene extends Phaser.Scene {
 
   private layoutScene(): void {
     this.layout = this.currentLayout()
-    const { height, topY, statsY, toolY } = this.layout
+    const { height, statsY, toolY } = this.layout
 
     if (this.background) {
       const source = this.textures.get(WATER_BG_KEY).source[0]
@@ -228,13 +225,11 @@ export class WaterSortScene extends Phaser.Scene {
     }
     this.veil?.setSize(DESIGN_WIDTH, height)
 
-    this.backButton?.setPosition(58, topY)
-    this.helpButton?.setPosition(128, topY)
-    this.soundButton?.setPosition(DESIGN_WIDTH - 58, topY)
-    this.modeButton?.setPosition(DESIGN_WIDTH / 2, topY)
+    this.chrome?.layout(DESIGN_WIDTH, height)
+    this.modeButton?.setPosition(DESIGN_WIDTH / 2, statsY)
 
-    this.movesChip?.setPosition(DESIGN_WIDTH / 2 - 65, statsY)
-    this.doneChip?.setPosition(DESIGN_WIDTH / 2 + 65, statsY)
+    this.movesChip?.setPosition(DESIGN_WIDTH / 2 - 160, statsY)
+    this.doneChip?.setPosition(DESIGN_WIDTH / 2 + 160, statsY)
 
     this.undoButton?.setPosition(DESIGN_WIDTH / 2 - 162, toolY)
     this.hintButton?.setPosition(DESIGN_WIDTH / 2, toolY)
@@ -843,7 +838,6 @@ export class WaterSortScene extends Phaser.Scene {
     this.undoButton.setEnabled(!this.busy && this.history.length > 0)
     this.hintButton.setEnabled(!this.busy && !this.state.won)
     this.newButton.setEnabled(!this.busy)
-    this.backButton.setEnabled(!this.busy)
   }
 
   private playLocal(key: string, volume: number): void {

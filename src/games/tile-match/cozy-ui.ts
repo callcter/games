@@ -7,13 +7,10 @@
 import Phaser from 'phaser'
 import {
   GAME_UI,
-  createIconButton,
   createModeSelector,
   createToolButton,
-  type GameIconButton,
   type GameModeSelector,
-  type GameToolButton,
-  type GameUiIconName
+  type GameToolButton
 } from '../../ui'
 
 export const COZY = {
@@ -38,19 +35,8 @@ export type CozyIconName =
   | 'restart'
   | 'help'
 
-export type CozyIconButton = GameIconButton
 export type CozyToolButton = GameToolButton
 export type CozyPillButton = GameModeSelector
-
-export function createCozyIconButton(
-  scene: Phaser.Scene,
-  icon: CozyIconName,
-  action: () => void,
-  _legacyRadius?: number
-): CozyIconButton {
-  // Ignore old per-game radius: this is intentionally standardized.
-  return createIconButton(scene, icon as GameUiIconName, action)
-}
 
 export function createCozyToolButton(
   scene: Phaser.Scene,
