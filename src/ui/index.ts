@@ -47,3 +47,17 @@ export {
   type DialogAction,
   type DialogOptions
 } from './phaser/dialog'
+
+export {
+  createSegmentControl,
+  type SegmentControl,
+  type SegmentControlOptions,
+  type SegmentItem
+} from './phaser/segment-control'
+
+export {
+  createLegacyChrome,
+  type LegacyChrome,
+  type LegacyChromeOptions,
+  type LegacyChromeTool
+} from './phaser/legacy-chrome'

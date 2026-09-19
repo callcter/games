@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createHeaderButton } from '../../platform/display/header-button'
+import { createLegacyChrome, createSegmentControl, preloadGameUi } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import {
   BOARD_SIZE,
@@ -37,6 +37,10 @@ export class GomokuScene extends Phaser.Scene {
     super({ key: 'gomoku' })
     this.audio = audio
     this.callbacks = callbacks
+  }
+
+  preload(): void {
+    preloadGameUi(this)
   }
 
   create(): void {
@@ -137,22 +141,16 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   private drawHeader(width: number, compact: boolean, margin: number): void {
-    const regularSize = compact ? '18px' : '22px'
-    this.add.text(margin, compact ? 16 : 30, '‹ 游戏屋', {
-      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: regularSize, fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-
-    this.add.text(width / 2, compact ? 18 : 34, '五子棋', {
-      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '28px' : '40px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-
-    const actionsW = createHeaderButton(this, {
-      x: width - margin, y: compact ? 34 : 42, anchor: 'right', label: '重新开始', onTap: () => this.restart()
-    })
-    createHeaderButton(this, {
-      x: width - margin - actionsW - 8, y: compact ? 34 : 42, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '五子棋') }
+    createLegacyChrome(this, {
+      width,
+      title: '五子棋',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      y: compact ? 34 : 46,
+      tools: [
+        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '五子棋') },
+        { icon: 'restart', label: '重开', action: () => this.restart() }
+      ]
     })
 
     const status = `${this.scoreLabel()} · ${this.statusText()}`
@@ -161,39 +159,19 @@ export class GomokuScene extends Phaser.Scene {
       fontSize: compact ? '14px' : '18px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
 
-    const buttonWidth = 100
-    const buttonHeight = compact ? 34 : 36
-    const modeY = compact ? 58 : 92
-    this.createModeButton(margin + buttonWidth / 2, modeY, buttonWidth, buttonHeight, '和电脑玩', this.mode === 'computer', () => this.setMode('computer'))
-    this.createModeButton(margin + buttonWidth * 1.5 + 8, modeY, buttonWidth, buttonHeight, '双人对战', this.mode === 'two-player', () => this.setMode('two-player'))
-
-    this.add.text(width - margin, compact ? 52 : 88, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
-      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '13px' : '16px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => {
-      this.audio.toggleMuted()
-      this.draw()
+    const mode = createSegmentControl(this, {
+      items: [
+        { value: 'computer' as const, label: '和电脑玩' },
+        { value: 'two-player' as const, label: '双人对战' }
+      ],
+      value: this.mode,
+      width: 224,
+      height: compact ? 40 : 44,
+      onChange: value => this.setMode(value)
     })
-  }
+    mode.setPosition(margin + 112, compact ? 72 : 98)
 
-  // 与扫雷的难度切换同款分段按钮，让孩子一眼看出当前模式可切换
-  private createModeButton(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    label: string,
-    selected: boolean,
-    action: () => void
-  ): void {
-    this.add.rectangle(x, y, width, height, selected ? 0xc65f4b : 0xd8cdbb)
-      .setStrokeStyle(2, selected ? 0xa84b3c : 0xb8aa94)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerup', action)
-    this.add.text(x, y, label, {
-      color: selected ? '#fffaf0' : '#53635d', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: height > 35 ? '15px' : '13px', fontStyle: 'bold'
-    }).setOrigin(0.5)
+
   }
 
   private scoreLabel(): string {

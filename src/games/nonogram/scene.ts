@@ -66,9 +66,12 @@ export class NonogramScene extends PuzzleScene {
     this.tiles = []; this.crosses = []; this.rowClues = []; this.columnClues = []
     this.text(384, size === 5 ? 157 : 137, '可以按住划格 · 一次撤销一整笔 · 淡色线索表示已凑齐', 18, this.content)
     const bands = this.add.graphics()
-    bands.fillStyle(0xe6ebde)
+    bands.fillStyle(0xeaf0e6)
     bands.fillRoundedRect(boardLeft, boardTop - (size === 5 ? 84 : 68), cell * size, size === 5 ? 76 : 60, 12)
     bands.fillRoundedRect(boardLeft - (size === 5 ? 84 : 108), boardTop, size === 5 ? 76 : 100, cell * size, 12)
+    bands.lineStyle(2, 0xe7b45e, 0.42)
+    bands.strokeRoundedRect(boardLeft, boardTop - (size === 5 ? 84 : 68), cell * size, size === 5 ? 76 : 60, 12)
+    bands.strokeRoundedRect(boardLeft - (size === 5 ? 84 : 108), boardTop, size === 5 ? 76 : 100, cell * size, 12)
     this.content.add(bands)
     for (let i = 0; i < size; i++) {
       this.rowClues.push(this.text(boardLeft - (size === 5 ? 44 : 55), boardTop + i * cell + cell / 2, clues(target.slice(i * size, i * size + size)).join(' '), size === 5 ? 25 : 16, this.content))
@@ -76,11 +79,26 @@ export class NonogramScene extends PuzzleScene {
     }
     this.state.marks.forEach((value, index) => {
       const x = boardLeft + index % size * cell + cell / 2, y = boardTop + Math.floor(index / size) * cell + cell / 2
-      const tile = this.add.rectangle(x, y, cell - 4, cell - 4, value === 1 ? (this.state.won ? 0xe88065 : 0x58a897) : 0xfffdf6).setStrokeStyle(2, 0xd8cdbb)
+      const tile = this.add.rectangle(
+        x, y, cell - 5, cell - 5,
+        value === 1 ? (this.state.won ? 0xe8755f : 0x4fa68e) : 0xfffff4
+      ).setStrokeStyle(2, 0xd8cdbb)
       this.content.add(tile)
       this.tiles.push(tile)
-      this.crosses.push(this.text(x, y, '×', cell * 0.7, this.content).setVisible(value === -1))
+      this.crosses.push(
+        this.text(x, y, '×', cell * 0.54, this.content)
+          .setColor('#8a7968')
+          .setVisible(value === -1)
+      )
     })
+    const separators = this.add.graphics(); this.content.add(separators)
+    separators.lineStyle(size === 5 ? 3 : 4, 0x527267, 0.65)
+    if (size > 5) {
+      for (let i = 5; i < size; i += 5) {
+        separators.lineBetween(boardLeft + i * cell, boardTop, boardLeft + i * cell, boardTop + size * cell)
+        separators.lineBetween(boardLeft, boardTop + i * cell, boardLeft + size * cell, boardTop + i * cell)
+      }
+    }
     this.button(180, 780, this.mode === 1 ? '✓ 填色' : '填色', () => { this.mode = 1; this.draw() }, 150, this.content)
     this.button(370, 780, this.mode === -1 ? '✓ 标空' : '标空', () => { this.mode = -1; this.draw() }, 150, this.content)
     this.button(570, 780, '提示一格', () => {
@@ -95,7 +113,7 @@ export class NonogramScene extends PuzzleScene {
   private updateBoard(): void {
     const size = patternSize(this.state.level), target = solution(this.state.level)
     this.state.marks.forEach((value,i) => {
-      this.tiles[i]!.setFillStyle(value === 1 ? (this.state.won ? 0xe88065 : 0x58a897) : 0xfffdf6)
+      this.tiles[i]!.setFillStyle(value === 1 ? (this.state.won ? 0xe8755f : 0x4fa68e) : 0xfffff4)
       this.crosses[i]!.setVisible(value === -1)
     })
     for (let i = 0; i < size; i++) {

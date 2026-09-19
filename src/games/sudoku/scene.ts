@@ -78,11 +78,35 @@ export class SudokuScene extends PuzzleScene {
   private updateBoard(): void {
     const size = this.state.size, selected = this.state.values[this.selected] ?? 0
     const clash = conflicts(this.state.values, size), columns = size === 4 ? 2 : 3
+    const boxRows = size === 6 ? 2 : 3
+    const boxCols = 3
+    const selectedRow = this.selected >= 0 ? Math.floor(this.selected / size) : -1
+    const selectedCol = this.selected >= 0 ? this.selected % size : -1
+    const selectedBoxRow = selectedRow >= 0 ? Math.floor(selectedRow / boxRows) : -1
+    const selectedBoxCol = selectedCol >= 0 ? Math.floor(selectedCol / boxCols) : -1
     this.say(this.state.won ? (this.assisted ? '提示练习：全部填对啦！' : '独立完成：全部填对啦！') : this.pencil ? '笔记模式 · 小数字只是候选，再点同一数字可取消' : `每行、每列、每宫数字 ${size} 各一个 · 先点格子再选数字`)
     this.pencilButton?.setText(this.pencil ? '✓ 笔记' : '笔记')
     this.state.values.forEach((value,i) => {
       const given = this.state.puzzle[i] !== 0, wrong = clash.has(i)
-      this.tiles[i]!.setFillStyle(wrong ? 0xf3c9bd : i === this.selected ? 0xffd982 : selected && value === selected ? 0xcce4d1 : given ? 0xe9dfca : 0xfffdf6)
+      const row = Math.floor(i / size)
+      const col = i % size
+      const peer = this.selected >= 0 && (
+        row === selectedRow ||
+        col === selectedCol ||
+        (Math.floor(row / boxRows) === selectedBoxRow && Math.floor(col / boxCols) === selectedBoxCol)
+      )
+      const fill = wrong
+        ? 0xf3c9bd
+        : i === this.selected
+          ? 0xffd982
+          : selected && value === selected
+            ? 0xcce4d1
+            : peer
+              ? 0xf1f0df
+              : given
+                ? 0xe9dfca
+                : 0xfffff4
+      this.tiles[i]!.setFillStyle(fill)
         .setStrokeStyle(i === this.selected ? 4 : 2, i === this.selected ? 0xe6b84d : 0xd8cdbb)
       const digit = this.digits[i]!, color = wrong ? '#c0392b' : given ? INK : '#2f6f8f'
       digit.setText(value ? String(value) : '')

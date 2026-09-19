@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { showFloatingText } from '../../experience/feedback/floating-text'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createHeaderButton } from '../../platform/display/header-button'
+import { createLegacyChrome, preloadGameUi } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import {
   BOARD_SIZE,
@@ -52,6 +52,10 @@ export class Game2048Scene extends Phaser.Scene {
       newIndices: new Set(state.board.flatMap((value, index) => value === 0 ? [] : [index])),
       mergedIndices: new Set()
     }
+  }
+
+  preload(): void {
+    preloadGameUi(this)
   }
 
   create(): void {
@@ -140,29 +144,16 @@ export class Game2048Scene extends Phaser.Scene {
     const boardY = top + Math.max(0, (availableHeight - boardSize) / 2)
 
     this.cameras.main.setBackgroundColor('#f8f1df')
-    this.add.text(margin, compact ? 18 : 34, '‹ 游戏屋', {
-      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '20px' : '24px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-
-    this.add.text(width / 2, compact ? 24 : 42, '2048', {
-      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '30px' : '44px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-
-    const actionsW = createHeaderButton(this, {
-      x: width - margin, y: compact ? 36 : 44, anchor: 'right', label: '重新开始', onTap: () => this.restart()
-    })
-    createHeaderButton(this, {
-      x: width - margin - actionsW - 8, y: compact ? 36 : 44, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '2048') }
-    })
-
-    this.add.text(margin, compact ? 48 : 76, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
-      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
-      this.audio.toggleMuted()
-      this.draw()
+    createLegacyChrome(this, {
+      width,
+      title: '2048',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      y: compact ? 36 : 48,
+      tools: [
+        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '2048') },
+        { icon: 'restart', label: '重开', action: () => this.restart() }
+      ]
     })
 
     if (!compact) {
@@ -202,6 +193,15 @@ export class Game2048Scene extends Phaser.Scene {
       const y = boardY + gap + row * (cellSize + gap)
       const colors = TILE_COLORS[value] ?? { background: 0x9f5630, foreground: '#fffaf0' }
       const tile = this.add.container(x + cellSize / 2, y + cellSize / 2)
+      const shadow = new Phaser.GameObjects.Graphics(this)
+      shadow.fillStyle(0x684a34, 0.16)
+      shadow.fillRoundedRect(
+        -cellSize / 2,
+        -cellSize / 2 + Math.max(4, cellSize * 0.045),
+        cellSize,
+        cellSize,
+        cellSize * 0.09
+      )
       const tileGraphics = new Phaser.GameObjects.Graphics(this)
       tileGraphics.fillStyle(colors.background, 1)
       tileGraphics.fillRoundedRect(-cellSize / 2, -cellSize / 2, cellSize, cellSize, cellSize * 0.09)
@@ -213,7 +213,7 @@ export class Game2048Scene extends Phaser.Scene {
         fontFamily: 'Avenir Next, PingFang SC, sans-serif',
         fontSize: `${fontSize}px`, fontStyle: 'bold'
       }).setOrigin(0.5)
-      tile.add([tileGraphics, label])
+      tile.add([shadow, tileGraphics, label])
 
       if (animations.newIndices.has(index)) {
         tile.setScale(0.5)

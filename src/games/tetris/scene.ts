@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createHeaderButton } from '../../platform/display/header-button'
+import { createLegacyChrome, preloadGameUi } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
@@ -79,6 +79,10 @@ export class TetrisScene extends Phaser.Scene {
     super({ key: 'tetris' })
     this.audio = audio
     this.callbacks = callbacks
+  }
+
+  preload(): void {
+    preloadGameUi(this)
   }
 
   create(): void {
@@ -272,7 +276,7 @@ export class TetrisScene extends Phaser.Scene {
 
     this.layout = { compact, board, panelWidth, gap }
     this.cameras.main.setBackgroundColor('#f8f1df')
-    this.drawHeader(width, compact, margin)
+    this.drawHeader(width, compact)
     this.drawControls(width, boardY + boardHeight, compact)
   }
 
@@ -281,22 +285,17 @@ export class TetrisScene extends Phaser.Scene {
     return gameObject
   }
 
-  private drawHeader(width: number, compact: boolean, margin: number): void {
-    this.add.text(margin, compact ? 14 : 28, '‹ 游戏屋', {
-      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '18px' : '22px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-
-    this.add.text(width / 2, compact ? 15 : 27, '俄罗斯方块', {
-      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '25px' : '36px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-
-    const actionsW = createHeaderButton(this, {
-      x: width - margin, y: compact ? 32 : 40, anchor: 'right', label: '重新开始', onTap: () => this.restart()
-    })
-    createHeaderButton(this, {
-      x: width - margin - actionsW - 8, y: compact ? 32 : 40, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '俄罗斯方块') }
+  private drawHeader(width: number, compact: boolean): void {
+    createLegacyChrome(this, {
+      width,
+      title: '俄罗斯方块',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      y: compact ? 34 : 46,
+      tools: [
+        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '俄罗斯方块') },
+        { icon: 'restart', label: '重开', action: () => this.restart() }
+      ]
     })
 
     if (!compact) {
@@ -381,13 +380,7 @@ export class TetrisScene extends Phaser.Scene {
       this.drawPreviewPiece(previewGraphics, type, x, nextY + 27 + index * 62, previewSize)
     })
 
-    this.addDynamic(this.add.text(compact ? x + width - 52 : x, y + (compact ? 220 : 720), this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
-      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
-      this.audio.toggleMuted()
-      this.draw()
-    }))
+    void x; void width; void compact
   }
 
   private drawPreviewPiece(graphics: Phaser.GameObjects.Graphics, type: PieceType, x: number, y: number, size: number): void {
@@ -409,7 +402,7 @@ export class TetrisScene extends Phaser.Scene {
       { text: this.paused ? '继续' : '暂停', action: () => this.togglePause() }
     ] satisfies ControlButton[]
     const gap = compact ? 8 : 10
-    const buttonHeight = compact ? 56 : 58
+    const buttonHeight = 60
     const rowGap = compact ? 8 : 9
     const startY = boardBottom + (compact ? 7 : 12)
 

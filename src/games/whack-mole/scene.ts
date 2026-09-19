@@ -162,9 +162,34 @@ export class WhackMoleScene extends ActionScene {
     return -1
   }
   private hammerFlash(x: number, y: number): void {
-    const hammer = this.text(x, y - 6, '🔨', 40, this.entities)
-    hammer.setScale(1.35)
-    this.tweens.add({ targets: hammer, scale: 1, alpha: 0, duration: 240, ease: 'Cubic.Out', onComplete: () => hammer.destroy() })
+    const hammer = this.add.container(x, y - 18)
+    const shadow = this.add.graphics()
+    shadow.fillStyle(0x684a34, 0.18)
+    shadow.fillRoundedRect(-8, -2, 18, 54, 8)
+    shadow.fillRoundedRect(-32, -23, 64, 29, 11)
+    const body = this.add.graphics()
+    body.fillStyle(0x9b6a3d, 1)
+    body.fillRoundedRect(-7, -6, 14, 52, 7)
+    body.lineStyle(2, 0x684a34, 0.55)
+    body.strokeRoundedRect(-7, -6, 14, 52, 7)
+    body.fillStyle(0xe7b45e, 1)
+    body.fillRoundedRect(-31, -28, 62, 27, 10)
+    body.lineStyle(3, 0xb67a35, 0.85)
+    body.strokeRoundedRect(-31, -28, 62, 27, 10)
+    body.fillStyle(0xffffff, 0.36)
+    body.fillRoundedRect(-23, -23, 30, 6, 3)
+    hammer.add([shadow, body])
+    this.entities.add(hammer)
+    hammer.setRotation(-0.45).setScale(1.25)
+    this.tweens.add({
+      targets: hammer,
+      rotation: 0.18,
+      scale: 0.94,
+      alpha: 0,
+      duration: 240,
+      ease: 'Cubic.Out',
+      onComplete: () => hammer.destroy(true)
+    })
   }
   private floatText(x: number, y: number, content: string, color: string, size = 24): void {
     const label = this.text(x, Math.max(250, y), content, size, this.entities).setColor(color)

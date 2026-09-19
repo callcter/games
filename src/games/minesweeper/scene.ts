@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
+import { createLegacyChrome, createSegmentControl, preloadGameUi } from '../../ui'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   chordCell,
@@ -34,6 +35,10 @@ export class MinesweeperScene extends Phaser.Scene {
     super({ key: 'minesweeper' })
     this.audio = audio
     this.callbacks = callbacks
+  }
+
+  preload(): void {
+    preloadGameUi(this)
   }
 
   create(): void {
@@ -74,26 +79,29 @@ export class MinesweeperScene extends Phaser.Scene {
   }
 
   private drawHeader(): void {
-    this.add.text(28, 24, '‹ 游戏屋', {
-      color: '#50655d', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-    this.add.text(384, 18, '扫雷', {
-      color: '#344b43', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '40px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-    this.add.text(445, 24, '?', {
-      color: '#50655d', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '24px', fontStyle: 'bold',
-      backgroundColor: '#e8efe9', padding: { x: 12, y: 6 }
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => { showHelpPanel(this, '扫雷') })
-    this.add.text(740, 27, this.audio.isMuted ? '♪ 关' : '♫ 开', {
-      color: '#73857e', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '18px', fontStyle: 'bold'
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => {
-      this.audio.toggleMuted()
-      this.draw()
+    createLegacyChrome(this, {
+      width: this.scale.width,
+      title: '扫雷',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      y: 46,
+      tools: [
+        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '扫雷') },
+        { icon: 'restart', label: '重开', action: () => this.restart() }
+      ]
     })
-
-    this.createChoiceButton(225, 88, 126, 42, '初级 9×9', this.difficulty === 'beginner', () => this.changeDifficulty('beginner'))
-    this.createChoiceButton(384, 88, 146, 42, '中级 16×16', this.difficulty === 'intermediate', () => this.changeDifficulty('intermediate'))
-    this.createChoiceButton(553, 88, 152, 42, '高级 30×16', this.difficulty === 'expert', () => this.changeDifficulty('expert'))
+    const difficulty = createSegmentControl(this, {
+      items: [
+        { value: 'beginner' as const, label: '初级 9×9' },
+        { value: 'intermediate' as const, label: '中级 16×16' },
+        { value: 'expert' as const, label: '高级 30×16' }
+      ],
+      value: this.difficulty,
+      width: 420,
+      height: 42,
+      onChange: value => this.changeDifficulty(value)
+    })
+    difficulty.setPosition(384, 100)
   }
 
   private drawStatus(): void {
