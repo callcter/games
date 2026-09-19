@@ -60,6 +60,17 @@ pnpm dev --host
 
 ## 检查与构建
 
+日常修改按影响验证，不必每次跑全量。例如只改五子棋规则：
+
+```bash
+pnpm exec tsc --noEmit
+pnpm exec vitest run tests/gomoku/game.test.ts
+```
+
+纯文档核对内容和链接并运行 `git diff --check`；单游戏 UI 做目标游戏的操作验收。
+共享基础设施或发布批次再运行下面的全量检查。具体触发条件和结果复用规则见
+[AGENTS.md §10](AGENTS.md#10-测试与验收)。
+
 ```bash
 pnpm check
 pnpm preview
