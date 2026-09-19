@@ -236,6 +236,7 @@ export class TetrisScene extends Phaser.Scene {
     const { board, compact, gap, panelWidth } = layout
     this.drawBoard(board)
     if (panelWidth > 0) this.drawSidePanel(board.x + board.width + gap, board.y, panelWidth, compact)
+    else this.drawNarrowInfoRow(board, compact)
     this.pauseButtonText?.setText(this.paused ? '继续' : '暂停')
     if (this.lineFlash > 0) this.drawLineFlash(board)
     if (this.paused || this.state.gameOver) this.drawOverlay(board)
@@ -252,8 +253,10 @@ export class TetrisScene extends Phaser.Scene {
     const height = this.scale.height
     const compact = height < 850
     const margin = Math.max(12, Math.min(26, width * 0.03))
+    // 窄屏（<650）没有侧栏，棋盘上方另留一行紧凑信息（成绩+暂存+预告）。
+    const narrow = width < 650
     // 共享顶栏（topY 70 + 状态胶囊）约占 170；紧凑视口藏状态胶囊省高度。
-    const headerHeight = compact ? 150 : 180
+    const headerHeight = narrow ? 224 : compact ? 150 : 180
     const controlsHeight = compact ? 132 : 150
     // 底部至少留 34px：避开 iPad 底部上滑 Home 手势区
     const bottomSafe = Math.max(34, margin)
@@ -348,34 +351,56 @@ export class TetrisScene extends Phaser.Scene {
     graphics.lineBetween(x + size * 0.16, y + size * 0.18, x + size * 0.78, y + size * 0.18)
   }
 
+  /** 窄屏信息行：放不下侧栏时，在棋盘上方保留成绩、暂存与接下来的预告。 */
+  private drawNarrowInfoRow(board: BoardGeometry, compact: boolean): void {
+    const rowTop = board.y - 64
+    const label = { color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: compact ? '12px' : '13px', fontStyle: 'bold' }
+    const stats = { color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: compact ? '13px' : '14px', fontStyle: 'bold' }
+    this.addDynamic(this.add.text(board.x, rowTop, `得分 ${this.state.score} · 最高 ${this.bestScore}`, stats))
+    this.addDynamic(this.add.text(board.x, rowTop + 20, `消行 ${this.state.lines} · 等级 ${this.state.level}`, label))
+
+    const graphics = this.addDynamic(this.add.graphics())
+    const size = 11
+    const slot = size * 4 + 8
+    const right = board.x + board.width
+    // 从右往左排：接下来 2 个预告、暂存 1 个；标签在图形上方，槽内左对齐。
+    this.addDynamic(this.add.text(right - 2 * slot, rowTop, '接下来', label)).setOrigin(1, 0)
+    this.state.nextQueue.slice(0, 2).forEach((type, index) => {
+      this.drawPreviewPiece(graphics, type, right - (2 - index) * slot + 4, rowTop + 18, size)
+    })
+    this.addDynamic(this.add.text(right - 2 * slot - 14 - slot, rowTop, '暂存', label)).setOrigin(1, 0)
+    if (this.state.holdType) {
+      this.drawPreviewPiece(graphics, this.state.holdType, right - 3 * slot - 14 + 4, rowTop + 18, size)
+    }
+  }
+
   private drawSidePanel(x: number, y: number, width: number, compact: boolean): void {
     const previewGraphics = this.addDynamic(this.add.graphics())
     const fontSize = compact ? '15px' : '18px'
-    const stats = compact
-      ? `得分 ${this.state.score}\n最高 ${this.bestScore}\n消行 ${this.state.lines}\n等级 ${this.state.level}`
-      : `得分\n${this.state.score}\n\n最高\n${this.bestScore}\n\n消行\n${this.state.lines}\n\n等级\n${this.state.level}`
-    this.addDynamic(this.add.text(x, y, stats, {
+    const stats = `得分 ${this.state.score}\n最高 ${this.bestScore}\n消行 ${this.state.lines}\n等级 ${this.state.level}`
+    const statsText = this.addDynamic(this.add.text(x, y, stats, {
       color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize, fontStyle: 'bold', lineSpacing: compact ? 3 : 6
     }))
 
-    const holdY = y + (compact ? 88 : 270)
+    const holdY = y + statsText.height + 18
     this.addDynamic(this.add.text(x, holdY, '暂存', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
     }))
     const previewSize = Math.min(compact ? 18 : 23, width / 5)
     if (this.state.holdType) this.drawPreviewPiece(previewGraphics, this.state.holdType, x, holdY + 25, previewSize)
 
-    const nextY = y + (compact ? 158 : 380)
+    const nextY = holdY + 25 + previewSize * 3 + 18
     this.addDynamic(this.add.text(x, nextY, '接下来', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize, fontStyle: 'bold'
     }))
     const visibleQueue = compact ? this.state.nextQueue.slice(0, 1) : this.state.nextQueue
+    const available = Math.max(0, (this.layout?.board.height ?? 0) - (nextY - y) - 27)
+    const step = Math.min(78, available / visibleQueue.length)
+    const nextSize = Math.min(previewSize, (step - 8) / 3)
     visibleQueue.forEach((type, index) => {
-      this.drawPreviewPiece(previewGraphics, type, x, nextY + 27 + index * 62, previewSize)
+      this.drawPreviewPiece(previewGraphics, type, x, nextY + 27 + index * step, nextSize)
     })
-
-    void x; void width; void compact
   }
 
   private drawPreviewPiece(graphics: Phaser.GameObjects.Graphics, type: PieceType, x: number, y: number, size: number): void {
