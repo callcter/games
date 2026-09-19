@@ -160,8 +160,8 @@ try {
         if(!visited.has(id)) { await closeHelp(); visited.add(id) }
         // 按真实画布比例换算：水排序是独立场景（? 在 x=128），parking 走 v4 应用级
         // chrome（圆形帮助图标在 x=768-62-88=618、y=70，画布坐标系）。
-        const top = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const h=768*r.height/r.width;return {h,y:'${id}'==='parking'?70:Math.max(58,Math.min(82,h*0.055))}})()`)
-        const helpX = id==='parking'?618:128
+        const top = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const h=768*r.height/r.width;return {h,y:70}})()`)
+        const helpX = 618
         const raw=await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+${helpX}*r.width/768,y:r.y+${top.y}*r.height/${top.h}}})()`)
         // 无头环境没有真实指针移动；先 move 再 press，Phaser 才能按最新位置做命中测试
         await send('Input.dispatchMouseEvent',{type:'mouseMoved',...raw})
@@ -240,8 +240,8 @@ try {
       await pause(800)
     }
     // Cozy UI：难度 pill 在 (384, topY)，点两下切到挑战 6 色
-    const topY = Number(await evaluate('JSON.stringify(__scene.layout.topY)'))
-    await wsClick(384, topY); await wsClick(384, topY)
+    const modeY = Number(await evaluate('JSON.stringify(__scene.layout.statsY)'))
+    await wsClick(384, modeY); await wsClick(384, modeY)
     assert.equal(Number(await evaluate('JSON.stringify(__scene.state.colors)')),6)
     const pourPoints = await evaluate(`(async()=>{const {canPour}=await import('/src/games/water-sort/core/game.ts');const s=__scene.state;for(let a=0;a<s.tubes.length;a++)for(let b=0;b<s.tubes.length;b++)if(canPour(s,a,b)){const at=i=>{const view=__scene.tubeViews.get(i);const v=view?view.container:null;return v?{x:v.x,y:v.y}:null};const A=at(a),B=at(b);return (A&&B)?[A,B]:null}})()`)
     console.log('ws-stage: pourPoints', JSON.stringify(pourPoints))
@@ -256,7 +256,7 @@ try {
     await wsClick(384-162, toolY)  // 撤销还原
     // 场景自身清档（saveDraft 同步清模块缓存），另一方向循环从基础档开始
     await evaluate(`(async()=>{const {saveDraft}=await import('/src/games/puzzle-kit/draft-storage.ts');saveDraft('water-sort',null);try{localStorage.removeItem('game-puzzle-draft-water-sort-v1')}catch(e){}return 1})()`)
-    await wsClick(58, topY)  // v1 顶栏左上 Cozy 返回
+    await wsClick(62, Number(await evaluate('__scene.layout.topY')))  // 统一顶栏返回圆钮
     await until("!!document.querySelector('.game-grid')")
     // parking 段自己会动一步车并存 draft；不清档会让下一轮恢复出非初始局面，
     // 视图重建竞态时 carViews 缺失。开新局前显式清档并等视图就绪。

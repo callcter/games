@@ -117,6 +117,8 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
   await open('gomoku','gomoku','GomokuScene')
   await until("!!document.querySelector('.game-help-dialog[open]')")
   await closeHelp()
+  // 关闭后场景恢复排在 POST_STEP；不等 isActive，缩放点击会被 stepZoom 静默忽略。
+  await until('__scene.sys.isActive()')
   await evaluate("__scene.setMode('two-player')")
   await evaluate("document.querySelector('[data-zoom]').click()")
   assert.equal(await evaluate('__scene.cameras.main.zoom'),1,'棋盘缩放不能改变顶栏相机')
