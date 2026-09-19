@@ -1,111 +1,78 @@
-// 全量截图：大厅 + 所有游戏在手机 / iPad 竖屏 / iPad 横屏三组视口下的画面。
-// 用本地生产构建（pnpm preview）+ 独立配置的 CDP Chrome，输出到 screenshots/。
-// 用法：先 pnpm build && pnpm preview，再 node scripts/capture-gallery.mjs
-// 给 GPT 做 UI 审计用（AGENTS.md 10.3：用完关闭本脚本依赖的进程）。
+// Production gallery, isolated browser + explicit clean-game fixture.
+// pnpm build && pnpm preview; then node scripts/capture-gallery.mjs.
+import assert from 'node:assert/strict'
 import { writeFile, mkdir } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { join } from 'node:path'
+import { allHelpTitles } from '../src/ui/help-content.ts'
+import { withBrowser } from './lib/browser-session.mjs'
 
-const root = dirname(fileURLToPath(import.meta.url))
-const OUT = join(root, '..', 'screenshots')
-const BASE = process.env.GALLERY_BASE ?? 'http://localhost:4173/'
-const CDP = process.env.GALLERY_CDP ?? 'http://localhost:9222'
-
-// 三组视口：手机主流、iPad 竖屏、iPad 横屏（AGENTS.md 5.2 的验收尺寸）。
+process.env.APP_URL = process.env.GALLERY_BASE ?? 'http://127.0.0.1:4173/'
+const OUT = process.env.GALLERY_OUT ?? 'screenshots'
 const GROUPS = [
-  { name: 'phone-390x844', width: 390, height: 844 },
-  { name: 'ipad-768x1024', width: 768, height: 1024 },
-  { name: 'ipad-1024x768', width: 1024, height: 768 }
+  { name:'phone-390x844',width:390,height:844 },
+  { name:'ipad-768x1024',width:768,height:1024 },
+  { name:'ipad-1024x768',width:1024,height:768 }
 ]
-
-// 动作游戏进入后先选难度，才能截到真实回合画面（旧 768×900 内容坐标；
-// fruit-slicer 是自带玩具柜 intro，其余三款走共享 intro 的 (160,414) 按钮）。
-const ACTION_START = {
-  'pop-bubbles': [160, 414],
-  'red-rain': [160, 414],
-  'whack-mole': [160, 414],
-  'fruit-slicer': [384, 508]
+const START = {
+  'pop-bubbles':[160,414], 'red-rain':[160,414],
+  'whack-mole':[160,414], 'fruit-slicer':[384,508], 'sokoban':[124,220]
 }
-
-const sleep = ms => new Promise(r => setTimeout(r, ms))
-const res = await fetch(`${CDP}/json/new?about:blank`, { method: 'PUT' })
-const page = await res.json()
-const ws = new WebSocket(page.webSocketDebuggerUrl)
-await new Promise((ok, bad) => { ws.onopen = ok; ws.onerror = bad })
-let seq = 0
-const pending = new Map()
-ws.onmessage = ev => {
-  const m = JSON.parse(ev.data)
-  if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) }
+const manifest = {
+  sourceCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
+  sourceDiffSha256:createHash('sha256').update(execFileSync('git',['diff','HEAD','--','src','scripts','vite.config.ts'])).digest('hex'),
+  generatedAt:new Date().toISOString(),
+  fixture:'isolated profile; fresh saves for each viewport; help already read; start base difficulty / first level',
+  images:[]
 }
-const send = (method, params = {}) => new Promise((resolve, reject) => {
-  const id = ++seq
-  pending.set(id, m => m.error ? reject(new Error(method + ': ' + JSON.stringify(m.error))) : resolve(m.result))
-  ws.send(JSON.stringify({ id, method, params }))
-})
-const evaluate = async expression => {
-  const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
-  if (r.exceptionDetails) throw new Error(String(r.exceptionDetails.exception?.description ?? expression).slice(0, 300))
-  return r.result.value
-}
-const shot = async (w, h, file) => {
-  // 大厅可能超出一屏，按内容全高截；游戏页一律视口尺寸。
-  const metrics = await send('Page.getLayoutMetrics')
-  const contentH = Math.min(metrics.cssContentSize?.height ?? h, 20000)
-  const beyond = contentH > h + 40
-  const result = await send('Page.captureScreenshot', beyond
-    ? { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: contentH, scale: 1 } }
-    : { format: 'png' })
-  await writeFile(file, Buffer.from(result.data, 'base64'))
-}
-const canvasClick = async (lx, ly) => {
-  // 生产包没有场景句柄：逻辑宽固定 768，逻辑高从画布纵横比反推，
-  // 内容层纵移用 v4 的同一公式还原（clamp((H-900)*0.47, 0, 360)）。
-  const raw = await evaluate(`(()=>{const c=document.querySelector('canvas');const r=c.getBoundingClientRect();const H=768*c.height/c.width;const off=Math.max(0,Math.min(360,Math.round((H-900)*0.47)));return {x:r.x+${lx}*r.width/768,y:r.y+(${ly}+off)*r.height/H}})()`)
-  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...raw })
-  await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...raw, button: 'left', clickCount: 1 })
-  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...raw, button: 'left', clickCount: 1 })
-}
-
-await send('Page.enable')
-await send('Runtime.enable')
-await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 })
-
-// 游戏清单以大厅实际注册为准，避免与 app 注册表漂移。
-await send('Page.navigate', { url: BASE })
-for (let i = 0; i < 60; i++) {
-  const ready = await evaluate(`document.querySelectorAll('.game-grid [data-game]').length >= 24`).catch(() => false)
-  if (ready) break
-  await sleep(250)
-}
-const ids = await evaluate(`Array.from(document.querySelectorAll('.game-grid [data-game]'), e => e.dataset.game)`)
-console.log(`大厅注册 ${ids.length} 款游戏`)
-
-for (const group of GROUPS) {
-  const dir = join(OUT, group.name)
-  await mkdir(dir, { recursive: true })
-  await send('Emulation.setDeviceMetricsOverride', { width: group.width, height: group.height, deviceScaleFactor: 2, mobile: group.name.startsWith('phone') })
-  await sleep(1200)
-  await shot(group.width, group.height, join(dir, 'home.png'))
-  console.log(`[${group.name}] home ✓`)
-
-  for (const id of ids) {
-    await send('Page.navigate', { url: `${BASE}#/${id}` })
-    for (let i = 0; i < 40; i++) {
-      const ready = await evaluate(`!!document.querySelector('canvas')`).catch(() => false)
-      if (ready) break
-      await sleep(250)
-    }
-    await sleep(2600)  // 等入场动画与首帧布局
-    if (ACTION_START[id]) {
-      await canvasClick(...ACTION_START[id])
-      await sleep(2200)  // 等回合实体出现
-    }
-    await shot(group.width, group.height, join(dir, `${id}.png`))
-    console.log(`[${group.name}] ${id} ✓`)
+await withBrowser(async ({send,evaluate,until,pause,base}) => {
+  manifest.entrySha256=createHash('sha256').update(await (await fetch(base)).text()).digest('hex')
+  const ids=await evaluate(`Array.from(document.querySelectorAll('.game-grid [data-game]'),e=>e.dataset.game)`)
+  assert.equal(ids.length,24,'Unexpected registration count; review gallery coverage')
+  const tapContent = async (x,y) => {
+    const p=await evaluate(`(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect(),h=768*c.height/c.width,off=Math.max(0,Math.min(360,Math.round((h-900)*0.47)));return {x:r.x+${x}*r.width/768,y:r.y+(${y}+off)*r.height/h}})()`)
+    await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p]})
+    await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
   }
-}
-
-await fetch(`${CDP}/json/close/${page.id}`).catch(() => {})
-ws.close()
-console.log(`完成：${OUT}（${GROUPS.length} 组 × 大厅+${ids.length} 游戏）`)
+  for(const group of GROUPS) {
+    await send('Emulation.setDeviceMetricsOverride',{width:group.width,height:group.height,deviceScaleFactor:2,mobile:group.name.startsWith('phone')})
+    await send('Page.navigate',{url:base})
+    await until("!!document.querySelector('.game-grid') && !document.querySelector('canvas')")
+    // Clear only this script's isolated profile. No external CDP / user's saves are touched.
+    await send('Storage.clearDataForOrigin',{origin:new URL(base).origin,storageTypes:'local_storage,indexeddb'})
+    await evaluate(`localStorage.setItem('family-game-room-help-seen-v1',${JSON.stringify(JSON.stringify(allHelpTitles))})`)
+    await send('Page.navigate',{url:base})
+    await until("document.querySelectorAll('.game-grid [data-game]').length===24 && !document.querySelector('canvas')")
+    const dir=join(OUT,group.name)
+    await mkdir(dir,{recursive:true})
+    const shot=async(id,state)=>{
+      const hash=await evaluate('location.hash')
+      assert.ok(id==='home' ? ['', '#/'].includes(hash) : hash===`#/${id}`, `Screenshot route mismatch: ${id} / ${hash}`)
+      assert.ok(await evaluate("!document.querySelector('dialog[open]')"),'Unexpected modal obstructs gallery')
+      assert.equal(await evaluate("!!document.querySelector('.game-grid')"),id==='home','Wrong screenshot page')
+      const metrics=await send('Page.getLayoutMetrics')
+      const height=id==='home'?Math.ceil(metrics.cssContentSize.height):group.height
+      const result=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:group.width,height,scale:1}})
+      await writeFile(join(dir,`${id}.png`),Buffer.from(result.data,'base64'))
+      manifest.images.push({file:`${group.name}/${id}.png`,viewport:group,state,dpr:2})
+      console.log(`${group.name}/${id}: ${state}`)
+    }
+    await pause(300)
+    await shot('home','lobby: 24 cards')
+    for(const id of ids) {
+      await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
+      await until(`location.hash==='#/${id}' && !!document.querySelector('canvas') && !document.querySelector('.game-grid')`)
+      // Allow local texture decoding and entrance animation; timeouts above are failures.
+      await pause(1800)
+      if(START[id]) { await tapContent(...START[id]); await pause(1600) }
+      assert.ok(await evaluate(`performance.getEntriesByType('resource').every(e=>!new URL(e.name).pathname.startsWith('/src/'))`),'Gallery must use production assets')
+      await shot(id,START[id]?'fresh game after start tap':'fresh board')
+      await evaluate('history.back()')
+      await until("!!document.querySelector('.game-grid') && !document.querySelector('canvas')")
+    }
+  }
+})
+assert.equal(manifest.images.length,75)
+await writeFile(join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n')
+console.log(`Captured ${manifest.images.length} images; visual review still required.`)

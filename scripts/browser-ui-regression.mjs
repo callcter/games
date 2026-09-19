@@ -151,7 +151,7 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
   // 旋转循环结束在 390 窄视口；重开/返回点击坐标按 768 宽布局，先恢复视口。
   await send('Emulation.setDeviceMetricsOverride',{width:768,height:1024,deviceScaleFactor:2,mobile:false})
   await pause(250)
-  await canvasTap(564,69)
+  await canvasTap(510,69)
   await until('__scene.boardZoom===1 && __scene.state.board.every(c=>c===0)')
   await canvasTap(62,70)
   await until("!!document.querySelector('.game-grid')")
