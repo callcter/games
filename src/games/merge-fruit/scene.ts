@@ -360,6 +360,12 @@ export class MergeFruitScene extends Phaser.Scene {
 
   private drawInterface(): void {
     this.cameras.main.setBackgroundColor('#f8f1df')
+    // 顶栏文字叠在厨房背景上对比度不足；从上往下压一层米色渐变衬底，只提可读性不遮画面。
+    const shade = this.add.graphics().setDepth(-80)
+    for (let index = 0; index < 7; index++) {
+      shade.fillStyle(0xfff6dc, 0.52 - index * 0.07)
+      shade.fillRect(0, index * 24, SCENE_WIDTH, 24)
+    }
     this.add.text(28, 34, '‹ 游戏屋', {
       color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '23px', fontStyle: 'bold'
     }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
@@ -381,7 +387,7 @@ export class MergeFruitScene extends Phaser.Scene {
     nextBubble.fillCircle(690, 165, 52)
     nextBubble.lineStyle(3, 0xd8b276, 0.72)
     nextBubble.strokeCircle(690, 165, 52)
-    this.add.text(690, 94, '下一个', {
+    this.add.text(690, 88, '下一个', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '17px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
     this.nextText = this.add.text(690, 218, '', {

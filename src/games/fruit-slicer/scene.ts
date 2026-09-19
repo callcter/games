@@ -25,6 +25,7 @@ export class FruitSlicerScene extends ActionScene {
   private useArtFruits = false
   private spins: number[] = []
   private trail: TrailPoint[] = []
+  private roundBackdropPlaced = false
   private blade!: Phaser.GameObjects.Graphics
   private lastPointer: TrailPoint | null = null
   private lastWhoosh = 0
@@ -164,15 +165,19 @@ export class FruitSlicerScene extends ActionScene {
     this.trail = []
     this.lastPointer = null
     this.lastWhoosh = 0
-    const background = addBatch2Cover(
-      this,
-      PRODUCT_V3_BATCH2.fruitSlicer.background,
-      768,
-      900,
-      -100,
-      1
-    )
-    if (background) this.entities.addAt(background, 0)
+    // 场景级背景按实际画布高等比 cover：不进内容层（高屏手机内容整体下移时背景仍铺满全屏）。
+    // startRound 每回合都会执行，场景级对象不被 resetView 清理，只放置一次防叠加。
+    if (!this.roundBackdropPlaced) {
+      addBatch2Cover(
+        this,
+        PRODUCT_V3_BATCH2.fruitSlicer.background,
+        768,
+        this.scale.height,
+        -100,
+        1
+      )
+      this.roundBackdropPlaced = true
+    }
     setHostBackdropImage('art/product-v3-batch2/backgrounds/fruit-slicer.webp')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
