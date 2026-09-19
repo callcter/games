@@ -18,11 +18,12 @@ const GROUPS = [
   { name: 'ipad-1024x768', width: 1024, height: 768 }
 ]
 
-// 动作游戏进入后先选难度，才能截到真实回合画面（action-kit 768×900 逻辑坐标）。
+// 动作游戏进入后先选难度，才能截到真实回合画面（旧 768×900 内容坐标；
+// fruit-slicer 是自带玩具柜 intro，其余三款走共享 intro 的 (160,414) 按钮）。
 const ACTION_START = {
-  'pop-bubbles': [160, 400],
-  'red-rain': [160, 400],
-  'whack-mole': [160, 400],
+  'pop-bubbles': [160, 414],
+  'red-rain': [160, 414],
+  'whack-mole': [160, 414],
   'fruit-slicer': [384, 508]
 }
 
@@ -58,7 +59,9 @@ const shot = async (w, h, file) => {
   await writeFile(file, Buffer.from(result.data, 'base64'))
 }
 const canvasClick = async (lx, ly) => {
-  const raw = await evaluate(`(()=>{const c=document.querySelector('canvas');const r=c.getBoundingClientRect();return {x:r.x+${lx}*r.width/768,y:r.y+${ly}*r.height/900}})()`)
+  // 生产包没有场景句柄：逻辑宽固定 768，逻辑高从画布纵横比反推，
+  // 内容层纵移用 v4 的同一公式还原（clamp((H-900)*0.47, 0, 360)）。
+  const raw = await evaluate(`(()=>{const c=document.querySelector('canvas');const r=c.getBoundingClientRect();const H=768*c.height/c.width;const off=Math.max(0,Math.min(360,Math.round((H-900)*0.47)));return {x:r.x+${lx}*r.width/768,y:r.y+(${ly}+off)*r.height/H}})()`)
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...raw })
   await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...raw, button: 'left', clickCount: 1 })
   await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...raw, button: 'left', clickCount: 1 })

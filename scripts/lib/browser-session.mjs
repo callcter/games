@@ -48,8 +48,9 @@ try {
     return result.result.value
   }
   const until = async expression => {
-    // 线上首次预缓存含本地图集，慢网络允许更长等待；本地仍快速暴露超时。
-    for(let i=0;i<(process.env.PRODUCTION_ONLY ? 600 : 100);i++){
+    // 无头 Chrome 的 rAF 节流随机器负载波动极大（700ms 场景定时器实测可拖到 >10s）；
+    // 线上首次预缓存含本地图集，等待预算再放宽一倍。等待上限不是断言强度。
+    for(let i=0;i<(process.env.PRODUCTION_ONLY ? 600 : 300);i++){
       try { if(await evaluate(expression)) return }
       catch(error) { if(error?.code !== -32000 || !/navigated|context|closed/i.test(error.message)) throw error }
       await pause(100)

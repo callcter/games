@@ -9,7 +9,8 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
     await pause(80)
   }
   const canvasTap = async (x, y) => {
-    const p = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+${x}*r.width/__scene.scale.width,y:r.y+${y}*r.height/__scene.scale.height}})()`)
+    // v4 起内容层整体纵移（portrait-fluid）；gomoku/合成水果等非 PuzzleScene 无偏移。
+    const p = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const off=__scene.contentOffsetY||0;return {x:r.x+${x}*r.width/__scene.scale.width,y:r.y+(${y}+off)*r.height/__scene.scale.height}})()`)
     await tap(p.x, p.y)
   }
   const open = async (id, path, name) => {
@@ -59,6 +60,8 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
   assert.equal(await evaluate('JSON.stringify([__scene.scale.listenerCount("resize"),__scene.events.listenerCount("shutdown"),__scene.events.listenerCount("destroy")])'), baseline, '关闭后监听器必须回到基线')
   await showHelp()
   await home()
+  // game.destroy() 是挂起到下一帧才发 DESTROY；大厅出现不等于清理完成，等它落地再断言。
+  await until("document.querySelectorAll('.game-help-dialog').length===0")
   assert.equal(await evaluate("document.querySelectorAll('.game-help-dialog').length"),0,'离开游戏必须清理原生弹窗')
 
   await send('Emulation.setDeviceMetricsOverride',{width:768,height:1024,deviceScaleFactor:1,mobile:false})

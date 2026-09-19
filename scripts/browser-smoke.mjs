@@ -65,9 +65,13 @@ try {
     await writeFile(join(artifacts, `${name}.png`), Buffer.from(result.data,'base64'))
     return result.data
   }
-  const point = (x,y) => evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+${x}*r.width/768,y:r.y+${y}*r.height/900}})()`)
-  const click = async (x,y) => {
-    const p = await point(x,y)
+  // v4 起画布逻辑高随宿主变化（portrait-fluid），内容层还有整体纵移；
+  // 传入坐标一律是旧 768×900 内容坐标，point 自动叠加偏移后按实际逻辑尺寸换算。
+  const point = (x,y) => evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const s=(window.__scene&&__scene.scale)?{w:__scene.scale.width,h:__scene.scale.height}:{w:768,h:900};const off=(window.__scene&&__scene.contentOffsetY)||0;return {x:r.x+${x}*r.width/s.w,y:r.y+(${y}+off)*r.height/s.h}})()`)
+  // 画布坐标系（应用级 chrome、共享 Dialog 等不随内容层平移的元素）。
+  const scenePoint = (x,y) => evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const s=(window.__scene&&__scene.scale)?{w:__scene.scale.width,h:__scene.scale.height}:{w:768,h:900};return {x:r.x+${x}*r.width/s.w,y:r.y+${y}*r.height/s.h}})()`)
+  const click = async (x,y,sceneLevel = false) => {
+    const p = await (sceneLevel ? scenePoint(x,y) : point(x,y))
     await send('Input.dispatchMouseEvent',{type:'mouseMoved',...p});await pause(30)
     await send('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1});await pause(30)
     await send('Input.dispatchMouseEvent',{type:'mouseReleased',...p,button:'left',clickCount:1});await pause()
@@ -84,7 +88,8 @@ try {
     await until(`window.__scene?.sys?.settings.key==='${id}' && (__scene.alive === undefined || __scene.alive)`)
     await pause(400)
   }
-  const home = async () => { await click(90,45); await until("!!document.querySelector('.game-grid')") }
+  // v4 顶栏：返回/声音是应用级圆形图标，位于画布坐标系（不随内容平移）。
+  const home = async () => { await click(62,70,true); await until("!!document.querySelector('.game-grid')") }
   const resumeOrFresh = async () => { const m = await evaluate("__scene.message ?? ''"); if(String(m).includes('找到')) await click(510,480) }
   await send('Runtime.enable')
   if(process.env.PRODUCTION_ONLY) await send('Network.enable')
@@ -153,9 +158,10 @@ try {
         await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
         await until("!!document.querySelector('canvas')");await pause(800)
         if(!visited.has(id)) { await closeHelp(); visited.add(id) }
-        // 按真实画布比例换算：两款独立场景逻辑高度随宿主变化，不能硬编码 /900。
-        const top = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const h=768*r.height/r.width;return {h,y:'${id}'==='parking'?45:Math.max(58,Math.min(82,h*0.055))}})()`)
-        const helpX = id==='parking'?560:128
+        // 按真实画布比例换算：水排序是独立场景（? 在 x=128），parking 走 v4 应用级
+        // chrome（圆形帮助图标在 x=768-62-88=618、y=70，画布坐标系）。
+        const top = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const h=768*r.height/r.width;return {h,y:'${id}'==='parking'?70:Math.max(58,Math.min(82,h*0.055))}})()`)
+        const helpX = id==='parking'?618:128
         const raw=await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+${helpX}*r.width/768,y:r.y+${top.y}*r.height/${top.h}}})()`)
         // 无头环境没有真实指针移动；先 move 再 press，Phaser 才能按最新位置做命中测试
         await send('Input.dispatchMouseEvent',{type:'mouseMoved',...raw})
@@ -304,9 +310,9 @@ try {
     assert.ok(await evaluate("__scene.message.includes('找到')"));await click(260,480)
     assert.equal(await evaluate('JSON.stringify(__scene.state)'),saved)
     assert.equal(await evaluate('__scene.audio.context.state'),'running')
-    await click(680,45);await pause(200)
+    await click(706,70,true);await pause(200)
     assert.ok(await evaluate('__scene.audio.isMuted && __scene.audio.masterGain.gain.value<0.01'))
-    await click(680,45);await pause(200)
+    await click(706,70,true);await pause(200)
     assert.ok(await evaluate('!__scene.audio.isMuted && __scene.audio.masterGain.gain.value>0.8'))
     await evaluate('window.__oldAudio=__scene.audio.context; window.__oldScene=__scene; true')
     await home()
@@ -370,6 +376,9 @@ try {
   await send('HeapProfiler.collectGarbage')
   const beforeCycles = await send('Memory.getDOMCounters')
   for(let i=0;i<8;i++){await open('sokoban');await home()}
+  // game.destroy() 挂起到下一帧才真正销毁场景；先让帧落地再 GC 计数，避免把待销毁实例当泄漏。
+  await evaluate("(async()=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return 1})()")
+  await pause(800)
   await send('HeapProfiler.collectGarbage')
   const afterCycles = await send('Memory.getDOMCounters')
   console.log('连续切换前/后的 DOM 与监听器数量:',JSON.stringify({beforeCycles,afterCycles}))
@@ -391,8 +400,12 @@ try {
       if (id === 'fruit-slicer') await click(384, 508)
       else await click(160, 400)
       const listeners = await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')")
-      // 结算卡从底部滑入有 340ms 动画，等卡片就位再点「再来一次」。
-      for(let i=0;i<3;i++) { await evaluate('__scene.endRound()'); await pause(600); await click(384,592) }
+      // v4 结算：三款走共享 Dialog（居中画布、主按钮在卡片中心 +22，画布坐标系）；
+      // fruit-slicer 完全覆写 showResult，自绘卡片在内容层 (384,560)、按钮在 +30。
+      const sharedDialog = id !== 'fruit-slicer'
+      const dialogY = Number(await evaluate('__scene.scale.height')) / 2 + 22
+      // 结算卡从底部滑入有动画，等卡片就位再点「再来一次」。
+      for(let i=0;i<3;i++) { await evaluate('__scene.endRound()'); await pause(600); await click(384, sharedDialog ? dialogY : 590, sharedDialog) }
       assert.equal(await evaluate("__scene.input.listenerCount('pointerdown') + __scene.input.listenerCount('pointermove')"),listeners, `${id}: 重玩不能累积输入监听器`)
       await pause(1400)
       if(id==='pop-bubbles') {
