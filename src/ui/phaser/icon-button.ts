@@ -11,6 +11,7 @@ export interface GameIconButton {
 
 export interface IconButtonOptions {
   radius?: number
+  glyphSize?: number
   depth?: number
 }
 
@@ -25,6 +26,7 @@ export function createIconButton(
   options: IconButtonOptions = {}
 ): GameIconButton {
   const radius = options.radius ?? GAME_UI.radius.iconButton
+  const glyphSize = options.glyphSize ?? GAME_UI.size.iconGlyph
   const depth = options.depth ?? GAME_UI.depth.chrome
 
   const container = scene.add.container(0, 0).setDepth(depth)
@@ -34,7 +36,7 @@ export function createIconButton(
   const glyph = createGameUiIcon(
     scene,
     icon,
-    GAME_UI.size.iconGlyph,
+    glyphSize,
     GAME_UI.colors.forestDark
   )
 
@@ -63,7 +65,7 @@ export function createIconButton(
     glyph
       .setTexture(gameUiIconTexture(currentIcon))
       .setPosition(0, push - 2)
-      .setDisplaySize(GAME_UI.size.iconGlyph, GAME_UI.size.iconGlyph)
+      .setDisplaySize(glyphSize, glyphSize)
       .setTint(GAME_UI.colors.forestDark)
   }
 

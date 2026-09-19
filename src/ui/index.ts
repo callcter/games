@@ -61,3 +61,9 @@ export {
   type LegacyChromeOptions,
   type LegacyChromeTool
 } from './phaser/legacy-chrome'
+
+export {
+  createPuzzleChrome,
+  type PuzzleChrome,
+  type PuzzleChromeOptions
+} from './phaser/puzzle-chrome'
