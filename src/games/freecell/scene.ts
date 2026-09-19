@@ -20,6 +20,7 @@ import {
   type MoveResult
 } from './core/game'
 
+import { clearSceneChildren } from '../../platform/display/clear-children'
 interface SceneCallbacks {
   onExit: () => void
   onStateChange: (state: FreeCellState, initialDeal: FreeCellState) => void
@@ -151,7 +152,7 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private draw(): void {
-    this.children.removeAll(true)
+    clearSceneChildren(this)
     const table = this.add.image(512, 384, PRODUCT_V3.cards.table)
     table.setDisplaySize(1024, 768).setDepth(-100)
     this.add.rectangle(512, 384, 1024, 768, 0x173f35, 0.10).setDepth(-90)

@@ -11,6 +11,7 @@ import {
   type Game2048State
 } from './core/game'
 
+import { clearSceneChildren } from '../../platform/display/clear-children'
 interface SceneCallbacks {
   onExit: () => void
   onStateChange: (state: Game2048State) => void
@@ -132,7 +133,7 @@ export class Game2048Scene extends Phaser.Scene {
     const animations = this.tileAnimations
     this.tileAnimations = { newIndices: new Set(), mergedIndices: new Set() }
     this.tweens.killAll()
-    this.children.removeAll(true)
+    clearSceneChildren(this)
     const width = this.scale.width
     const height = this.scale.height
     const compact = height < 650

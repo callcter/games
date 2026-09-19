@@ -10,6 +10,7 @@ import {
   type Player
 } from './core/game'
 
+import { clearSceneChildren } from '../../platform/display/clear-children'
 type GameMode = 'computer' | 'two-player'
 
 interface SceneCallbacks {
@@ -231,7 +232,7 @@ export class GomokuScene extends Phaser.Scene {
 
   private draw(): void {
     this.tweens.killAll()
-    this.children.removeAll(true)
+    clearSceneChildren(this)
     this.boardLayer = null
     const width = this.scale.width
     const height = this.scale.height

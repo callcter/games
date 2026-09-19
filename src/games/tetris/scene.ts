@@ -22,6 +22,7 @@ import {
   type PieceType
 } from './core/game'
 
+import { clearSceneChildren } from '../../platform/display/clear-children'
 interface SceneCallbacks {
   onExit: () => void
 }
@@ -245,7 +246,7 @@ export class TetrisScene extends Phaser.Scene {
 
   private rebuildStaticLayout(): void {
     this.tweens.killAll()
-    this.children.removeAll(true)
+    clearSceneChildren(this)
     this.dynamicLayer = null
     this.pauseButtonText = null
 

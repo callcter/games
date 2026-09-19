@@ -12,6 +12,7 @@ import {
   type MinesweeperState
 } from './core/game'
 
+import { clearSceneChildren } from '../../platform/display/clear-children'
 interface SceneCallbacks { onExit: () => void }
 type PlayMode = 'reveal' | 'flag'
 type Difficulty = 'beginner' | 'intermediate' | 'expert'
@@ -61,7 +62,7 @@ export class MinesweeperScene extends Phaser.Scene {
   private statusDrawn: 'ready' | 'playing' | 'won' | 'lost' | null = null
 
   private draw(): void {
-    this.children.removeAll(true)
+    clearSceneChildren(this)
     this.chrome = null
     this.cameras.main.setBackgroundColor('#e9dfca')
     this.drawHeader()
