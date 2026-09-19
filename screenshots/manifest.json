@@ -1,0 +1,759 @@
+{
+  "sourceCommit": "7834d0ecf33032c9e075cbb2495d3f1b1a0c775d",
+  "sourceDiffSha256": "4e5fcd0f3e97de4c37a01491d67e5cea9e4e98ebc3246a1b44765640f0f3f0e1",
+  "generatedAt": "2026-09-19T10:30:29.350Z",
+  "fixture": "isolated profile; fresh saves for each viewport; help already read; start base difficulty / first level",
+  "images": [
+    {
+      "file": "phone-390x844/home.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "lobby: 24 cards",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/2048.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/gomoku.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/tetris.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/merge-fruit.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/freecell.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/klondike.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/spider.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/minesweeper.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/memory.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/tangram.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/pipes.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/sokoban.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/bubbles.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/untangle.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/maze.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/nonogram.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/sudoku.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/pop-bubbles.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/red-rain.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/whack-mole.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/fruit-slicer.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/water-sort.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/parking.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "phone-390x844/tile-match.png",
+      "viewport": {
+        "name": "phone-390x844",
+        "width": 390,
+        "height": 844
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/home.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "lobby: 24 cards",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/2048.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/gomoku.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/tetris.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/merge-fruit.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/freecell.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/klondike.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/spider.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/minesweeper.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/memory.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/tangram.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/pipes.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/sokoban.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/bubbles.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/untangle.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/maze.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/nonogram.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/sudoku.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/pop-bubbles.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/red-rain.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/whack-mole.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/fruit-slicer.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/water-sort.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/parking.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-768x1024/tile-match.png",
+      "viewport": {
+        "name": "ipad-768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/home.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "lobby: 24 cards",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/2048.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/gomoku.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/tetris.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/merge-fruit.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/freecell.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/klondike.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/spider.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/minesweeper.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/memory.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/tangram.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/pipes.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/sokoban.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/bubbles.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/untangle.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/maze.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/nonogram.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/sudoku.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/pop-bubbles.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/red-rain.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/whack-mole.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/fruit-slicer.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh game after start tap",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/water-sort.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/parking.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    },
+    {
+      "file": "ipad-1024x768/tile-match.png",
+      "viewport": {
+        "name": "ipad-1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "state": "fresh board",
+      "dpr": 2
+    }
+  ],
+  "entrySha256": "b102267549a26dacf4d87922a92976d69bca43e5c76f6b84256707589aef54eb"
+}
