@@ -30,6 +30,9 @@ export class GomokuScene extends Phaser.Scene {
   private thinking = false
   private animateLastMove = false
   private geometry: BoardGeometry | null = null
+  private pinchDist = 0
+  private pinching = false
+  private dragStart: { x: number; y: number } | null = null
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
@@ -45,16 +48,79 @@ export class GomokuScene extends Phaser.Scene {
 
   create(): void {
     attachFirstRunHelp(this, '五子棋')
-    this.input.on('pointerdown', () => void this.audio.unlock())
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      void this.audio.unlock()
+      this.dragStart = { x: pointer.x, y: pointer.y }
+    })
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.handleBoardTap(pointer))
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.panWhenZoomed(pointer))
+    // 手机 15 路盘格子约 22px：双指捏合或右侧 +/− 按钮放大后才能精确落子。
+    this.input.addPointer(1)
+    this.input.on('pointermove', () => this.handlePinch())
+    this.input.on('pointerup', () => {
+      if (!this.input.pointer1?.isDown && !this.input.pointer2?.isDown) {
+        this.time.delayedCall(120, () => {
+          if (!this.input.pointer1?.isDown && !this.input.pointer2?.isDown) this.pinching = false
+        })
+      }
+    })
     this.scale.on('resize', () => this.draw())
     this.draw()
   }
 
+  private panWhenZoomed(pointer: Phaser.Input.Pointer): void {
+    const cam = this.cameras.main
+    if (cam.zoom <= 1 || !pointer.isDown || this.pinching || !this.dragStart) return
+    const dx = pointer.x - this.dragStart.x
+    const dy = pointer.y - this.dragStart.y
+    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return
+    const zoom = cam.zoom
+    cam.setScroll(
+      Phaser.Math.Clamp(cam.scrollX - dx / zoom, 0, this.scale.width - this.scale.width / zoom),
+      Phaser.Math.Clamp(cam.scrollY - dy / zoom, 0, this.scale.height - this.scale.height / zoom)
+    )
+    this.dragStart = { x: pointer.x, y: pointer.y }
+  }
+
+  stepZoom(direction: 1 | -1): void {
+    const cam = this.cameras.main
+    const steps = [1, 1.5, 2, 2.5]
+    const current = steps.indexOf(cam.zoom) >= 0 ? steps.indexOf(cam.zoom) : 0
+    const next = Phaser.Math.Clamp(current + direction, 0, steps.length - 1)
+    cam.setZoom(steps[next]!)
+    if (steps[next] === 1) cam.setScroll(0, 0)
+    else cam.centerOn(this.scale.width / 2, this.scale.height / 2)
+  }
+
+  private handlePinch(): void {
+    const p1 = this.input.pointer1
+    const p2 = this.input.pointer2
+    if (!p1?.isDown || !p2?.isDown) { this.pinchDist = 0; return }
+    const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y)
+    if (!this.pinching || this.pinchDist <= 0) {
+      this.pinching = true
+      this.pinchDist = dist
+      return
+    }
+    if (dist <= 0) return
+    const midX = (p1.x + p2.x) / 2
+    const midY = (p1.y + p2.y) / 2
+    const cam = this.cameras.main
+    const zoom = Phaser.Math.Clamp(cam.zoom * (dist / this.pinchDist), 1, 2.6)
+    const world = cam.getWorldPoint(midX, midY)
+    cam.setZoom(zoom)
+    const scrollX = Phaser.Math.Clamp(world.x - midX / zoom, 0, this.scale.width - this.scale.width / zoom)
+    const scrollY = Phaser.Math.Clamp(world.y - midY / zoom, 0, this.scale.height - this.scale.height / zoom)
+    cam.setScroll(scrollX, scrollY)
+    this.pinchDist = dist
+  }
+
   private handleBoardTap(pointer: Phaser.Input.Pointer): void {
+    if (this.pinching) return
+    if (this.dragStart && Math.hypot(pointer.x - this.dragStart.x, pointer.y - this.dragStart.y) > 12) return
     if (this.thinking || this.state.winner || this.state.draw) return
     if (this.mode === 'computer' && this.state.currentPlayer === 2) return
-    const index = this.pointerToIndex(pointer.x, pointer.y)
+    const index = this.pointerToIndex(pointer.worldX, pointer.worldY)
     if (index === null) return
     this.playTurn(index)
   }
@@ -104,6 +170,7 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   private restart(): void {
+    this.cameras.main.setZoom(1).setScroll(0, 0)
     this.thinking = false
     this.state = newGame()
     this.animateLastMove = false
@@ -141,7 +208,7 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   private drawHeader(width: number, compact: boolean, margin: number): void {
-    createLegacyChrome(this, {
+    const chrome = createLegacyChrome(this, {
       width,
       title: '五子棋',
       audio: this.audio,
@@ -152,12 +219,14 @@ export class GomokuScene extends Phaser.Scene {
         { icon: 'restart', label: '重开', action: () => this.restart() }
       ]
     })
+    // 双指/按钮缩放棋盘时顶栏钉在屏幕上
+    chrome.container.setScrollFactor(0)
 
     const status = `${this.scoreLabel()} · ${this.statusText()}`
     this.add.text(width / 2, compact ? 55 : 88, status, {
       color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: compact ? '14px' : '18px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
+    }).setOrigin(0.5, 0).setScrollFactor(0)
 
     const mode = createSegmentControl(this, {
       items: [
@@ -170,6 +239,7 @@ export class GomokuScene extends Phaser.Scene {
       onChange: value => this.setMode(value)
     })
     mode.setPosition(margin + 112, compact ? 72 : 98)
+    mode.container.setScrollFactor(0)
 
 
   }

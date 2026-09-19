@@ -32,8 +32,22 @@ export async function mountGomoku(container: HTMLElement, onExit: () => void): P
     }
   })
 
+  // 手机 15 路盘格子太小：DOM 缩放按钮（钉屏、不受 Phaser 相机缩放影响）。
+  // 与场景内双指捏合等效，点 ＋ 放大后可拖动平移。
+  const zoomBar = document.createElement('div')
+  zoomBar.className = 'gomoku-zoom-bar'
+  zoomBar.innerHTML = '<button type="button" data-zoom="1" aria-label="放大棋盘">＋</button>' +
+    '<button type="button" data-zoom="-1" aria-label="缩小棋盘">－</button>'
+  zoomBar.querySelectorAll('button').forEach(button => {
+    button.addEventListener('click', () => {
+      scene.stepZoom(button.dataset.zoom === '1' ? 1 : -1)
+    })
+  })
+  container.appendChild(zoomBar)
+
   return {
     destroy: () => {
+      zoomBar.remove()
       game?.destroy(true)
       game = null
       audio.dispose()
