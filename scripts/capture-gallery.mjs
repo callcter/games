@@ -59,7 +59,7 @@ await withBrowser(async ({send,evaluate,until,pause,base}) => {
       console.log(`${group.name}/${id}: ${state}`)
     }
     await pause(300)
-    await shot('home','lobby: 24 cards')
+    await shot('home','lobby: continue + categories + library preview')
     for(const id of ids) {
       await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
       await until(`location.hash==='#/${id}' && !!document.querySelector('canvas') && !document.querySelector('.game-grid')`)

@@ -2,7 +2,14 @@ import { puzzles } from './puzzles'
 import { gameIcon } from './icons'
 import { installIconArt } from './icon-art'
 import { loadProgress, summarizeProgress } from '../games/puzzle-kit/progress'
-import { CATEGORIES, categoryOf, clearOrder, orderedIds, readRecent, rememberRecent, writeOrder, type Category } from './library'
+import { CATEGORIES, clearOrder, orderedIds, readRecent, rememberRecent, writeOrder, type Category } from './library'
+import {
+  LOBBY_CATEGORIES,
+  categoryCount,
+  categoryTitle,
+  recentLobbyGames,
+  visibleLibraryIds
+} from './lobby-model'
 import { readTree, treeStage } from './tree'
 
 /** 小树的程序化 SVG：七个阶段逐级长出（种子→树屋），只记录不催促。 */
@@ -84,6 +91,7 @@ export function renderApp(root: HTMLDivElement | null): void {
   let exitInProgress = false
   let selectedCategory: Category = 'all'
   let editingOrder = false
+  let libraryExpanded = false
 
   window.sessionStorage.removeItem('family-game-room-updated')
 
@@ -160,6 +168,14 @@ export function renderApp(root: HTMLDivElement | null): void {
     const gameIds = games.map(game => game.id)
     const ordered = orderedIds(gameIds, gameIds).flatMap(id => games.find(game => game.id === id) ?? [])
     const recent = readRecent(gameIds).flatMap(id => games.find(game => game.id === id) ?? [])
+    const recentLobby = recentLobbyGames(recent)
+    const visibleIds = new Set(
+      visibleLibraryIds(
+        ordered.map(game => game.id),
+        selectedCategory,
+        libraryExpanded
+      )
+    )
     const tree = readTree()
 
     root.innerHTML = `
@@ -175,24 +191,89 @@ export function renderApp(root: HTMLDivElement | null): void {
         <button type="button" data-order-reset>恢复默认</button>
         <button type="button" data-order-done>完成</button>
       </div>` : `
-      ${recent.length ? `<button type="button" class="continue-card" data-game="${recent[0]!.id}"><span class="continue-card__play" aria-hidden="true">▶</span><span>${gameIcon(recent[0]!.id)}</span><span>继续玩：${recent[0]!.title}</span></button>` : ''}
-      ${recent.length ? `<section class="recent-games" aria-label="最近玩过"><h2>最近玩过</h2><div>${recent.map(game => `<button type="button" data-game="${game.id}">${gameIcon(game.id)} ${game.title}</button>`).join('')}</div></section>` : ''}
-      <nav class="game-categories" aria-label="游戏分类">${CATEGORIES.map(category => `<button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">${category.title}</button>`).join('')}</nav>`}
-      <section class="game-grid${editingOrder ? ' game-grid--editable' : ''}" aria-label="游戏列表">
-        ${ordered.map((game) => `
-          <button class="game-card${editingOrder ? ' game-card--editing' : ''}" data-game="${game.id}" ${editingOrder || selectedCategory === 'all' || categoryOf(game.id) === selectedCategory ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
-            <span class="game-card__symbol" aria-hidden="true">${gameIcon(game.id)}</span>
-            <span class="game-card__title">${game.title}</span>
-            <span class="game-card__status">${game.ready ? '' : '正在准备'}</span>
-          </button>
-        `).join('')}
+      ${recentLobby.primary ? `
+      <section class="resume-section" aria-labelledby="resume-title">
+        <div class="section-heading section-heading--compact">
+          <div>
+            <span class="section-kicker">接着玩</span>
+            <h2 id="resume-title">刚才玩到这里</h2>
+          </div>
+        </div>
+        <button type="button" class="continue-card" data-game="${recentLobby.primary.id}">
+          <span class="continue-card__icon" aria-hidden="true">${gameIcon(recentLobby.primary.id)}</span>
+          <span class="continue-card__copy">
+            <strong>${recentLobby.primary.title}</strong>
+            <small data-progress-for="${recentLobby.primary.id}">继续上次的游戏</small>
+          </span>
+          <span class="continue-card__arrow" aria-hidden="true">›</span>
+        </button>
+        ${recentLobby.secondary.length ? `
+        <div class="recent-strip" aria-label="最近玩过">
+          ${recentLobby.secondary.map(game => `
+            <button type="button" class="recent-chip" data-game="${game.id}">
+              <span aria-hidden="true">${gameIcon(game.id)}</span>
+              <span>${game.title}</span>
+            </button>
+          `).join('')}
+        </div>` : ''}
+      </section>` : ''}
+
+      <section class="discovery-section" aria-labelledby="discovery-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">换个心情</span>
+            <h2 id="discovery-title">今天想玩哪一种？</h2>
+          </div>
+        </div>
+        <div class="category-shelf">
+          ${LOBBY_CATEGORIES.map(category => `
+            <button type="button" class="category-card" data-category="${category.id}">
+              <span class="category-card__symbol" aria-hidden="true">${category.symbol}</span>
+              <span class="category-card__copy">
+                <strong>${category.title}</strong>
+                <small>${category.description}</small>
+              </span>
+              <span class="category-card__count">${categoryCount(gameIds, category.id)} 款</span>
+            </button>
+          `).join('')}
+        </div>
+      </section>`}
+
+      <section class="library-section" id="game-library" aria-labelledby="library-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">${editingOrder ? '我的顺序' : '游戏柜'}</span>
+            <h2 id="library-title">${editingOrder ? '整理全部游戏' : categoryTitle(selectedCategory)}</h2>
+          </div>
+          ${editingOrder ? '' : `<button class="edit-order" type="button">整理图标</button>`}
+        </div>
+        ${editingOrder ? '' : `
+        <nav class="game-categories" aria-label="游戏分类">
+          ${CATEGORIES.map(category => `
+            <button type="button" data-category="${category.id}" aria-pressed="${selectedCategory === category.id}">
+              ${category.title}
+            </button>
+          `).join('')}
+        </nav>`}
+        <section class="game-grid${editingOrder ? ' game-grid--editable' : ''}" aria-label="游戏列表">
+          ${ordered.map((game) => `
+            <button class="game-card${editingOrder ? ' game-card--editing' : ''}" data-game="${game.id}" ${editingOrder || visibleIds.has(game.id) ? '' : 'hidden'} ${game.ready ? '' : 'disabled'}>
+              <span class="game-card__symbol" aria-hidden="true">${gameIcon(game.id)}</span>
+              <span class="game-card__title">${game.title}</span>
+              <span class="game-card__status" data-progress-for="${game.id}">${game.ready ? '' : '正在准备'}</span>
+            </button>
+          `).join('')}
+        </section>
+        ${editingOrder ? '' : `
+        <button type="button" class="library-toggle" data-library-toggle ${selectedCategory === 'all' ? '' : 'hidden'}>
+          ${libraryExpanded ? '收起游戏柜' : `查看全部 ${ordered.length} 款`}
+        </button>`}
       </section>
       <footer class="parent-corner">
         <details class="parent-settings">
           <summary>家长设置</summary>
           <div class="app-actions">
             <button class="check-update" type="button">检查更新</button>
-            <button class="edit-order" type="button">整理图标</button>
             <span class="update-status" role="status"></span>
             <span class="app-note">没有广告 · 随时离线</span>
           </div>
@@ -224,14 +305,59 @@ export function renderApp(root: HTMLDivElement | null): void {
     }))
     // 精灵图图标异步替换 SVG 兜底；素材缺失时保持原样。
     void installIconArt(root)
-    root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(button => button.addEventListener('click', () => {
-      selectedCategory = button.dataset.category as Category
-      root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button)))
-      root.querySelectorAll<HTMLButtonElement>('.game-card').forEach(card => { card.hidden = selectedCategory !== 'all' && categoryOf(card.dataset.game!) !== selectedCategory })
-    }))
+    const updateLibrary = (): void => {
+      const ids = visibleLibraryIds(
+        ordered.map(game => game.id),
+        selectedCategory,
+        libraryExpanded
+      )
+      const visible = new Set(ids)
+
+      root.querySelectorAll<HTMLButtonElement>('.game-card').forEach(card => {
+        card.hidden = !editingOrder && !visible.has(card.dataset.game ?? '')
+      })
+
+      root.querySelectorAll<HTMLButtonElement>('.game-categories [data-category]').forEach(item => {
+        item.setAttribute(
+          'aria-pressed',
+          String(item.dataset.category === selectedCategory)
+        )
+      })
+
+      const title = root.querySelector<HTMLElement>('#library-title')
+      if (title && !editingOrder) title.textContent = categoryTitle(selectedCategory)
+
+      const toggle = root.querySelector<HTMLButtonElement>('[data-library-toggle]')
+      if (toggle) {
+        toggle.hidden = selectedCategory !== 'all'
+        toggle.textContent = libraryExpanded
+          ? '收起游戏柜'
+          : `查看全部 ${ordered.length} 款`
+      }
+    }
+
+    root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(button => {
+      button.addEventListener('click', () => {
+        selectedCategory = button.dataset.category as Category
+        updateLibrary()
+        if (button.classList.contains('category-card')) {
+          root.querySelector<HTMLElement>('#game-library')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          })
+        }
+      })
+    })
+
+    root.querySelector<HTMLButtonElement>('[data-library-toggle]')?.addEventListener('click', () => {
+      libraryExpanded = !libraryExpanded
+      updateLibrary()
+    })
 
     // 图标排序：进入编辑、拖动重排（FLIP 过渡）、完成或恢复默认。
     root.querySelector<HTMLButtonElement>('.edit-order')?.addEventListener('click', () => {
+      selectedCategory = 'all'
+      libraryExpanded = true
       editingOrder = true
       showHome()
     })
@@ -250,8 +376,9 @@ export function renderApp(root: HTMLDivElement | null): void {
     void loadProgress().then(progress => {
       if (currentView !== 'home' || homeNavigation !== navigationId) return
       for (const [id, line] of Object.entries(summarizeProgress(progress))) {
-        const status = root.querySelector<HTMLElement>(`[data-game="${id}"] .game-card__status`)
-        if (status) status.textContent = line
+        root.querySelectorAll<HTMLElement>(`[data-progress-for="${id}"]`).forEach(status => {
+          status.textContent = line
+        })
       }
     })
 

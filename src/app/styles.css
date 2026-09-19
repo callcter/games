@@ -189,6 +189,243 @@ button { font: inherit; }
 .recent-games .game-icon { width: 24px; height: 24px; display: inline-block; vertical-align: middle; }
 .game-card__title { margin-top: 12px; font-size: 1.3rem; font-weight: 800; }
 .game-card__status { margin-top: 4px; color: #698379; font-size: 0.92rem; }
+/* v5-E：首页先回答“继续什么 / 想玩哪种”，再展示完整游戏柜。 */
+.resume-section,
+.discovery-section,
+.library-section {
+  margin-bottom: 34px;
+}
+
+.library-section {
+  scroll-margin-top: 18px;
+}
+
+.section-heading {
+  display: flex;
+  min-height: 48px;
+  margin-bottom: 14px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading--compact {
+  min-height: 0;
+  margin-bottom: 10px;
+}
+
+.section-heading h2 {
+  margin: 2px 0 0;
+  font-size: clamp(1.35rem, 3.2vw, 1.8rem);
+  line-height: 1.1;
+}
+
+.section-kicker {
+  display: block;
+  color: #cb6544;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.continue-card {
+  width: 100%;
+  max-width: none;
+  min-height: 92px;
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 24px;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.continue-card__icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 18px;
+  place-items: center;
+  background: rgb(255 253 246 / 18%);
+}
+
+.continue-card__icon .game-icon {
+  width: 46px;
+  height: 46px;
+}
+
+.continue-card__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.continue-card__copy strong {
+  overflow: hidden;
+  font-size: 1.28rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.continue-card__copy small {
+  overflow: hidden;
+  color: rgb(255 253 246 / 78%);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.continue-card__arrow {
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.recent-strip {
+  display: flex;
+  margin-top: 12px;
+  padding-bottom: 2px;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.recent-strip::-webkit-scrollbar { display: none; }
+
+.recent-chip {
+  display: flex;
+  min-width: max-content;
+  min-height: 48px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid #d8cdbb;
+  border-radius: 16px;
+  color: #173f35;
+  background: #fffdf6;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.recent-chip .game-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.category-shelf {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.category-card {
+  display: grid;
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid rgb(23 63 53 / 8%);
+  border-radius: 22px;
+  color: #173f35;
+  background: #fffdf6;
+  box-shadow: 0 5px 16px rgb(56 72 49 / 5%);
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  column-gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-card:active {
+  transform: scale(0.97);
+}
+
+.category-card__symbol {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  color: #2f8f6b;
+  background: #eef3e6;
+  place-items: center;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.category-card__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-card__copy strong {
+  font-size: 1.08rem;
+}
+
+.category-card__copy small {
+  color: #698379;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.category-card__count {
+  grid-column: 2;
+  color: #9aa89f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.library-section .game-categories {
+  margin-bottom: 18px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.library-section .game-categories::-webkit-scrollbar { display: none; }
+
+.library-section .game-categories button {
+  min-width: max-content;
+}
+
+.library-toggle {
+  display: block;
+  min-height: 50px;
+  margin: 18px auto 0;
+  padding: 10px 24px;
+  border: 1px solid #d8cdbb;
+  border-radius: 999px;
+  color: #527267;
+  background: #fffdf6;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.library-toggle[hidden] { display: none; }
+
+  .app-shell {
+    padding-right: max(18px, env(safe-area-inset-right));
+    padding-left: max(18px, env(safe-area-inset-left));
+  }
+  .hero { margin-bottom: 28px; }
+  .resume-section,
+  .discovery-section,
+  .library-section { margin-bottom: 30px; }
+  .category-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .category-card { min-height: 122px; padding: 14px; }
+  .section-heading { margin-bottom: 12px; }
+  .section-heading .edit-order {
+    padding: 9px 13px;
+    font-size: 0.85rem;
+  }
+  .resume-section,
+  .discovery-section,
+  .library-section { margin-bottom: 28px; }
 
 /* 图标排序编辑模式：抖动提示可拖、拖起克隆跟随手指、其余图标让位。 */
 .edit-order {
