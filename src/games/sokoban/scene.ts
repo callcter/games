@@ -4,7 +4,9 @@ import { loadProgress, recordRun, recordLevel } from '../puzzle-kit/progress'
 import { LEVELS, move, newGame, PAR, solve, stars, type SokobanState } from './core/game'
 import { restoreSokoban } from '../puzzle-kit/core/drafts'
 import { PRODUCT_V3, preloadSokobanV3 } from '../../platform/display/product-v3-art'
+import { sokobanLevelLayout, sokobanPlayLayout } from './layout'
 export class SokobanScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private level = 0
   private state = newGame()
   private history: SokobanState[] = []
@@ -12,8 +14,15 @@ export class SokobanScene extends PuzzleScene {
   private bestMoves: Record<number, number> = {}
   private assisted = false
   private practice = new Set<number>()
+  private resumeResolved = false
+
   constructor(audio: GameAudio, exit: () => void) { super('sokoban', '推箱子', audio, exit) }
   preload(): void { preloadSokobanV3(this) }
+  protected override onPlayAreaResize(): void {
+    if (!this.resumeResolved) return
+    if (this.view === 'play') this.draw()
+    else this.showLevels()
+  }
   protected start(): void {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       const d = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'].indexOf(event.key)
@@ -29,8 +38,12 @@ export class SokobanScene extends PuzzleScene {
         if (practice) this.practice.add(Number(practice[1]))
       }
       void this.offerResume('sokoban', restoreSokoban, saved => {
+        this.resumeResolved = true
         this.level = saved.level; this.state = saved.state; this.history = saved.history; this.assisted = saved.assisted; this.draw()
-      }, () => this.showLevels())
+      }, () => {
+        this.resumeResolved = true
+        this.showLevels()
+      })
     })
   }
   private showLevels(): void {
@@ -38,13 +51,23 @@ export class SokobanScene extends PuzzleScene {
     // 全部关卡可选（Wave 4 扩容后学习关与挑战关都应有入口），挑战关带 ☆ 前缀。
     const cleared = LEVELS.filter((_, level) => this.bestMoves[level] !== undefined).length
     this.resetView(`独立完成 ${cleared} / ${LEVELS.length} 关 · 点一个关卡开始`)
-    this.text(384, 170, '☆ 是挑战关 · 用的步数越少星星越多', 20, this.content)
+    const area = this.playArea({ bottom: 76, horizontalPadding: 40 })
+    const layout = sokobanLevelLayout(area, LEVELS.length)
+    this.text(384, layout.instructionY, '☆ 是挑战关 · 用的步数越少星星越多', 20, this.content)
     LEVELS.forEach((_, level) => {
       const best = this.bestMoves[level]
       const challenge = (PAR[level] ?? 0) >= 8 ? '☆' : ''
       const label = best === undefined ? `${challenge}${level + 1}${this.practice.has(level) ? ' ✓' : ''}` : `${challenge}${level + 1} ${'★'.repeat(stars(level, best))}`
-      // 6 排全部收进 900 高画布：末排中心 776、底边 806，与底部按钮行（850）留出安全距离。
-      this.button(128 + level % 5 * 128, 216 + Math.floor(level / 5) * 112, label, () => { this.level = level; this.restart() }, 108, this.content)
+      const col = level % layout.cols
+      const row = Math.floor(level / layout.cols)
+      this.button(
+        layout.firstX + col * layout.columnStep,
+        layout.firstY + row * layout.rowStep,
+        label,
+        () => { this.level = level; this.restart() },
+        layout.buttonWidth,
+        this.content
+      )
     })
   }
   private step(d: number): void {
@@ -66,9 +89,11 @@ export class SokobanScene extends PuzzleScene {
     this.remember('sokoban', { level: this.level, state: this.state, history: this.history, assisted: this.assisted })
     this.view = 'play'
     this.resetView(`第 ${this.level + 1} / ${LEVELS.length} 关 · ${PAR[this.level]} 步内三星 · 已走 ${this.state.moves} 步`)
-    this.text(384, 165, '只能推，不能拉；推错了可以撤销', 21, this.content)
-    const cell = Math.min(76, 470 / this.state.height, 660 / this.state.width)
-    const left = (768 - this.state.width * cell) / 2, top = 225
+    const area = this.playArea({ bottom: 76, horizontalPadding: 40 })
+    const layout = sokobanPlayLayout(area, this.state.width, this.state.height)
+    this.text(384, layout.instructionY, '只能推，不能拉；推错了可以撤销', 21, this.content)
+    const { cell } = layout
+    const left = layout.boardLeft, top = layout.boardTop
     for (let i = 0; i < this.state.width * this.state.height; i++) {
       const x = left + i % this.state.width * cell + cell / 2, y = top + Math.floor(i / this.state.width) * cell + cell / 2
       const wall = this.state.walls.includes(i)
@@ -94,17 +119,17 @@ export class SokobanScene extends PuzzleScene {
         if (d >= 0) this.step(d)
       })
     }
-    ;['↑', '→', '↓', '←'].forEach((label, d) => this.button(204 + d * 120, 740, label, () => this.step(d), 100, this.content))
-    this.button(96, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 110, this.content)
-    this.button(250, 850, '提示一步', () => {
+    ;['↑', '→', '↓', '←'].forEach((label, d) => this.button(204 + d * 120, layout.directionY, label, () => this.step(d), 100, this.content))
+    this.button(96, layout.footerY, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 110, this.content)
+    this.button(250, layout.footerY, '提示一步', () => {
       const route = solve(this.state)
       if (route?.length) { this.assisted = true; this.step(route[0]!) }
       else if (!this.state.won) this.say('箱子被困住啦，试试撤销或重开')
     }, 150, this.content)
-    this.button(430, 850, '重开', () => this.restart(), 110, this.content)
-    this.button(588, 850, '选关', () => this.showLevels(), 132, this.content)
-    if (this.state.won && this.level < LEVELS.length - 1) this.button(384, 700, '下一关 →', () => { this.level = this.level + 1; this.restart() }, 220, this.content)
-    if (this.state.won && this.level === LEVELS.length - 1) this.text(384, 700, '全部通关啦，去选关页刷新纪录吧！', 24, this.content)
+    this.button(430, layout.footerY, '重开', () => this.restart(), 110, this.content)
+    this.button(588, layout.footerY, '选关', () => this.showLevels(), 132, this.content)
+    if (this.state.won && this.level < LEVELS.length - 1) this.button(384, layout.nextY, '下一关 →', () => { this.level = this.level + 1; this.restart() }, 220, this.content)
+    if (this.state.won && this.level === LEVELS.length - 1) this.text(384, layout.nextY, '全部通关啦，去选关页刷新纪录吧！', 24, this.content)
   }
   private restart(): void { this.assisted = false; this.state = newGame(this.level); this.history = []; this.draw() }
 }

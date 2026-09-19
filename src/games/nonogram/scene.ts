@@ -5,7 +5,9 @@ import { migrateNumberedFlags, recordFlag } from '../puzzle-kit/progress'
 import { clues, legacyV2ToV3, lineCells, mark, newGame, PATTERNS, patternSize, solution, type Mark, type NonogramState } from './core/game'
 import { restoreNonogram } from '../puzzle-kit/core/drafts'
 import { loadGameSave, saveGame } from '../../platform/storage/game-storage'
+import { nonogramLayout } from './layout'
 export class NonogramScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private state = newGame(5)
   private mode: Mark = 1
   private history: NonogramState[] = []
@@ -16,7 +18,11 @@ export class NonogramScene extends PuzzleScene {
   private crosses: Phaser.GameObjects.Text[] = []
   private rowClues: Phaser.GameObjects.Text[] = []
   private columnClues: Phaser.GameObjects.Text[] = []
+  private resumeResolved = false
   constructor(audio: GameAudio, exit: () => void) { super('nonogram', '数织', audio, exit) }
+  protected override onPlayAreaResize(): void {
+    if (this.resumeResolved) this.draw()
+  }
   protected start(): void {
     // 已发布交错版完成记录迁移到当前编号（≥9 无歧义；0-8 两代同义保留原样）。
     migrateNumberedFlags('nonogram', 9, legacyV2ToV3)
@@ -37,8 +43,12 @@ export class NonogramScene extends PuzzleScene {
     this.input.on('pointerupoutside', finish)
     this.input.on('gameout', finish)
     void this.offerResume('nonogram', restoreNonogram, saved => {
+      this.resumeResolved = true
       this.state = saved.state; this.history = saved.history; this.assisted = saved.assisted; this.draw()
-    }, () => { this.state = newGame(0); this.history = []; this.assisted = false; this.draw() })
+    }, () => {
+      this.resumeResolved = true
+      this.state = newGame(0); this.history = []; this.assisted = false; this.draw()
+    })
   }
   /** 无版本号旧档的一次性原样备份（迁移误判时的最后防线）。 */
   private async backupLegacyDraft(): Promise<void> {
@@ -60,22 +70,23 @@ export class NonogramScene extends PuzzleScene {
     this.history = this.history.slice(-50)
     this.remember('nonogram', { state: this.state, history: this.history, assisted: this.assisted })
     const level = this.state.level, size = patternSize(level), target = solution(level)
-    const cell = size === 5 ? 84 : 52
-    const boardLeft = size === 5 ? 225 : 200, boardTop = size === 5 ? 310 : 230
+    const area = this.playArea({ bottom: 78, horizontalPadding: 28 })
+    const layout = nonogramLayout(area, size)
+    const { cell, boardLeft, boardTop } = layout
     this.resetView(`第 ${level + 1} / ${PATTERNS.length} 幅 · 数字表示连续填色格数`)
     this.tiles = []; this.crosses = []; this.rowClues = []; this.columnClues = []
-    this.text(384, size === 5 ? 157 : 137, '可以按住划格 · 一次撤销一整笔 · 淡色线索表示已凑齐', 18, this.content)
+    this.text(384, layout.instructionY, '可以按住划格 · 一次撤销一整笔 · 淡色线索表示已凑齐', 18, this.content)
     const bands = this.add.graphics()
     bands.fillStyle(0xeaf0e6)
-    bands.fillRoundedRect(boardLeft, boardTop - (size === 5 ? 84 : 68), cell * size, size === 5 ? 76 : 60, 12)
-    bands.fillRoundedRect(boardLeft - (size === 5 ? 84 : 108), boardTop, size === 5 ? 76 : 100, cell * size, 12)
+    bands.fillRoundedRect(boardLeft, boardTop - layout.clueHeight, layout.boardSide, layout.clueHeight - 8, 12)
+    bands.fillRoundedRect(boardLeft - layout.clueWidth, boardTop, layout.clueWidth - 8, layout.boardSide, 12)
     bands.lineStyle(2, 0xe7b45e, 0.42)
-    bands.strokeRoundedRect(boardLeft, boardTop - (size === 5 ? 84 : 68), cell * size, size === 5 ? 76 : 60, 12)
-    bands.strokeRoundedRect(boardLeft - (size === 5 ? 84 : 108), boardTop, size === 5 ? 76 : 100, cell * size, 12)
+    bands.strokeRoundedRect(boardLeft, boardTop - layout.clueHeight, layout.boardSide, layout.clueHeight - 8, 12)
+    bands.strokeRoundedRect(boardLeft - layout.clueWidth, boardTop, layout.clueWidth - 8, layout.boardSide, 12)
     this.content.add(bands)
     for (let i = 0; i < size; i++) {
-      this.rowClues.push(this.text(boardLeft - (size === 5 ? 44 : 55), boardTop + i * cell + cell / 2, clues(target.slice(i * size, i * size + size)).join(' '), size === 5 ? 25 : 16, this.content))
-      this.columnClues.push(this.text(boardLeft + i * cell + cell / 2, boardTop - (size === 5 ? 44 : 38), clues(Array.from({ length: size }, (_, y) => target[y * size + i]!)).join('\n'), size === 5 ? 24 : 15, this.content))
+      this.rowClues.push(this.text(layout.rowClueX, boardTop + i * cell + cell / 2, clues(target.slice(i * size, i * size + size)).join(' '), layout.rowClueFont, this.content))
+      this.columnClues.push(this.text(boardLeft + i * cell + cell / 2, layout.columnClueY, clues(Array.from({ length: size }, (_, y) => target[y * size + i]!)).join('\n'), layout.columnClueFont, this.content))
     }
     this.state.marks.forEach((value, index) => {
       const x = boardLeft + index % size * cell + cell / 2, y = boardTop + Math.floor(index / size) * cell + cell / 2
@@ -99,15 +110,15 @@ export class NonogramScene extends PuzzleScene {
         separators.lineBetween(boardLeft, boardTop + i * cell, boardLeft + size * cell, boardTop + i * cell)
       }
     }
-    this.button(180, 780, this.mode === 1 ? '✓ 填色' : '填色', () => { this.mode = 1; this.draw() }, 150, this.content)
-    this.button(370, 780, this.mode === -1 ? '✓ 标空' : '标空', () => { this.mode = -1; this.draw() }, 150, this.content)
-    this.button(570, 780, '提示一格', () => {
+    this.button(180, layout.modeY, this.mode === 1 ? '✓ 填色' : '填色', () => { this.mode = 1; this.draw() }, 150, this.content)
+    this.button(370, layout.modeY, this.mode === -1 ? '✓ 标空' : '标空', () => { this.mode = -1; this.draw() }, 150, this.content)
+    this.button(570, layout.modeY, '提示一格', () => {
       const i = target.findIndex((v, i) => v === 1 ? this.state.marks[i] !== 1 : this.state.marks[i] === 1)
       if (i >= 0) { this.assisted = true; this.change(i, target[i] ? 1 : -1) }
     }, 180, this.content)
-    this.button(160, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
-    this.button(384, 850, '重开', () => { this.state = newGame(this.state.level); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
-    this.button(608, 850, '下一幅', () => { this.state = newGame(this.state.level < PATTERNS.length - 1 ? this.state.level + 1 : 0); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
+    this.button(160, layout.footerY, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
+    this.button(384, layout.footerY, '重开', () => { this.state = newGame(this.state.level); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
+    this.button(608, layout.footerY, '下一幅', () => { this.state = newGame(this.state.level < PATTERNS.length - 1 ? this.state.level + 1 : 0); this.history = []; this.assisted = false; this.draw() }, 180, this.content)
     this.updateBoard()
   }
   private updateBoard(): void {
@@ -125,9 +136,12 @@ export class NonogramScene extends PuzzleScene {
     if (this.state.won) this.say(`${this.assisted ? '提示练习' : '独立完成'}：${PATTERNS[this.state.level]!.name}！`)
   }
   private cellAt(p: Phaser.Input.Pointer): number {
-    const size = patternSize(this.state.level), cell = size === 5 ? 84 : 52
+    const size = patternSize(this.state.level)
+    const area = this.playArea({ bottom: 78, horizontalPadding: 28 })
+    const layout = nonogramLayout(area, size)
+    const { cell, boardLeft, boardTop } = layout
     const point = this.legacyPoint(p)
-    const x = Math.floor((point.x - (size === 5 ? 225 : 200))/cell), y = Math.floor((point.y - (size === 5 ? 310 : 230))/cell)
+    const x = Math.floor((point.x - boardLeft)/cell), y = Math.floor((point.y - boardTop)/cell)
     return x >= 0 && y >= 0 && x < size && y < size ? y*size+x : -1
   }
   private paint(p: Phaser.Input.Pointer): void {

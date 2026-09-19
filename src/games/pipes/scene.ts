@@ -2,20 +2,26 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordRun } from '../puzzle-kit/progress'
 import { connected, DIRECTIONS, newGame, turn, won, type PipesState } from './core/game'
+import { pipesLayout } from './layout'
 
 export class PipesScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private size = 4
   private state = newGame(4)
   private history: PipesState[] = []
   private assisted = false
   constructor(audio: GameAudio, exit: () => void) { super('pipes', '接水管', audio, exit) }
   protected start(): void { this.draw() }
+  protected override onPlayAreaResize(): void { this.draw() }
   private draw(): void {
     this.resetView(`点管道旋转 · 从左上水源连通全部格子 · ${this.state.moves} 步`)
-    ;[4, 5, 6].forEach((size, i) => this.button(160 + 224 * i, 165, `${size === this.size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 190, this.content))
-    const reached = connected(this.state), cell = 570 / this.size
+    const area = this.playArea({ bottom: 84, horizontalPadding: 54 })
+    const layout = pipesLayout(area, this.size)
+    ;[4, 5, 6].forEach((size, i) => this.button(160 + 224 * i, layout.modeY, `${size === this.size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 190, this.content))
+    const reached = connected(this.state), cell = layout.cell
     this.state.cells.forEach((mask, index) => {
-      const x = 99 + index % this.size * cell, y = 240 + Math.floor(index / this.size) * cell
+      const x = layout.boardLeft + index % this.size * cell
+      const y = layout.boardTop + Math.floor(index / this.size) * cell
       const tileVisual = this.add.graphics(); this.content.add(tileVisual)
       tileVisual.fillStyle(0x684a34, 0.10)
       tileVisual.fillRoundedRect(x + 4, y + 8, cell - 8, cell - 8, Math.max(12, cell * 0.12))
@@ -63,8 +69,8 @@ export class PipesScene extends PuzzleScene {
         if (won(next)) this.complete()
       })
     })
-    this.button(150, 850, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
-    this.button(384, 850, '提示', () => {
+    this.button(150, layout.footerY, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 180, this.content)
+    this.button(384, layout.footerY, '提示', () => {
       const index = this.state.cells.findIndex((mask, i) => mask !== this.state.solution[i])
       if (index < 0) return
       this.assisted = true
@@ -73,7 +79,7 @@ export class PipesScene extends PuzzleScene {
       this.draw(); this.say('已帮你接好一格，试试接下去')
       if (won(this.state)) this.complete()
     }, 180, this.content)
-    this.button(618, 850, '新关卡', () => this.restart(), 180, this.content)
+    this.button(618, layout.footerY, '新关卡', () => this.restart(), 180, this.content)
   }
   private complete(): void { this.celebrate(this.assisted ? '提示练习完成啦！' : '独立接通啦！'); recordRun(`pipes-${this.size}`, this.state.moves, this.assisted) }
   private restart(): void { this.assisted = false; this.state = newGame(this.size); this.history = []; this.draw() }

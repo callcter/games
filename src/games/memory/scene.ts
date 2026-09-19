@@ -4,8 +4,10 @@ import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordBest } from '../puzzle-kit/progress'
 import { PRODUCT_V3, preloadMemoryV3 } from '../../platform/display/product-v3-art'
 import { conceal, flip, newGame } from './core/game'
+import { memoryLayout } from './layout'
 
 export class MemoryScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private pairs = 12
   private players = 1
   private setB = false
@@ -24,6 +26,10 @@ export class MemoryScene extends PuzzleScene {
     this.draw()
   }
 
+  protected override onPlayAreaResize(): void {
+    this.draw()
+  }
+
   private restart(): void {
     this.concealTimer?.remove()
     this.state = newGame(this.pairs, this.players)
@@ -32,6 +38,8 @@ export class MemoryScene extends PuzzleScene {
 
   private draw(animatedIndex = -1): void {
     const s = this.state
+    const area = this.playArea({ bottom: 84, horizontalPadding: 40 })
+    const layout = memoryLayout(area, this.pairs, s.cards.length)
     this.resetView(
       `${s.turns} 次尝试 · ${
         this.players === 2
@@ -42,8 +50,8 @@ export class MemoryScene extends PuzzleScene {
 
     ;[12, 16, 24].forEach((pairs, i) => {
       this.button(
-        170 + i * 214,
-        165,
+        160 + i * 224,
+        layout.modeY,
         `${pairs === this.pairs ? '✓ ' : ''}${pairs} 对`,
         () => {
           this.pairs = pairs
@@ -54,14 +62,12 @@ export class MemoryScene extends PuzzleScene {
       )
     })
 
-    const cols = this.pairs === 12 ? 6 : 8
-    const rows = s.cards.length / cols
-    const cell = Math.min(148, 570 / cols, 450 / rows)
+    const { cols, rows, cell, step, centerY } = layout
     const texture = this.setB ? PRODUCT_V3.memory.setB : PRODUCT_V3.memory.setA
 
     s.cards.forEach((value, index) => {
-      const x = 384 + ((index % cols) - (cols - 1) / 2) * (cell + 12)
-      const y = 490 + (Math.floor(index / cols) - (rows - 1) / 2) * (cell + 12)
+      const x = 384 + ((index % cols) - (cols - 1) / 2) * step
+      const y = centerY + (Math.floor(index / cols) - (rows - 1) / 2) * step
       const shown = s.open.includes(index) || s.matched.includes(index)
       const matched = s.matched.includes(index)
 
@@ -149,7 +155,7 @@ export class MemoryScene extends PuzzleScene {
 
     this.button(
       160,
-      850,
+      layout.footerY,
       this.players === 1 ? '单人 → 双人' : '双人 → 单人',
       () => {
         this.players = this.players === 1 ? 2 : 1
@@ -160,7 +166,7 @@ export class MemoryScene extends PuzzleScene {
     )
     this.button(
       384,
-      850,
+      layout.footerY,
       this.setB ? '换第一组' : '换第二组',
       () => {
         this.setB = !this.setB
@@ -169,6 +175,6 @@ export class MemoryScene extends PuzzleScene {
       180,
       this.content
     )
-    this.button(610, 850, '再玩一局', () => this.restart(), 180, this.content)
+    this.button(608, layout.footerY, '再玩一局', () => this.restart(), 180, this.content)
   }
 }
