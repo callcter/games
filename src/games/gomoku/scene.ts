@@ -33,6 +33,12 @@ export class GomokuScene extends Phaser.Scene {
   private pinchDist = 0
   private pinching = false
   private dragStart: { x: number; y: number } | null = null
+  private lastDrag: { x: number; y: number } | null = null
+  private dragged = false
+  private boardLayer: Phaser.GameObjects.Container | null = null
+  private boardCamera: Phaser.Cameras.Scene2D.Camera | null = null
+  private boardZoom = 1
+  private boardOffset = { x: 0, y: 0 }
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
@@ -50,52 +56,86 @@ export class GomokuScene extends Phaser.Scene {
     attachFirstRunHelp(this, '五子棋')
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       void this.audio.unlock()
+      if (!this.inBoardViewport(pointer.x, pointer.y)) return
       this.dragStart = { x: pointer.x, y: pointer.y }
+      this.lastDrag = this.dragStart
+      this.dragged = false
+      this.handlePinch()
     })
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.handleBoardTap(pointer))
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.panWhenZoomed(pointer))
-    // 手机 15 路盘格子约 22px：双指捏合或右侧 +/− 按钮放大后才能精确落子。
     this.input.addPointer(1)
-    this.input.on('pointermove', () => this.handlePinch())
-    this.input.on('pointerup', () => {
-      if (!this.input.pointer1?.isDown && !this.input.pointer2?.isDown) {
-        this.time.delayedCall(120, () => {
-          if (!this.input.pointer1?.isDown && !this.input.pointer2?.isDown) this.pinching = false
-        })
-      }
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      this.handlePinch()
+      this.panWhenZoomed(pointer)
     })
-    this.scale.on('resize', () => this.draw())
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      this.handleBoardTap(pointer)
+      if (!this.input.pointer1?.isDown && !this.input.pointer2?.isDown) this.resetGesture()
+    })
+    this.input.on('gameout', () => this.resetGesture())
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => this.resetGesture())
+    const resize = (): void => { this.boardOffset = { x: 0, y: 0 }; this.resetGesture(); this.draw() }
+    this.scale.on('resize', resize)
+    const cleanup = (): void => {
+      this.scale.off('resize', resize)
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, cleanup)
+      this.events.off(Phaser.Scenes.Events.DESTROY, cleanup)
+    }
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup)
+    this.events.once(Phaser.Scenes.Events.DESTROY, cleanup)
     this.draw()
   }
 
-  private panWhenZoomed(pointer: Phaser.Input.Pointer): void {
-    const cam = this.cameras.main
-    if (cam.zoom <= 1 || !pointer.isDown || this.pinching || !this.dragStart) return
-    const dx = pointer.x - this.dragStart.x
-    const dy = pointer.y - this.dragStart.y
-    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return
-    const zoom = cam.zoom
-    cam.setScroll(
-      Phaser.Math.Clamp(cam.scrollX - dx / zoom, 0, this.scale.width - this.scale.width / zoom),
-      Phaser.Math.Clamp(cam.scrollY - dy / zoom, 0, this.scale.height - this.scale.height / zoom)
+  private resetGesture(): void {
+    this.dragStart = null
+    this.lastDrag = null
+    this.dragged = false
+    this.pinching = false
+    this.pinchDist = 0
+  }
+
+  private inBoardViewport(x: number, y: number): boolean {
+    const g = this.geometry
+    return !!g && x >= g.x && y >= g.y && x <= g.x + g.size && y <= g.y + g.size
+  }
+
+  private applyBoardTransform(): void {
+    const g = this.geometry
+    if (!g || !this.boardLayer) return
+    const limit = g.size * (this.boardZoom - 1) / 2
+    this.boardOffset.x = Phaser.Math.Clamp(this.boardOffset.x, -limit, limit)
+    this.boardOffset.y = Phaser.Math.Clamp(this.boardOffset.y, -limit, limit)
+    this.boardLayer.setScale(this.boardZoom).setPosition(
+      (g.x + g.size / 2) * (1 - this.boardZoom) + this.boardOffset.x,
+      (g.y + g.size / 2) * (1 - this.boardZoom) + this.boardOffset.y
     )
-    this.dragStart = { x: pointer.x, y: pointer.y }
+  }
+
+  private panWhenZoomed(pointer: Phaser.Input.Pointer): void {
+    if (!pointer.isDown || this.pinching || !this.dragStart || !this.lastDrag) return
+    if (Math.hypot(pointer.x - this.dragStart.x, pointer.y - this.dragStart.y) > 12) this.dragged = true
+    if (this.boardZoom > 1 && this.dragged) {
+      this.boardOffset.x += pointer.x - this.lastDrag.x
+      this.boardOffset.y += pointer.y - this.lastDrag.y
+      this.applyBoardTransform()
+    }
+    this.lastDrag = { x: pointer.x, y: pointer.y }
   }
 
   stepZoom(direction: 1 | -1): void {
-    const cam = this.cameras.main
+    if (!this.sys.isActive()) return
     const steps = [1, 1.5, 2, 2.5]
-    const current = steps.indexOf(cam.zoom) >= 0 ? steps.indexOf(cam.zoom) : 0
-    const next = Phaser.Math.Clamp(current + direction, 0, steps.length - 1)
-    cam.setZoom(steps[next]!)
-    if (steps[next] === 1) cam.setScroll(0, 0)
-    else cam.centerOn(this.scale.width / 2, this.scale.height / 2)
+    this.boardZoom = direction > 0
+      ? steps.find(value => value > this.boardZoom + 0.001) ?? 2.5
+      : [...steps].reverse().find(value => value < this.boardZoom - 0.001) ?? 1
+    this.boardOffset = { x: 0, y: 0 }
+    this.applyBoardTransform()
   }
 
   private handlePinch(): void {
     const p1 = this.input.pointer1
     const p2 = this.input.pointer2
-    if (!p1?.isDown || !p2?.isDown) { this.pinchDist = 0; return }
+    if (!p1?.isDown || !p2?.isDown || !this.boardLayer || !this.geometry) { this.pinchDist = 0; return }
+    if (!this.inBoardViewport(p1.x, p1.y) || !this.inBoardViewport(p2.x, p2.y)) return
     const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y)
     if (!this.pinching || this.pinchDist <= 0) {
       this.pinching = true
@@ -105,24 +145,25 @@ export class GomokuScene extends Phaser.Scene {
     if (dist <= 0) return
     const midX = (p1.x + p2.x) / 2
     const midY = (p1.y + p2.y) / 2
-    const cam = this.cameras.main
-    const zoom = Phaser.Math.Clamp(cam.zoom * (dist / this.pinchDist), 1, 2.6)
-    const world = cam.getWorldPoint(midX, midY)
-    cam.setZoom(zoom)
-    const scrollX = Phaser.Math.Clamp(world.x - midX / zoom, 0, this.scale.width - this.scale.width / zoom)
-    const scrollY = Phaser.Math.Clamp(world.y - midY / zoom, 0, this.scale.height - this.scale.height / zoom)
-    cam.setScroll(scrollX, scrollY)
+    const local = this.boardLayer.getLocalPoint(midX, midY)
+    this.boardZoom = Phaser.Math.Clamp(this.boardZoom * dist / this.pinchDist, 1, 2.5)
+    const centerX = this.geometry.x + this.geometry.size / 2
+    const centerY = this.geometry.y + this.geometry.size / 2
+    this.boardOffset.x = midX - local.x * this.boardZoom - centerX * (1 - this.boardZoom)
+    this.boardOffset.y = midY - local.y * this.boardZoom - centerY * (1 - this.boardZoom)
+    this.applyBoardTransform()
     this.pinchDist = dist
   }
 
   private handleBoardTap(pointer: Phaser.Input.Pointer): void {
-    if (this.pinching) return
-    if (this.dragStart && Math.hypot(pointer.x - this.dragStart.x, pointer.y - this.dragStart.y) > 12) return
+    if (this.pinching || this.dragged || !this.dragStart || !this.boardLayer) return
+    if (Math.hypot(pointer.x - this.dragStart.x, pointer.y - this.dragStart.y) > 12) return
+    if (!this.inBoardViewport(pointer.x, pointer.y)) return
     if (this.thinking || this.state.winner || this.state.draw) return
     if (this.mode === 'computer' && this.state.currentPlayer === 2) return
-    const index = this.pointerToIndex(pointer.worldX, pointer.worldY)
-    if (index === null) return
-    this.playTurn(index)
+    const point = this.boardLayer.getLocalPoint(pointer.x, pointer.y)
+    const index = this.pointerToIndex(point.x, point.y)
+    if (index !== null) this.playTurn(index)
   }
 
   private playTurn(index: number): void {
@@ -170,7 +211,9 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   private restart(): void {
-    this.cameras.main.setZoom(1).setScroll(0, 0)
+    this.boardZoom = 1
+    this.boardOffset = { x: 0, y: 0 }
+    this.resetGesture()
     this.thinking = false
     this.state = newGame()
     this.animateLastMove = false
@@ -189,11 +232,12 @@ export class GomokuScene extends Phaser.Scene {
   private draw(): void {
     this.tweens.killAll()
     this.children.removeAll(true)
+    this.boardLayer = null
     const width = this.scale.width
     const height = this.scale.height
     const compact = height < 650
     const margin = Math.max(14, Math.min(28, width * 0.035))
-    const headerHeight = compact ? 88 : 142
+    const headerHeight = width < 560 ? 180 : compact ? 88 : 142
     const boardSize = Math.min(width - margin * 2, height - headerHeight - margin, 760)
     const boardX = (width - boardSize) / 2
     const boardY = headerHeight + Math.max(0, (height - headerHeight - boardSize) / 2)
@@ -202,13 +246,22 @@ export class GomokuScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#f8f1df')
     this.drawHeader(width, compact, margin)
+    // Phaser 4 的 GeometryMask 仅用于 Canvas；WebGL 用独立 camera viewport 裁剪。
+    // 相机保持 1 倍，只有棋盘容器变换，因此结算面板和顶栏均保持屏幕尺寸。
+    this.boardLayer = this.add.container(0, 0)
     this.drawBoard(this.geometry)
-    if (this.state.winner || this.state.draw) this.drawResult(this.geometry)
+    this.applyBoardTransform()
+    const result = this.state.winner || this.state.draw ? this.drawResult(this.geometry) : null
+    this.boardCamera ??= this.cameras.add(boardX, boardY, boardSize, boardSize)
+    this.boardCamera.setViewport(boardX, boardY, boardSize, boardSize).setScroll(boardX, boardY)
+    this.cameras.main.ignore(this.boardLayer)
+    if (result) this.cameras.main.ignore(result)
+    this.boardCamera.ignore(this.children.list.filter(object => object !== this.boardLayer && object !== result))
     this.animateLastMove = false
   }
 
   private drawHeader(width: number, compact: boolean, margin: number): void {
-    const chrome = createLegacyChrome(this, {
+    createLegacyChrome(this, {
       width,
       title: '五子棋',
       audio: this.audio,
@@ -219,14 +272,13 @@ export class GomokuScene extends Phaser.Scene {
         { icon: 'restart', label: '重开', action: () => this.restart() }
       ]
     })
-    // 双指/按钮缩放棋盘时顶栏钉在屏幕上
-    chrome.container.setScrollFactor(0)
 
     const status = `${this.scoreLabel()} · ${this.statusText()}`
-    this.add.text(width / 2, compact ? 55 : 88, status, {
+    const narrow = width < 560
+    this.add.text(narrow ? width / 2 : width - Math.max(margin, 90), narrow ? 136 : compact ? 62 : 90, status, {
       color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
       fontSize: compact ? '14px' : '18px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0).setScrollFactor(0)
+    }).setOrigin(narrow ? 0.5 : 1, 0)
 
     const mode = createSegmentControl(this, {
       items: [
@@ -238,8 +290,7 @@ export class GomokuScene extends Phaser.Scene {
       height: compact ? 40 : 44,
       onChange: value => this.setMode(value)
     })
-    mode.setPosition(margin + 112, compact ? 72 : 98)
-    mode.container.setScrollFactor(0)
+    mode.setPosition(narrow ? width / 2 : margin + 112, narrow ? 100 : compact ? 72 : 98)
 
 
   }
@@ -253,6 +304,7 @@ export class GomokuScene extends Phaser.Scene {
   private drawBoard(geometry: BoardGeometry): void {
     const { x, y, size, spacing } = geometry
     const graphics = this.add.graphics()
+    this.boardLayer?.add(graphics)
     graphics.fillStyle(0xd9aa63, 1)
     graphics.fillRoundedRect(x, y, size, size, spacing * 0.28)
 
@@ -280,6 +332,7 @@ export class GomokuScene extends Phaser.Scene {
       const last = this.pointForIndex(this.state.winningLine.at(-1) ?? 0, geometry)
       const dx = last.x - first.x, dy = last.y - first.y
       const bar = this.add.rectangle(first.x, first.y, 0, Math.max(3, spacing * 0.12), 0xe25037, 0.88)
+      this.boardLayer?.add(bar)
       bar.setOrigin(0, 0.5).setRotation(Math.atan2(dy, dx))
       this.tweens.add({ targets: bar, width: Math.hypot(dx, dy), duration: 340, ease: 'Cubic.Out' })
     }
@@ -289,6 +342,7 @@ export class GomokuScene extends Phaser.Scene {
     const point = this.pointForIndex(index, geometry)
     const radius = geometry.spacing * 0.41
     const stone = this.add.container(point.x, point.y)
+    this.boardLayer?.add(stone)
     const shadow = new Phaser.GameObjects.Graphics(this)
     shadow.fillStyle(0x4a3425, 0.2)
     shadow.fillCircle(radius * 0.12, radius * 0.18, radius * 1.02)
@@ -311,7 +365,7 @@ export class GomokuScene extends Phaser.Scene {
     }
   }
 
-  private drawResult(geometry: BoardGeometry): void {
+  private drawResult(geometry: BoardGeometry): Phaser.GameObjects.Container {
     const message = this.state.draw
       ? '这一局打成平手'
       : this.state.winner === 1
@@ -333,6 +387,7 @@ export class GomokuScene extends Phaser.Scene {
     panel.add([background, title, button])
     panel.setScale(0.86)
     this.tweens.add({ targets: panel, scale: 1, duration: 240, ease: 'Back.Out' })
+    return panel
   }
 
   private pointerToIndex(pointerX: number, pointerY: number): number | null {
