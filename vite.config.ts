@@ -33,6 +33,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2,mp3,m4a,wav}'],
+        // v3 正式素材单张可达 2.26MB（牌桌），默认 2MiB 会让 PWA 构建直接失败
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         cleanupOutdatedCaches: true
       }
     })

@@ -20,7 +20,8 @@ export const LOBBY_SHEETS: readonly LobbySheet[] = [
 // 不需要为了单个新图标重新生成整张 lobby sheet。
 const STANDALONE_ICONS: Readonly<Record<string, string>> = {
   'tile-match': 'art/icons/tile-match.png',
-  'water-sort': 'art/icons/water-sort.png'
+  'water-sort': 'art/icons/water-sort.png',
+  'parking': 'art/icons/parking.png'
 }
 
 const BADGE = 128

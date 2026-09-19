@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { rankLabel, suitSymbol, type Card } from './core/cards'
+import { PRODUCT_V3 } from '../../platform/display/product-v3-art'
 
 interface CardViewOptions {
   faceUp?: boolean
@@ -38,10 +39,16 @@ export function createCardView(
     }).setOrigin(0.5)
     container.add([corner, suit])
   } else {
-    const back = new Phaser.GameObjects.Text(scene, 0, 0, '◆', {
-      color: '#d8e5f2', fontFamily: 'Georgia, serif', fontSize: `${width * 0.44}px`
-    }).setOrigin(0.5)
-    container.add(back)
+    if (scene.textures.exists(PRODUCT_V3.cards.back)) {
+      container.add(
+        scene.add.image(0, 0, PRODUCT_V3.cards.back).setDisplaySize(width - 5, height - 5)
+      )
+    } else {
+      const back = new Phaser.GameObjects.Text(scene, 0, 0, '◆', {
+        color: '#d8e5f2', fontFamily: 'Georgia, serif', fontSize: `${width * 0.44}px`
+      }).setOrigin(0.5)
+      container.add(back)
+    }
   }
 
   container.setSize(width, height).setInteractive(

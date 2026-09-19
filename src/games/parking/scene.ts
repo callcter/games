@@ -7,6 +7,7 @@ import { pickup as pickupMotion, release as releaseMotion, snap as snapMotion } 
 import { createBurstPool } from '../../experience/feedback/particles'
 import { EXIT_ROW, heroExit, legalTargets, MODES, newGame, slide, solve, type ParkState } from './core/game'
 import { restoreParking } from '../puzzle-kit/core/drafts'
+import { PRODUCT_V3, addCoverImage, preloadParkingV3 } from '../../platform/display/product-v3-art'
 
 const CELL = 92, LEFT = 110, TOP = 235
 const CAR_COLORS = [0xd94f43, 0x7e8dcd, 0xe6b84d, 0x58a897, 0xc47faf, 0x87b65e, 0x58b4d1, 0xe88065, 0xa3a3c2, 0x8f7ecf, 0xb98b63]
@@ -38,6 +39,10 @@ export class ParkingScene extends PuzzleScene {
 
   constructor(audio: GameAudio, exit: () => void) { super('parking', '停车场', audio, exit) }
 
+  preload(): void {
+    preloadParkingV3(this)
+  }
+
   protected start(): void {
     void this.offerResume('parking', restoreParking, saved => {
       this.mode = saved.mode; this.state = saved.state; this.history = saved.history; this.draw()
@@ -68,6 +73,8 @@ export class ParkingScene extends PuzzleScene {
     this.spots = [] // spot 随 resetView 一并销毁，这里只清引用。
     const par = solve(this.state, 8000)
     this.resetView(`把红车开出右边的出口 · ${this.state.moves} 步${par > 0 ? ` · 最少 ${par} 步` : ''}`)
+    const background = addCoverImage(this, PRODUCT_V3.parking.background, 768, 900, -20, 0.94)
+    if (background) this.content.addAt(background, 0)
     MODES.forEach((entry, index) => this.button(160 + 224 * index, 165, `${this.mode === index ? '✓ ' : ''}${entry.label}`, () => {
       if (index === this.mode || this.draggingId >= 0) return
       this.mode = index; this.restart()
@@ -111,19 +118,31 @@ export class ParkingScene extends PuzzleScene {
     const selected = this.selected === car.id
     const body = this.add.graphics()
     const color = car.id === 0 ? 0xd94f43 : CAR_COLORS[car.id % CAR_COLORS.length]!
-    body.fillStyle(color, 1)
-    body.fillRoundedRect(-width / 2, -height / 2, width, height, 14)
-    body.lineStyle(3, selected ? 0xf8f1df : 0x36594b, selected ? 1 : 0.35)
-    body.strokeRoundedRect(-width / 2, -height / 2, width, height, 14)
-    // 挡风玻璃与车灯，让孩子一眼看出车头方向（车头朝行驶方向：横车朝右，竖车朝下；主车朝出口）。
-    body.fillStyle(0xfff8e8, 0.9)
-    if (horizontal) body.fillRoundedRect(width / 2 - width * 0.32, -height / 2 + 6, width * 0.24, height - 12, 6)
-    else body.fillRoundedRect(-width / 2 + 6, height / 2 - height * 0.32, width - 12, height * 0.24, 6)
-    body.fillStyle(0xfff3c4, 1)
-    if (horizontal) { body.fillCircle(width / 2 - 5, -height / 2 + 5, 3); body.fillCircle(width / 2 - 5, height / 2 - 5, 3) }
-    else { body.fillCircle(-width / 2 + 5, height / 2 - 5, 3); body.fillCircle(width / 2 - 5, height / 2 - 5, 3) }
-    group.add(body)
-    if (car.id === 0) {
+    const useSprite = car.len === 2 && this.textures.exists(PRODUCT_V3.parking.vehicles)
+    if (useSprite) {
+      const image = this.add.image(0, 0, PRODUCT_V3.parking.vehicles, car.id % 4)
+      if (horizontal) image.setAngle(90)
+      image.setDisplaySize(width * 0.92, height * 0.92)
+      group.add(image)
+      if (selected) {
+        body.lineStyle(5, 0xfff7dd, 1)
+        body.strokeRoundedRect(-width / 2, -height / 2, width, height, 16)
+      }
+    } else {
+      body.fillStyle(color, 1)
+      body.fillRoundedRect(-width / 2, -height / 2, width, height, 14)
+      body.lineStyle(3, selected ? 0xf8f1df : 0x36594b, selected ? 1 : 0.35)
+      body.strokeRoundedRect(-width / 2, -height / 2, width, height, 14)
+      // 挡风玻璃与车灯，让孩子一眼看出车头方向（车头朝行驶方向：横车朝右，竖车朝下；主车朝出口）。
+      body.fillStyle(0xfff8e8, 0.9)
+      if (horizontal) body.fillRoundedRect(width / 2 - width * 0.32, -height / 2 + 6, width * 0.24, height - 12, 6)
+      else body.fillRoundedRect(-width / 2 + 6, height / 2 - height * 0.32, width - 12, height * 0.24, 6)
+      body.fillStyle(0xfff3c4, 1)
+      if (horizontal) { body.fillCircle(width / 2 - 5, -height / 2 + 5, 3); body.fillCircle(width / 2 - 5, height / 2 - 5, 3) }
+      else { body.fillCircle(-width / 2 + 5, height / 2 - 5, 3); body.fillCircle(width / 2 - 5, height / 2 - 5, 3) }
+      group.add(body)
+    }
+    if (car.id === 0 && !useSprite) {
       const star = this.add.text(0, 0, '★', { fontSize: '24px', color: '#fffdf6', fontStyle: 'bold' }).setOrigin(0.5)
       group.add(star)
     }

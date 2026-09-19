@@ -3,6 +3,7 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { COLORS, PuzzleScene } from '../puzzle-kit/scene'
 import { recordBest } from '../puzzle-kit/progress'
 import { LEFT, newGame, position, RADIUS, RIGHT, settle, SHOOTER, trace, type BubbleState } from './core/game'
+import { PRODUCT_V3, addCoverImage, preloadBubblesV3 } from '../../platform/display/product-v3-art'
 const SYMBOLS=['●','★','♥','◆','✚']
 export class BubblesScene extends PuzzleScene {
   private state = newGame(Math.random,4,5)
@@ -14,6 +15,7 @@ export class BubblesScene extends PuzzleScene {
   private colors = 4
   private startRows = 5
   constructor(audio: GameAudio, exit: () => void) { super('bubbles','泡泡龙',audio,exit) }
+  preload(): void { preloadBubblesV3(this) }
   private restart(): void { this.state = newGame(Math.random, this.colors, this.startRows); this.history = []; this.draw() }
   protected start(): void {
     this.input.on('pointerdown',(pointer: Phaser.Input.Pointer)=>{
@@ -39,12 +41,18 @@ export class BubblesScene extends PuzzleScene {
   }
   private bubble(x: number,y: number,color: number,parent=this.content): Phaser.GameObjects.Container {
     const node=this.add.container(x,y);parent.add(node)
-    node.add(this.add.circle(0,0,RADIUS,COLORS[color]!).setStrokeStyle(3,0xffffff))
-    this.text(0,0,SYMBOLS[color]!,22,node).setColor('#ffffff')
+    if(this.textures.exists(PRODUCT_V3.bubbles.bubbles)){
+      node.add(this.add.image(0,0,PRODUCT_V3.bubbles.bubbles,color).setDisplaySize(RADIUS*1.95,RADIUS*1.95))
+    }else{
+      node.add(this.add.circle(0,0,RADIUS,COLORS[color]!).setStrokeStyle(3,0xffffff))
+      this.text(0,0,SYMBOLS[color]!,22,node).setColor('#ffffff')
+    }
     return node
   }
   private draw(): void {
     this.resetView(`得分 ${this.state.score} · 发射 ${this.state.shots} 次 · 同色 3 个一起消除`)
+    const background=addCoverImage(this,PRODUCT_V3.bubbles.background,768,900,-20,0.88)
+    if(background)this.content.addAt(background,0)
     const hard = this.colors === 5
     this.button(280,153,`${hard?'':'✓ '}4 色 · 基础`,()=>{if(this.shooting)return;this.colors=4;this.startRows=5;this.restart()},160,this.content)
     this.button(490,153,`${hard?'✓ ':''}5 色 · 挑战`,()=>{if(this.shooting)return;this.colors=5;this.startRows=6;this.restart()},160,this.content)

@@ -3,6 +3,7 @@ import { PuzzleScene } from '../puzzle-kit/scene'
 import { loadProgress, recordRun, recordLevel } from '../puzzle-kit/progress'
 import { LEVELS, move, newGame, PAR, solve, stars, type SokobanState } from './core/game'
 import { restoreSokoban } from '../puzzle-kit/core/drafts'
+import { PRODUCT_V3, preloadSokobanV3 } from '../../platform/display/product-v3-art'
 export class SokobanScene extends PuzzleScene {
   private level = 0
   private state = newGame()
@@ -12,6 +13,7 @@ export class SokobanScene extends PuzzleScene {
   private assisted = false
   private practice = new Set<number>()
   constructor(audio: GameAudio, exit: () => void) { super('sokoban', '推箱子', audio, exit) }
+  preload(): void { preloadSokobanV3(this) }
   protected start(): void {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       const d = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'].indexOf(event.key)
@@ -72,9 +74,21 @@ export class SokobanScene extends PuzzleScene {
       const wall = this.state.walls.includes(i)
       const tile = this.add.rectangle(x, y, cell - 3, cell - 3, wall ? 0x527267 : 0xe9dfca)
       this.content.add(tile)
-      if (this.state.goals.includes(i)) { const dot = this.add.circle(x, y, Math.min(15, cell * 0.22), 0xe6b84d); this.content.add(dot) }
-      if (this.state.boxes.includes(i)) this.text(x, y, this.state.goals.includes(i) ? '✅' : '📦', Math.min(44, cell * 0.6), this.content)
-      if (i === this.state.player) this.text(x, y, '🐱', Math.min(44, cell * 0.6), this.content)
+      if (wall && this.textures.exists(PRODUCT_V3.sokoban.sprites)) {
+        this.content.add(this.add.image(x, y, PRODUCT_V3.sokoban.sprites, 3).setDisplaySize(cell * 0.92, cell * 0.92))
+      }
+      if (this.state.goals.includes(i)) {
+        if (this.textures.exists(PRODUCT_V3.sokoban.sprites)) this.content.add(this.add.image(x, y, PRODUCT_V3.sokoban.sprites, 2).setDisplaySize(cell * 0.70, cell * 0.70))
+        else { const dot = this.add.circle(x, y, Math.min(15, cell * 0.22), 0xe6b84d); this.content.add(dot) }
+      }
+      if (this.state.boxes.includes(i)) {
+        if (this.textures.exists(PRODUCT_V3.sokoban.sprites)) this.content.add(this.add.image(x, y, PRODUCT_V3.sokoban.sprites, 1).setDisplaySize(cell * 0.78, cell * 0.78))
+        else this.text(x, y, this.state.goals.includes(i) ? '✅' : '📦', Math.min(44, cell * 0.6), this.content)
+      }
+      if (i === this.state.player) {
+        if (this.textures.exists(PRODUCT_V3.sokoban.sprites)) this.content.add(this.add.image(x, y, PRODUCT_V3.sokoban.sprites, 0).setDisplaySize(cell * 0.78, cell * 0.78))
+        else this.text(x, y, '🐱', Math.min(44, cell * 0.6), this.content)
+      }
       tile.setInteractive().on('pointerup', () => {
         const d = [-this.state.width, 1, this.state.width, -1].findIndex(offset => this.state.player + offset === i)
         if (d >= 0) this.step(d)

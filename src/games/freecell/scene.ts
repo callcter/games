@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
+import { PRODUCT_V3, preloadCardsV3 } from '../../platform/display/product-v3-art'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createCardSlot, createCardView } from '../cards/card-view'
 import { SUITS, rankLabel, suitSymbol, type Suit } from '../cards/core/cards'
@@ -50,6 +51,10 @@ export class FreeCellScene extends Phaser.Scene {
     this.callbacks = callbacks
     this.state = initialState
     this.initialDeal = initialDeal
+  }
+
+  preload(): void {
+    preloadCardsV3(this)
   }
 
   create(): void {
@@ -147,6 +152,9 @@ export class FreeCellScene extends Phaser.Scene {
 
   private draw(): void {
     this.children.removeAll(true)
+    const table = this.add.image(512, 384, PRODUCT_V3.cards.table)
+    table.setDisplaySize(1024, 768).setDepth(-100)
+    this.add.rectangle(512, 384, 1024, 768, 0x173f35, 0.10).setDepth(-90)
     this.columnViews.clear()
     this.cameras.main.setBackgroundColor('#23614f')
     this.drawHeader()
