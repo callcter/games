@@ -31,6 +31,15 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
     if(id!=='pop-bubbles') { await until("!!document.querySelector('.game-help-dialog[open]')"); await closeHelp() }
     const independent = id==='water-sort'||id==='tile-match'
     const saved = await evaluate('JSON.stringify(__scene.state)')
+    if(id==='2048') {
+      // 全量重绘纹理泄漏回归：children.removeAll(true) 是 List 的 skipCallback 语义（不销毁对象），
+      // 误用会让 Text 的 canvas 纹理随每步重绘累积（2048 越玩越卡的根因）。连续走子后纹理数必须收敛。
+      const texCount = () => evaluate('__scene.textures.getTextureKeys().length')
+      const before = await texCount()
+      for(let i=0;i<40;i++) await evaluate(`window.__scene.move('${['left','down','right','up'][i%4]}')`)
+      const after = await texCount()
+      assert.ok(after - before <= 12, `2048: texture leak across redraws (${before} -> ${after})`)
+    }
     for(const [width,height] of [[390,844],[768,1024],[1024,768],[390,844]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:false})
       await pause(400)
