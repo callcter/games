@@ -60,7 +60,13 @@ export class TangramScene extends PuzzleScene {
     this.dragOffset = null
     this.resetView(this.state.won ? '七块都拼好啦！' : `拖图形到${this.silhouette ? '剪影' : '同色轮廓'} · 已拼 ${this.state.pieces.filter(p=>p.placed).length} / 7 块`)
     const layout = this.currentLayout()
-    this.text(384,layout.actionY - 57,`${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,20,this.content)
+    this.text(
+      384,
+      layout.actionY - 57,
+      `${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,
+      this.contentFont(20, 15),
+      this.content
+    )
     this.button(135,layout.actionY,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},190,this.content)
     const board=this.add.graphics();this.content.add(board)
     board.fillStyle(0x684a34,0.10);board.fillRoundedRect(layout.boardX,layout.boardY + 8 * layout.scale,layout.boardWidth,layout.boardHeight,30 * layout.scale)

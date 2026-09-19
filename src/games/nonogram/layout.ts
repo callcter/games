@@ -46,9 +46,10 @@ export function nonogramLayout(
 
   const instructionY = area.top + 10
   const footerY = area.bottom - 34
-  const modeY = footerY - 78
+  // v5-C 的手机按钮至少 44 CSS px；两排控制中心距不能再只有 78 logical。
+  const modeY = footerY - 110
   const boardRegionTop = instructionY + 58
-  const boardRegionBottom = modeY - 82
+  const boardRegionBottom = modeY - 96
 
   const clueWidth = size === 5 ? 92 : 112
   const clueHeight = size === 5 ? 86 : 78

@@ -68,8 +68,16 @@ export class UntangleScene extends PuzzleScene {
       const rim = this.add.circle(0,2,32,0xe7b45e,1)
       const circle = this.add.circle(0,-1,28,0xfffff4).setStrokeStyle(2,0xffffff,0.74)
       const shine = this.add.circle(-8,-10,7,0xffffff,0.52)
-      node.add([shadow,rim,circle,shine]); this.text(0,-1,String(index+1),22,node)
-      node.setData('node',index).setSize(74,74).setInteractive({useHandCursor:true})
+      node.add([shadow,rim,circle,shine])
+      this.text(
+        0,
+        -1,
+        String(index+1),
+        this.contentFont(22, 13.5) / layout.scale,
+        node
+      )
+      const nodeTouch = this.touchTarget(74, 44) / layout.scale
+      node.setData('node',index).setSize(nodeTouch,nodeTouch).setInteractive({useHandCursor:true})
       this.input.setDraggable(node)
     })
     this.renderLines()

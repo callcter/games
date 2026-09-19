@@ -53,11 +53,22 @@ export class SokobanScene extends PuzzleScene {
     this.resetView(`独立完成 ${cleared} / ${LEVELS.length} 关 · 点一个关卡开始`)
     const area = this.playArea({ bottom: 76, horizontalPadding: 40 })
     const layout = sokobanLevelLayout(area, LEVELS.length)
-    this.text(384, layout.instructionY, '☆ 是挑战关 · 用的步数越少星星越多', 20, this.content)
+    this.text(
+      384,
+      layout.instructionY,
+      '☆ 是挑战关 · 用的步数越少星星越多',
+      this.contentFont(20, 15),
+      this.content
+    )
     LEVELS.forEach((_, level) => {
       const best = this.bestMoves[level]
       const challenge = (PAR[level] ?? 0) >= 8 ? '☆' : ''
-      const label = best === undefined ? `${challenge}${level + 1}${this.practice.has(level) ? ' ✓' : ''}` : `${challenge}${level + 1} ${'★'.repeat(stars(level, best))}`
+      const rating = best === undefined ? '' : '★'.repeat(stars(level, best))
+      const label = area.phoneLike && rating
+        ? `${challenge}${level + 1}\n${rating}`
+        : best === undefined
+          ? `${challenge}${level + 1}${this.practice.has(level) ? ' ✓' : ''}`
+          : `${challenge}${level + 1} ${rating}`
       const col = level % layout.cols
       const row = Math.floor(level / layout.cols)
       this.button(
@@ -91,7 +102,13 @@ export class SokobanScene extends PuzzleScene {
     this.resetView(`第 ${this.level + 1} / ${LEVELS.length} 关 · ${PAR[this.level]} 步内三星 · 已走 ${this.state.moves} 步`)
     const area = this.playArea({ bottom: 76, horizontalPadding: 40 })
     const layout = sokobanPlayLayout(area, this.state.width, this.state.height)
-    this.text(384, layout.instructionY, '只能推，不能拉；推错了可以撤销', 21, this.content)
+    this.text(
+      384,
+      layout.instructionY,
+      '只能推，不能拉；推错了可以撤销',
+      this.contentFont(21, 15.5),
+      this.content
+    )
     const { cell } = layout
     const left = layout.boardLeft, top = layout.boardTop
     for (let i = 0; i < this.state.width * this.state.height; i++) {
@@ -129,7 +146,13 @@ export class SokobanScene extends PuzzleScene {
     this.button(430, layout.footerY, '重开', () => this.restart(), 110, this.content)
     this.button(588, layout.footerY, '选关', () => this.showLevels(), 132, this.content)
     if (this.state.won && this.level < LEVELS.length - 1) this.button(384, layout.nextY, '下一关 →', () => { this.level = this.level + 1; this.restart() }, 220, this.content)
-    if (this.state.won && this.level === LEVELS.length - 1) this.text(384, layout.nextY, '全部通关啦，去选关页刷新纪录吧！', 24, this.content)
+    if (this.state.won && this.level === LEVELS.length - 1) this.text(
+      384,
+      layout.nextY,
+      '全部通关啦，去选关页刷新纪录吧！',
+      this.contentFont(24, 15),
+      this.content
+    )
   }
   private restart(): void { this.assisted = false; this.state = newGame(this.level); this.history = []; this.draw() }
 }

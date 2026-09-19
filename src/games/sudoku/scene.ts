@@ -66,7 +66,15 @@ export class SudokuScene extends PuzzleScene {
       this.content.add(tile)
       this.tiles.push(tile)
       this.digits.push(this.text(x + cell/2, y + cell/2, '', cell*0.48, this.content))
-      this.notes.push(this.text(x + cell/2, y + cell/2, '', Math.max(13,cell*0.21), this.content).setFontFamily('monospace').setColor('#527267'))
+      this.notes.push(
+        this.text(
+          x + cell/2,
+          y + cell/2,
+          '',
+          this.contentFont(Math.max(13, cell * 0.21), 10.5),
+          this.content
+        ).setFontFamily('monospace').setColor('#527267')
+      )
       tile.setInteractive({ useHandCursor: true }).on('pointerup', () => { if (!this.state.won) { this.selected = i; this.draw() } })
     }
     const boxRows = size === 6 ? 2 : size === 9 ? 3 : 2, boxCols = size === 4 ? 2 : size === 6 ? 3 : 3
@@ -78,7 +86,13 @@ export class SudokuScene extends PuzzleScene {
     for (let c = boxCols; c < size; c += boxCols) grid.lineBetween(left + c * cell, top, left + c * cell, top + board)
     const step = layout.digitStep
     for (let value = 1; value <= size; value++) {
-      this.button(384 + (value - (size + 1) / 2) * step, layout.digitY, String(value), () => this.enter(value), step - 12, this.content)
+      const row = Math.floor((value - 1) / layout.digitColumns)
+      const col = (value - 1) % layout.digitColumns
+      const remaining = size - row * layout.digitColumns
+      const rowCount = Math.min(layout.digitColumns, remaining)
+      const x = 384 + (col - (rowCount - 1) / 2) * step
+      const y = layout.digitY + row * layout.digitRowGap
+      this.button(x, y, String(value), () => this.enter(value), step - 12, this.content)
     }
     this.pencilButton = this.button(90, layout.footerY, this.pencil ? '✓ 笔记' : '笔记', () => { this.pencil = !this.pencil; this.draw() }, 128, this.content)
     this.button(236, layout.footerY, '擦除', () => this.enter(0), 128, this.content)

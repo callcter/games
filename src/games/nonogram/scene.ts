@@ -75,7 +75,13 @@ export class NonogramScene extends PuzzleScene {
     const { cell, boardLeft, boardTop } = layout
     this.resetView(`第 ${level + 1} / ${PATTERNS.length} 幅 · 数字表示连续填色格数`)
     this.tiles = []; this.crosses = []; this.rowClues = []; this.columnClues = []
-    this.text(384, layout.instructionY, '可以按住划格 · 一次撤销一整笔 · 淡色线索表示已凑齐', 18, this.content)
+    this.text(
+      384,
+      layout.instructionY,
+      '可以按住划格 · 一次撤销一整笔 · 淡色线索表示已凑齐',
+      this.contentFont(18, 15),
+      this.content
+    )
     const bands = this.add.graphics()
     bands.fillStyle(0xeaf0e6)
     bands.fillRoundedRect(boardLeft, boardTop - layout.clueHeight, layout.boardSide, layout.clueHeight - 8, 12)
@@ -85,8 +91,20 @@ export class NonogramScene extends PuzzleScene {
     bands.strokeRoundedRect(boardLeft - layout.clueWidth, boardTop, layout.clueWidth - 8, layout.boardSide, 12)
     this.content.add(bands)
     for (let i = 0; i < size; i++) {
-      this.rowClues.push(this.text(layout.rowClueX, boardTop + i * cell + cell / 2, clues(target.slice(i * size, i * size + size)).join(' '), layout.rowClueFont, this.content))
-      this.columnClues.push(this.text(boardLeft + i * cell + cell / 2, layout.columnClueY, clues(Array.from({ length: size }, (_, y) => target[y * size + i]!)).join('\n'), layout.columnClueFont, this.content))
+      this.rowClues.push(this.text(
+        layout.rowClueX,
+        boardTop + i * cell + cell / 2,
+        clues(target.slice(i * size, i * size + size)).join(' '),
+        this.contentFont(layout.rowClueFont, 12.5),
+        this.content
+      ))
+      this.columnClues.push(this.text(
+        boardLeft + i * cell + cell / 2,
+        layout.columnClueY,
+        clues(Array.from({ length: size }, (_, y) => target[y * size + i]!)).join('\n'),
+        this.contentFont(layout.columnClueFont, 12.5),
+        this.content
+      ))
     }
     this.state.marks.forEach((value, index) => {
       const x = boardLeft + index % size * cell + cell / 2, y = boardTop + Math.floor(index / size) * cell + cell / 2

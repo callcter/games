@@ -3,6 +3,8 @@ import { legacyVerticalOffset, type PlayAreaMetrics } from '../puzzle-kit/play-a
 export interface SudokuLayout {
   modeY: number
   digitY: number
+  digitColumns: number
+  digitRowGap: number
   footerY: number
   boardLeft: number
   boardTop: number
@@ -19,6 +21,8 @@ export function sudokuLayout(area: PlayAreaMetrics, size: number): SudokuLayout 
     return {
       modeY: 165 + offset,
       digitY: 780 + offset,
+      digitColumns: size,
+      digitRowGap: 0,
       footerY: 855 + offset,
       boardLeft: (768 - boardSide) / 2,
       boardTop: 225 + (505 - boardSide) / 2 + offset,
@@ -30,10 +34,12 @@ export function sudokuLayout(area: PlayAreaMetrics, size: number): SudokuLayout 
 
   const modeY = area.top + 30
   const footerY = area.bottom - 32
-  const digitY = footerY - 92
+  const digitColumns = size === 9 ? 5 : size
+  const digitRowGap = size === 9 ? 100 : 0
+  const digitY = size === 9 ? footerY - 210 : footerY - 110
 
   const boardRegionTop = modeY + 78
-  const boardRegionBottom = digitY - 82
+  const boardRegionBottom = digitY - 72
   const targetSide = size === 6 ? 660 : 657
   const maxSide = Math.min(
     targetSide,
@@ -51,11 +57,15 @@ export function sudokuLayout(area: PlayAreaMetrics, size: number): SudokuLayout 
   return {
     modeY,
     digitY,
+    digitColumns,
+    digitRowGap,
     footerY,
     boardLeft,
     boardTop,
     boardSide,
     cell,
-    digitStep: Math.min(82, 690 / size)
+    digitStep: size === 9
+      ? 126
+      : Math.min(112, 690 / size)
   }
 }
