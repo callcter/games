@@ -92,6 +92,7 @@ pnpm dev --host
 pnpm test
 pnpm test:watch
 pnpm test:browser # 先启动开发服务，默认使用本机 macOS Chrome
+pnpm test:browser:ui # 同上；新用户帮助/输入隔离/棋盘缩放专项
 pnpm check
 pnpm preview
 ```
@@ -362,10 +363,11 @@ pnpm check       # 已含类型、全部单测和构建，不再逐个重复执�
 - 变更 Service Worker 时，用生产构建/preview 检查更新流程和离线加载。生产测试不得
   依赖 `/src/`、开发专用 import 或调试场景句柄；失败必须报告，不能标为已验离线。
 
-已知阻断（2026-09-19 审查）：当前 `PRODUCTION_ONLY=1 pnpm test:browser` 在分支前
-导入 `/src/ui/help-content.ts`，生产环境会失败。修复并验证前，生产专项需独立完成并留证；
-不能把此命令列为“已通过”。主脚本预置帮助已读，也不能代替新用户帮助专项。
-问题详情见 [审查报告](docs/reviews/2026-09-19-product-review.md)；修复后更新本段。
+已知阻断已修复（2026-09-19）：`PRODUCTION_ONLY=1 pnpm test:browser` 现由 Node 侧读取
+帮助清单注入旧用户 fixture，不再从浏览器请求 `/src/`（Network 门禁发现即失败），并在
+生产 preview 上真实操作首弹/手动帮助与离线重开，已完整通过。新用户帮助、输入隔离与
+监听器基线由 `pnpm test:browser:ui`（`scripts/browser-ui-regression.mjs`，dev 环境）覆盖。
+背景见 [审查报告](docs/reviews/2026-09-19-product-review.md)。
 
 可以使用本机 Chrome headless 截图进行视觉回归，但截图不能替代输入和动态行为验收。
 `pnpm test:browser` 使用独立临时 Chrome 配置执行触控、键鼠、音频状态、续玩、返回边界、
