@@ -32,9 +32,16 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2,mp3,m4a,wav}'],
-        // v3 正式素材单张可达 2.26MB（牌桌），默认 2MiB 会让 PWA 构建直接失败
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,webp,woff2,mp3,m4a,wav}'],
+        // 素材先优化再入包；不再通过放宽单文件上限绕过体积问题。
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+        manifestTransforms: [async entries => {
+          const bytes = entries.reduce((sum, entry) => sum + entry.size, 0)
+          if (bytes > 32 * 1024 * 1024) {
+            throw new Error(`Offline precache ${(bytes / 1024 / 1024).toFixed(2)} MiB exceeds 32 MiB; optimize assets before adding more.`)
+          }
+          return { manifest: entries, warnings: [] }
+        }],
         cleanupOutdatedCaches: true
       }
     })

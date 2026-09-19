@@ -54,7 +54,7 @@ export class BubblesScene extends PuzzleScene {
     this.resetView(`得分 ${this.state.score} · 发射 ${this.state.shots} 次 · 同色 3 个一起消除`)
     const background=addCoverImage(this,PRODUCT_V3.bubbles.background,768,900,-20,0.88)
     if(background)this.content.addAt(background,0)
-    setHostBackdropImage('art/product-v3/backgrounds/bubbles.png')
+    setHostBackdropImage('art/product-v3/backgrounds/bubbles.webp')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     const hard = this.colors === 5

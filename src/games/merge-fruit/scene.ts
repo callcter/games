@@ -86,7 +86,7 @@ export class MergeFruitScene extends Phaser.Scene {
       -100,
       1
     )
-    setHostBackdropImage('art/product-v3-batch2/backgrounds/merge-fruit.png')
+    setHostBackdropImage('art/product-v3-batch2/backgrounds/merge-fruit.webp')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     this.add.rectangle(

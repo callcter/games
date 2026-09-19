@@ -173,7 +173,7 @@ export class FruitSlicerScene extends ActionScene {
       1
     )
     if (background) this.entities.addAt(background, 0)
-    setHostBackdropImage('art/product-v3-batch2/backgrounds/fruit-slicer.png')
+    setHostBackdropImage('art/product-v3-batch2/backgrounds/fruit-slicer.webp')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     this.drawBoard()

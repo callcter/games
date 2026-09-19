@@ -20,7 +20,7 @@ export function preloadMazeBatch2(scene: Phaser.Scene): void {
   if (!scene.textures.exists(PRODUCT_V3_BATCH2.maze.sprites)) {
     scene.load.spritesheet(
       PRODUCT_V3_BATCH2.maze.sprites,
-      'art/product-v3-batch2/sprites/maze.png',
+      'art/product-v3-batch2/sprites/maze.webp',
       { frameWidth: 512, frameHeight: 512 }
     )
   }
@@ -30,7 +30,7 @@ export function preloadMergeFruitBatch2(scene: Phaser.Scene): void {
   loadImage(
     scene,
     PRODUCT_V3_BATCH2.mergeFruit.background,
-    'art/product-v3-batch2/backgrounds/merge-fruit.png'
+    'art/product-v3-batch2/backgrounds/merge-fruit.webp'
   )
 }
 
@@ -38,7 +38,7 @@ export function preloadFruitSlicerBatch2(scene: Phaser.Scene): void {
   loadImage(
     scene,
     PRODUCT_V3_BATCH2.fruitSlicer.background,
-    'art/product-v3-batch2/backgrounds/fruit-slicer.png'
+    'art/product-v3-batch2/backgrounds/fruit-slicer.webp'
   )
 }
 

@@ -76,7 +76,7 @@ export class ParkingScene extends PuzzleScene {
     this.resetView(`把红车开出右边的出口 · ${this.state.moves} 步${par > 0 ? ` · 最少 ${par} 步` : ''}`)
     const background = addCoverImage(this, PRODUCT_V3.parking.background, 768, 900, -20, 0.94)
     if (background) this.content.addAt(background, 0)
-    setHostBackdropImage('art/product-v3/backgrounds/parking.png')
+    setHostBackdropImage('art/product-v3/backgrounds/parking.webp')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     MODES.forEach((entry, index) => this.button(160 + 224 * index, 165, `${this.mode === index ? '✓ ' : ''}${entry.label}`, () => {

@@ -39,27 +39,27 @@ function sheet(
 }
 
 export function preloadParkingV3(scene: Phaser.Scene): void {
-  image(scene, PRODUCT_V3.parking.background, 'art/product-v3/backgrounds/parking.png')
-  sheet(scene, PRODUCT_V3.parking.vehicles, 'art/product-v3/sprites/parking-vehicles.png', 512, 512)
+  image(scene, PRODUCT_V3.parking.background, 'art/product-v3/backgrounds/parking.webp')
+  sheet(scene, PRODUCT_V3.parking.vehicles, 'art/product-v3/sprites/parking-vehicles.webp', 512, 512)
 }
 
 export function preloadMemoryV3(scene: Phaser.Scene): void {
-  sheet(scene, PRODUCT_V3.memory.setA, 'art/product-v3/sprites/memory-set-a.png', 256, 256)
-  sheet(scene, PRODUCT_V3.memory.setB, 'art/product-v3/sprites/memory-set-b.png', 256, 256)
+  sheet(scene, PRODUCT_V3.memory.setA, 'art/product-v3/sprites/memory-set-a.webp', 256, 256)
+  sheet(scene, PRODUCT_V3.memory.setB, 'art/product-v3/sprites/memory-set-b.webp', 256, 256)
 }
 
 export function preloadBubblesV3(scene: Phaser.Scene): void {
-  image(scene, PRODUCT_V3.bubbles.background, 'art/product-v3/backgrounds/bubbles.png')
-  sheet(scene, PRODUCT_V3.bubbles.bubbles, 'art/product-v3/sprites/bubbles.png', 384, 384)
+  image(scene, PRODUCT_V3.bubbles.background, 'art/product-v3/backgrounds/bubbles.webp')
+  sheet(scene, PRODUCT_V3.bubbles.bubbles, 'art/product-v3/sprites/bubbles.webp', 384, 384)
 }
 
 export function preloadSokobanV3(scene: Phaser.Scene): void {
-  sheet(scene, PRODUCT_V3.sokoban.sprites, 'art/product-v3/sprites/sokoban.png', 512, 512)
+  sheet(scene, PRODUCT_V3.sokoban.sprites, 'art/product-v3/sprites/sokoban.webp', 512, 512)
 }
 
 export function preloadCardsV3(scene: Phaser.Scene): void {
-  image(scene, PRODUCT_V3.cards.table, 'art/product-v3/backgrounds/cards-table.png')
-  image(scene, PRODUCT_V3.cards.back, 'art/product-v3/sprites/card-back.png')
+  image(scene, PRODUCT_V3.cards.table, 'art/product-v3/backgrounds/cards-table.webp')
+  image(scene, PRODUCT_V3.cards.back, 'art/product-v3/sprites/card-back.webp')
 }
 
 export function addCoverImage(
