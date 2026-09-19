@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { releaseHostBackdrop, setHostBackdropImage } from '../../platform/display/host-backdrop'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { COLORS, PuzzleScene } from '../puzzle-kit/scene'
 import { recordBest } from '../puzzle-kit/progress'
@@ -53,6 +54,9 @@ export class BubblesScene extends PuzzleScene {
     this.resetView(`得分 ${this.state.score} · 发射 ${this.state.shots} 次 · 同色 3 个一起消除`)
     const background=addCoverImage(this,PRODUCT_V3.bubbles.background,768,900,-20,0.88)
     if(background)this.content.addAt(background,0)
+    setHostBackdropImage('art/product-v3/backgrounds/bubbles.png')
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+    this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     const hard = this.colors === 5
     this.button(280,153,`${hard?'':'✓ '}4 色 · 基础`,()=>{if(this.shooting)return;this.colors=4;this.startRows=5;this.restart()},160,this.content)
     this.button(490,153,`${hard?'✓ ':''}5 色 · 挑战`,()=>{if(this.shooting)return;this.colors=5;this.startRows=6;this.restart()},160,this.content)

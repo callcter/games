@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { releaseHostBackdrop, setHostBackdropImage } from '../../platform/display/host-backdrop'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { createHeaderButton } from '../../platform/display/header-button'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
@@ -85,6 +86,9 @@ export class MergeFruitScene extends Phaser.Scene {
       -100,
       1
     )
+    setHostBackdropImage('art/product-v3-batch2/backgrounds/merge-fruit.png')
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+    this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     this.add.rectangle(
       SCENE_WIDTH / 2,
       SCENE_HEIGHT / 2,

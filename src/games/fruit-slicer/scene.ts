@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { releaseHostBackdrop, setHostBackdropImage } from '../../platform/display/host-backdrop'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene, FIELD } from '../action-kit/scene'
 import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
@@ -172,6 +173,9 @@ export class FruitSlicerScene extends ActionScene {
       1
     )
     if (background) this.entities.addAt(background, 0)
+    setHostBackdropImage('art/product-v3-batch2/backgrounds/fruit-slicer.png')
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
+    this.events.once(Phaser.Scenes.Events.DESTROY, releaseHostBackdrop)
     this.drawBoard()
     JUICE_COLORS.forEach((color, index) => this.makeDotTexture(`juice-${index}`, color, 5))
     this.makeDotTexture('sparkle-white', 0xffffff, 4)
