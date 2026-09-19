@@ -71,8 +71,9 @@ await withBrowser(async ({ send, evaluate, until, screenshot, pause }) => {
         await tap(p.x,p.y)
       }
       if(id==='pipes') {
-        const point=await evaluate('({x:99+570/__scene.size/2,y:240+570/__scene.size/2+__scene.contentOffsetY})')
-        await canvasTap(point.x,point.y)
+        const pt=await evaluate(`(async()=>{const L=await import('/src/games/pipes/layout.ts');const P=await import('/src/games/puzzle-kit/play-area.ts');const s=window.__scene;return L.pipesLayout(P.measurePlayArea(768,s.scale.height,{bottom:84,horizontalPadding:54}),s.state.size)})()`)
+        await canvasTap(pt.boardLeft+pt.cell/2,pt.boardTop+pt.cell/2)
+        await until('__scene.state.moves===1')
         assert.equal(await evaluate('__scene.state.moves'),1,'rotated pipe hit must rotate exactly one cell')
       }
       if(id==='minesweeper') {
