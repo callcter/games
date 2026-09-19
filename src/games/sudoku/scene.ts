@@ -3,8 +3,10 @@ import { INK, PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { conflicts, newGame, place, toggleNote, type SudokuState } from './core/game'
 import { restoreSudoku } from '../puzzle-kit/core/drafts'
+import { sudokuLayout } from './layout'
 
 export class SudokuScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private size: SudokuState['size'] = 6
   private state = newGame(6)
   private selected = -1
@@ -18,7 +20,13 @@ export class SudokuScene extends PuzzleScene {
   private digits: Phaser.GameObjects.Text[] = []
   private notes: Phaser.GameObjects.Text[] = []
   private pencilButton?: Phaser.GameObjects.Text
+  private resumeResolved = false
   constructor(audio: GameAudio, exit: () => void) { super('sudoku', '数独', audio, exit) }
+  protected override onPlayAreaResize(): void {
+    if (!this.resumeResolved) return
+    this.drawnSize = 0
+    this.draw()
+  }
   protected start(): void {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       if (!this.playing) return
@@ -27,8 +35,13 @@ export class SudokuScene extends PuzzleScene {
       else if (event.key.toLowerCase() === 'n') { this.pencil = !this.pencil; this.draw() }
     })
     void this.offerResume('sudoku', restoreSudoku, saved => {
+      this.resumeResolved = true
       this.state = saved.state; this.size = saved.state.size; this.history = saved.history; this.assisted = saved.assisted; this.draw()
-    }, saved => { this.size = saved?.state.size === 9 ? 9 : 6; this.restart() })
+    }, saved => {
+      this.resumeResolved = true
+      this.size = saved?.state.size === 9 ? 9 : 6
+      this.restart()
+    })
   }
   private draw(): void {
     this.playing = true
@@ -42,9 +55,11 @@ export class SudokuScene extends PuzzleScene {
     this.drawnSize = size
     this.tiles = []; this.digits = []; this.notes = []
     this.resetView('')
-    ;([6,9] as const).forEach((option, i) => this.button(200 + i * 368, 165, `${option === this.size ? '✓ ' : ''}${option} × ${option}`, () => { this.size = option; this.restart() }, 220, this.content))
-    const cell = Math.min(96, 505 / size), board = cell * size
-    const left = (768 - board) / 2, top = 225 + (505 - board) / 2
+    const area = this.playArea({ bottom: 78, horizontalPadding: 36 })
+    const layout = sudokuLayout(area, size)
+    ;([6,9] as const).forEach((option, i) => this.button(200 + i * 368, layout.modeY, `${option === this.size ? '✓ ' : ''}${option} × ${option}`, () => { this.size = option; this.restart() }, 220, this.content))
+    const cell = layout.cell, board = layout.boardSide
+    const left = layout.boardLeft, top = layout.boardTop
     for (let i = 0; i < this.state.values.length; i++) {
       const x = left + i % size * cell, y = top + Math.floor(i / size) * cell
       const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell - 3, cell - 3, 0xfffdf6)
@@ -61,18 +76,18 @@ export class SudokuScene extends PuzzleScene {
     grid.strokeRect(left, top, board, board)
     for (let r = boxRows; r < size; r += boxRows) grid.lineBetween(left, top + r * cell, left + board, top + r * cell)
     for (let c = boxCols; c < size; c += boxCols) grid.lineBetween(left + c * cell, top, left + c * cell, top + board)
-    const step = Math.min(80, 690 / size)
+    const step = layout.digitStep
     for (let value = 1; value <= size; value++) {
-      this.button(384 + (value - (size + 1) / 2) * step, 780, String(value), () => this.enter(value), step - 12, this.content)
+      this.button(384 + (value - (size + 1) / 2) * step, layout.digitY, String(value), () => this.enter(value), step - 12, this.content)
     }
-    this.pencilButton = this.button(90, 855, this.pencil ? '✓ 笔记' : '笔记', () => { this.pencil = !this.pencil; this.draw() }, 128, this.content)
-    this.button(236, 855, '擦除', () => this.enter(0), 128, this.content)
-    this.button(382, 855, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 128, this.content)
-    this.button(528, 855, '提示', () => {
+    this.pencilButton = this.button(90, layout.footerY, this.pencil ? '✓ 笔记' : '笔记', () => { this.pencil = !this.pencil; this.draw() }, 128, this.content)
+    this.button(236, layout.footerY, '擦除', () => this.enter(0), 128, this.content)
+    this.button(382, layout.footerY, '撤销', () => { this.state = this.history.pop() ?? this.state; this.draw() }, 128, this.content)
+    this.button(528, layout.footerY, '提示', () => {
       const index = this.state.values.findIndex((value, i) => value !== this.state.solution[i])
       if (index >= 0) { this.assisted = true; this.apply(place(this.state, index, this.state.solution[index]!)) }
     }, 128, this.content)
-    this.button(674, 855, '新一局', () => this.restart(), 128, this.content)
+    this.button(674, layout.footerY, '新一局', () => this.restart(), 128, this.content)
     this.updateBoard()
   }
   private updateBoard(): void {

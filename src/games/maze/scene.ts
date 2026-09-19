@@ -5,7 +5,9 @@ import { recordRun } from '../puzzle-kit/progress'
 import { DIRECTIONS, neighbor } from '../pipes/core/game'
 import { dragAlong, move, newGame, path, undo, type MazeState } from './core/game'
 import { PRODUCT_V3_BATCH2, preloadMazeBatch2 } from '../../platform/display/product-v3-batch2-art'
+import { mazeLayout } from './layout'
 export class MazeScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private size = 7
   private state = newGame(7)
   private hint = -1
@@ -16,10 +18,18 @@ export class MazeScene extends PuzzleScene {
   private tiles: Phaser.GameObjects.Rectangle[] = []
   constructor(audio: GameAudio, exit: () => void) { super('maze', '迷宫探险', audio, exit) }
   preload(): void { preloadMazeBatch2(this) }
+  protected override onPlayAreaResize(): void { this.draw() }
+  private currentLayout() {
+    return mazeLayout(this.playArea({ bottom: 78, horizontalPadding: 42 }), this.size)
+  }
   protected start(): void {
     const gridPoint = (p: Phaser.Input.Pointer) => {
-      const point=this.legacyPoint(p)
-      return { x: (point.x-134)/(500/this.size), y: (point.y-230)/(500/this.size) }
+      const point = this.legacyPoint(p)
+      const layout = this.currentLayout()
+      return {
+        x: (point.x - layout.boardLeft) / layout.cell,
+        y: (point.y - layout.boardTop) / layout.cell
+      }
     }
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.dragPoint = null
@@ -56,8 +66,10 @@ export class MazeScene extends PuzzleScene {
     this.dragPoint=null
     this.tiles=[]
     this.resetView('')
-    ;[7, 9, 11].forEach((size, i) => this.button(160 + 224 * i, 165, `${this.size === size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 190, this.content))
-    const cell = 500 / this.size, left = 134, top = 230
+    const layout = this.currentLayout()
+    ;[7, 9, 11].forEach((size, i) => this.button(160 + 224 * i, layout.modeY, `${this.size === size ? '✓ ' : ''}${size} × ${size}`, () => { this.size = size; this.restart() }, 190, this.content))
+    const { cell } = layout
+    const left = layout.boardLeft, top = layout.boardTop
     this.state.passages.forEach((mask, i) => {
       const x = left + i % this.size * cell, y = top + Math.floor(i / this.size) * cell
       const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell, cell, i === this.hint ? 0xffd982 : 0xfffdf6)
@@ -94,14 +106,18 @@ export class MazeScene extends PuzzleScene {
       this.rabbit=this.text(0,0,'🐰',cell*0.58,this.content)
     }
     this.refreshPlayer()
-    ;['↑', '→', '↓', '←'].forEach((label, d) => this.button(222 + d * 108, 775, label, () => this.step(d), 96, this.content))
-    this.button(160, 850, '撤销', () => { this.state = undo(this.state); this.draw() }, 180, this.content)
-    this.button(384, 850, '提示一步', () => { this.assisted = true; this.hint = path(this.state)[1] ?? -1; this.draw() }, 180, this.content)
-    this.button(608, 850, '新迷宫', () => this.restart(), 180, this.content)
+    ;['↑', '→', '↓', '←'].forEach((label, d) => this.button(222 + d * 108, layout.directionY, label, () => this.step(d), 96, this.content))
+    this.button(160, layout.footerY, '撤销', () => { this.state = undo(this.state); this.draw() }, 180, this.content)
+    this.button(384, layout.footerY, '提示一步', () => { this.assisted = true; this.hint = path(this.state)[1] ?? -1; this.draw() }, 180, this.content)
+    this.button(608, layout.footerY, '新迷宫', () => this.restart(), 180, this.content)
   }
   private refreshPlayer(): void {
-    const cell=500/this.size
-    this.rabbit.setPosition(134+(this.state.player%this.size+0.5)*cell,230+(Math.floor(this.state.player/this.size)+0.5)*cell)
+    const layout = this.currentLayout()
+    const { cell } = layout
+    this.rabbit.setPosition(
+      layout.boardLeft + (this.state.player % this.size + 0.5) * cell,
+      layout.boardTop + (Math.floor(this.state.player / this.size) + 0.5) * cell
+    )
     this.tiles.forEach((tile,index)=>tile.setFillStyle(index===this.hint ? 0xffd982 : this.state.trail.includes(index) ? 0xe0eddf : 0xfffdf6))
     this.say(`按住小兔子沿路拖动，也能点相邻格 · ${this.state.trail.length} 步`)
   }
