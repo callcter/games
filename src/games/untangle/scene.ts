@@ -38,9 +38,12 @@ export class UntangleScene extends PuzzleScene {
     this.lines = this.add.graphics(); this.content.add(this.lines)
     this.state.points.forEach((point,index) => {
       const node = this.add.container(point.x,point.y); this.content.add(node)
-      const circle = this.add.circle(0,0,29,0xfffdf6).setStrokeStyle(4,0x58a897)
-      node.add(circle); this.text(0,0,String(index+1),24,node)
-      node.setData('node',index).setSize(64,64).setInteractive({useHandCursor:true})
+      const shadow = this.add.circle(0,6,33,0x684a34,0.16)
+      const rim = this.add.circle(0,2,32,0xe7b45e,1)
+      const circle = this.add.circle(0,-1,28,0xfffff4).setStrokeStyle(2,0xffffff,0.74)
+      const shine = this.add.circle(-8,-10,7,0xffffff,0.52)
+      node.add([shadow,rim,circle,shine]); this.text(0,-1,String(index+1),22,node)
+      node.setData('node',index).setSize(74,74).setInteractive({useHandCursor:true})
       this.input.setDraggable(node)
     })
     this.renderLines()
@@ -58,9 +61,18 @@ export class UntangleScene extends PuzzleScene {
   private renderLines(): void {
     const crossed = crossedEdges(this.state)
     this.lines.clear()
+    this.state.edges.forEach(([a,b]) => {
+      this.lines.lineStyle(9,0x684a34,0.11)
+      this.lines.lineBetween(
+        this.state.points[a]!.x+2,this.state.points[a]!.y+4,
+        this.state.points[b]!.x+2,this.state.points[b]!.y+4
+      )
+    })
     this.state.edges.forEach(([a,b],index) => {
-      this.lines.lineStyle(5,crossed.has(index)?0xe88065:0x58a897)
+      this.lines.lineStyle(6,crossed.has(index)?0xe8755f:0x58a897)
       this.lines.lineBetween(this.state.points[a]!.x,this.state.points[a]!.y,this.state.points[b]!.x,this.state.points[b]!.y)
+      this.lines.lineStyle(2,0xffffff,crossed.has(index)?0.18:0.28)
+      this.lines.lineBetween(this.state.points[a]!.x,this.state.points[a]!.y-1,this.state.points[b]!.x,this.state.points[b]!.y-1)
     })
     this.say(`拖动圆点分开绳子 · ${crossed.size} 条交叉线 · ${this.state.moves} 次移动`)
   }

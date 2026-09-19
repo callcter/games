@@ -21,7 +21,8 @@ export const LOBBY_SHEETS: readonly LobbySheet[] = [
 const STANDALONE_ICONS: Readonly<Record<string, string>> = {
   'tile-match': 'art/icons/tile-match.png',
   'water-sort': 'art/icons/water-sort.png',
-  'parking': 'art/icons/parking.png'
+  'parking': 'art/icons/parking.png',
+  'klondike': 'art/icons/klondike.png'
 }
 
 const BADGE = 128

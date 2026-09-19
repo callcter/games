@@ -2,6 +2,11 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { ActionScene, FIELD } from '../action-kit/scene'
 import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
+import {
+  PRODUCT_V3_BATCH2,
+  addBatch2Cover,
+  preloadFruitSlicerBatch2
+} from '../../platform/display/product-v3-batch2-art'
 import { endSwipe, FRUIT_RADIUS, FRUITS, MODES, newGame, slice, step, type Fruit } from './core/game'
 import { makeCutHalf } from './cut-art'
 
@@ -147,6 +152,7 @@ export class FruitSlicerScene extends ActionScene {
 
   preload(): void {
     preloadFruitSheets(this)
+    preloadFruitSlicerBatch2(this)
   }
 
   protected startRound(mode: number): void {
@@ -157,6 +163,15 @@ export class FruitSlicerScene extends ActionScene {
     this.trail = []
     this.lastPointer = null
     this.lastWhoosh = 0
+    const background = addBatch2Cover(
+      this,
+      PRODUCT_V3_BATCH2.fruitSlicer.background,
+      768,
+      900,
+      -100,
+      1
+    )
+    if (background) this.entities.addAt(background, 0)
     this.drawBoard()
     JUICE_COLORS.forEach((color, index) => this.makeDotTexture(`juice-${index}`, color, 5))
     this.makeDotTexture('sparkle-white', 0xffffff, 4)
@@ -192,12 +207,19 @@ export class FruitSlicerScene extends ActionScene {
 
   private drawBoard(): void {
     const board = this.add.graphics()
-    board.fillStyle(0x553e32).fillRoundedRect(12, 220, 744, 672, 22)
-    for (let row = 0; row < 7; row++) {
-      const y = 232 + row * 92
-      board.fillStyle(row % 2 ? 0x644a3a : 0x6c503d).fillRoundedRect(22, y, 724, 86, 8)
-      board.lineStyle(1, 0xc39766, 0.14)
-      for (let line = 0; line < 3; line++) board.lineBetween(42 + row * 7, y + 17 + line * 21, 720 - row * 9, y + 14 + line * 21)
+    if (this.textures.exists(PRODUCT_V3_BATCH2.fruitSlicer.background)) {
+      // 背景已含真实木砧板，只保留玩法边界和轻微暗角，避免两层木板重复。
+      board.fillStyle(0x4b3427, 0.10).fillRoundedRect(12, 220, 744, 672, 24)
+      board.lineStyle(3, 0xffe4b8, 0.28)
+      board.strokeRoundedRect(12, 220, 744, 672, 24)
+    } else {
+      board.fillStyle(0x553e32).fillRoundedRect(12, 220, 744, 672, 22)
+      for (let row = 0; row < 7; row++) {
+        const y = 232 + row * 92
+        board.fillStyle(row % 2 ? 0x644a3a : 0x6c503d).fillRoundedRect(22, y, 724, 86, 8)
+        board.lineStyle(1, 0xc39766, 0.14)
+        for (let line = 0; line < 3; line++) board.lineBetween(42 + row * 7, y + 17 + line * 21, 720 - row * 9, y + 14 + line * 21)
+      }
     }
     this.entities.add(board)
   }

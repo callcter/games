@@ -32,6 +32,10 @@ export class TangramScene extends PuzzleScene {
     this.resetView(this.state.won ? '七块都拼好啦！' : `拖图形到${this.silhouette ? '剪影' : '同色轮廓'} · 已拼 ${this.state.pieces.filter(p=>p.placed).length} / 7 块`)
     this.text(384,153,`${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,20,this.content)
     this.button(135,210,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},190,this.content)
+    const board=this.add.graphics();this.content.add(board)
+    board.fillStyle(0x684a34,0.10);board.fillRoundedRect(82,254,604,424,30)
+    board.fillStyle(0xfffff4,0.92);board.fillRoundedRect(82,246,604,424,30)
+    board.lineStyle(2,0xe7b45e,0.42);board.strokeRoundedRect(84,248,600,420,28)
     this.state.targets.forEach((target,i)=>{
       const g=this.add.graphics();this.content.add(g)
       const points=vertices(i,target).map(p=>new Phaser.Math.Vector2(p.x,p.y))
@@ -47,11 +51,13 @@ export class TangramScene extends PuzzleScene {
     this.state.pieces.forEach((piece,i)=>{
       const node=this.add.container(piece.x,piece.y);this.content.add(node)
       const points=vertices(i,{x:0,y:0,rotation:piece.rotation,flipped:piece.flipped}).map(p=>new Phaser.Math.Vector2(p.x,p.y))
-      const g=this.add.graphics();node.add(g);g.fillStyle(COLORS[i]!);g.lineStyle(i===this.selected?4:2,0xffffff)
+      const shadow=this.add.graphics();node.add(shadow)
+      shadow.fillStyle(0x684a34,0.16)
+      shadow.fillPoints(points.map(p=>new Phaser.Math.Vector2(p.x+4,p.y+6)),true)
+      const g=this.add.graphics();node.add(g);g.fillStyle(COLORS[i]!);g.lineStyle(i===this.selected?5:2,0xffffff,i===this.selected?1:0.72)
       g.fillPoints(points,true);g.strokePoints(points,true)
-      this.text(0,0,String(i+1),22,node)
       if(!piece.placed){
-        if(piece.y>=600)node.setScale(0.6)
+        if(piece.y>=600)node.setScale(0.72)
         node.setData('piece',i).setInteractive(new Phaser.Geom.Polygon(points),
           (shape: Phaser.Geom.Polygon, x: number, y: number) => Phaser.Geom.Polygon.Contains(shape,x,y) || Math.hypot(x,y)<54)
         node.on('pointerdown',()=>{this.selected=i;this.say(`已选第 ${i+1} 块 · 可拖动、旋转或翻面`)})

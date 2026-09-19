@@ -7,6 +7,11 @@ import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import { showFloatingText } from '../../experience/feedback/floating-text'
 import { createBurstPool } from '../../experience/feedback/particles'
 import { FRUIT_LEVELS, fruitAt, mergeFruits, randomDropLevel } from './core/game'
+import {
+  PRODUCT_V3_BATCH2,
+  addBatch2Cover,
+  preloadMergeFruitBatch2
+} from '../../platform/display/product-v3-batch2-art'
 
 interface SceneCallbacks {
   onExit: () => void
@@ -65,12 +70,29 @@ export class MergeFruitScene extends Phaser.Scene {
 
   preload(): void {
     preloadFruitSheets(this)
+    preloadMergeFruitBatch2(this)
   }
 
   create(): void {
     attachFirstRunHelp(this, '合成水果')
     this.useArtFruits = ensureFruitArtFrames(this)
     this.createFruitTextures()
+    addBatch2Cover(
+      this,
+      PRODUCT_V3_BATCH2.mergeFruit.background,
+      SCENE_WIDTH,
+      SCENE_HEIGHT,
+      -100,
+      1
+    )
+    this.add.rectangle(
+      SCENE_WIDTH / 2,
+      SCENE_HEIGHT / 2,
+      SCENE_WIDTH,
+      SCENE_HEIGHT,
+      0xfff6dc,
+      0.08
+    ).setDepth(-90)
     this.createWorld()
     this.currentLevel = randomDropLevel()
     this.nextLevel = randomDropLevel()

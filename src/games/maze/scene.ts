@@ -4,6 +4,7 @@ import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordRun } from '../puzzle-kit/progress'
 import { DIRECTIONS, neighbor } from '../pipes/core/game'
 import { dragAlong, move, newGame, path, undo, type MazeState } from './core/game'
+import { PRODUCT_V3_BATCH2, preloadMazeBatch2 } from '../../platform/display/product-v3-batch2-art'
 export class MazeScene extends PuzzleScene {
   private size = 7
   private state = newGame(7)
@@ -11,9 +12,10 @@ export class MazeScene extends PuzzleScene {
   private assisted = false
   private shortest = path(this.state).length - 1
   private dragPoint: { x: number; y: number } | null = null
-  private rabbit!: Phaser.GameObjects.Text
+  private rabbit!: Phaser.GameObjects.Image | Phaser.GameObjects.Text
   private tiles: Phaser.GameObjects.Rectangle[] = []
   constructor(audio: GameAudio, exit: () => void) { super('maze', '迷宫探险', audio, exit) }
+  preload(): void { preloadMazeBatch2(this) }
   protected start(): void {
     const gridPoint = (p: Phaser.Input.Pointer) => ({ x: (p.x-134)/(500/this.size), y: (p.y-230)/(500/this.size) })
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -63,9 +65,31 @@ export class MazeScene extends PuzzleScene {
       if (!(mask & DIRECTIONS[1])) g.lineBetween(x + cell, y, x + cell, y + cell)
       if (!(mask & DIRECTIONS[2])) g.lineBetween(x, y + cell, x + cell, y + cell)
       if (!(mask & DIRECTIONS[3])) g.lineBetween(x, y, x, y + cell)
-      if (i === this.size * this.size - 1) this.text(x + cell / 2, y + cell / 2, '🏠', cell * 0.58, this.content)
+      if (i === this.hint && this.textures.exists(PRODUCT_V3_BATCH2.maze.sprites)) {
+        this.content.add(
+          this.add.image(x + cell / 2, y + cell / 2, PRODUCT_V3_BATCH2.maze.sprites, 2)
+            .setDisplaySize(cell * 0.48, cell * 0.48)
+            .setAlpha(0.82)
+        )
+      }
+      if (i === this.size * this.size - 1) {
+        if (this.textures.exists(PRODUCT_V3_BATCH2.maze.sprites)) {
+          this.content.add(
+            this.add.image(x + cell / 2, y + cell / 2, PRODUCT_V3_BATCH2.maze.sprites, 1)
+              .setDisplaySize(cell * 0.70, cell * 0.70)
+          )
+        } else {
+          this.text(x + cell / 2, y + cell / 2, '🏠', cell * 0.58, this.content)
+        }
+      }
     })
-    this.rabbit=this.text(0,0,'🐰',cell*0.58,this.content)
+    if (this.textures.exists(PRODUCT_V3_BATCH2.maze.sprites)) {
+      this.rabbit = this.add.image(0, 0, PRODUCT_V3_BATCH2.maze.sprites, 0)
+        .setDisplaySize(cell * 0.70, cell * 0.70)
+      this.content.add(this.rabbit)
+    } else {
+      this.rabbit=this.text(0,0,'🐰',cell*0.58,this.content)
+    }
     this.refreshPlayer()
     ;['↑', '→', '↓', '←'].forEach((label, d) => this.button(222 + d * 108, 775, label, () => this.step(d), 96, this.content))
     this.button(160, 850, '撤销', () => { this.state = undo(this.state); this.draw() }, 180, this.content)

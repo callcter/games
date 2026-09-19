@@ -16,19 +16,46 @@ export class PipesScene extends PuzzleScene {
     const reached = connected(this.state), cell = 570 / this.size
     this.state.cells.forEach((mask, index) => {
       const x = 99 + index % this.size * cell, y = 240 + Math.floor(index / this.size) * cell
-      const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell - 5, cell - 5, reached.has(index) ? 0xd4ece3 : 0xe9dfca)
+      const tileVisual = this.add.graphics(); this.content.add(tileVisual)
+      tileVisual.fillStyle(0x684a34, 0.10)
+      tileVisual.fillRoundedRect(x + 4, y + 8, cell - 8, cell - 8, Math.max(12, cell * 0.12))
+      tileVisual.fillStyle(reached.has(index) ? 0xe8f4ee : 0xfff8e7, 0.98)
+      tileVisual.fillRoundedRect(x + 4, y + 3, cell - 8, cell - 10, Math.max(12, cell * 0.12))
+      tileVisual.lineStyle(2, reached.has(index) ? 0x91c7b8 : 0xd8cdbb, 0.70)
+      tileVisual.strokeRoundedRect(x + 5, y + 4, cell - 10, cell - 12, Math.max(11, cell * 0.11))
+      const tile = this.add.rectangle(x + cell / 2, y + cell / 2, cell - 5, cell - 5, 0xffffff, 0.001)
       this.content.add(tile)
       const g = this.add.graphics(); this.content.add(g)
-      g.lineStyle(cell * 0.17, reached.has(index) ? 0x58a897 : 0x748779)
+      g.lineStyle(cell * 0.22, 0x684a34, 0.12)
+      DIRECTIONS.forEach((bit, d) => {
+        if (mask & bit) g.lineBetween(x + cell / 2 + 2, y + cell / 2 + 4, x + cell / 2 + [0, 1, 0, -1][d]! * cell / 2 + 2, y + cell / 2 + [-1, 0, 1, 0][d]! * cell / 2 + 4)
+      })
+      g.lineStyle(cell * 0.17, reached.has(index) ? 0x4fa68e : 0x778779)
       DIRECTIONS.forEach((bit, d) => {
         if (mask & bit) g.lineBetween(x + cell / 2, y + cell / 2, x + cell / 2 + [0, 1, 0, -1][d]! * cell / 2, y + cell / 2 + [-1, 0, 1, 0][d]! * cell / 2)
       })
-      g.fillStyle(reached.has(index) ? 0x58a897 : 0x748779); g.fillCircle(x + cell / 2, y + cell / 2, cell * 0.13)
-      g.lineStyle(cell * 0.055, reached.has(index) ? 0xb1e5dc : 0xc4d0c6)
+      g.fillStyle(reached.has(index) ? 0x4fa68e : 0x778779); g.fillCircle(x + cell / 2, y + cell / 2, cell * 0.13)
+      g.lineStyle(cell * 0.045, reached.has(index) ? 0xc8f1e6 : 0xd5ddd7)
       DIRECTIONS.forEach((bit, d) => {
         if (mask & bit) g.lineBetween(x + cell / 2, y + cell / 2, x + cell / 2 + [0, 1, 0, -1][d]! * cell / 2, y + cell / 2 + [-1, 0, 1, 0][d]! * cell / 2)
       })
-      if (index === 0) this.text(x + cell / 2, y + cell / 2, '💧', cell * 0.3, this.content)
+      if (index === 0) {
+        const source = this.add.graphics(); this.content.add(source)
+        source.fillStyle(0xffffff, 0.92)
+        source.fillCircle(x + cell / 2, y + cell / 2, cell * 0.20)
+        source.lineStyle(2, 0x66bfe3, 0.78)
+        source.strokeCircle(x + cell / 2, y + cell / 2, cell * 0.20)
+        source.fillStyle(0x66bfe3, 1)
+        source.fillCircle(x + cell / 2, y + cell / 2 + cell * 0.035, cell * 0.075)
+        source.fillTriangle(
+          x + cell / 2,
+          y + cell / 2 - cell * 0.10,
+          x + cell / 2 - cell * 0.065,
+          y + cell / 2 + cell * 0.02,
+          x + cell / 2 + cell * 0.065,
+          y + cell / 2 + cell * 0.02
+        )
+      }
       tile.setInteractive().on('pointerup', () => {
         const next = turn(this.state, index)
         if (next === this.state) return
