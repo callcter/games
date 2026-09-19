@@ -1,7 +1,7 @@
 {
-  "sourceCommit": "7834d0ecf33032c9e075cbb2495d3f1b1a0c775d",
-  "sourceDiffSha256": "4e5fcd0f3e97de4c37a01491d67e5cea9e4e98ebc3246a1b44765640f0f3f0e1",
-  "generatedAt": "2026-09-19T10:30:29.350Z",
+  "sourceCommit": "2494b6dd1c0a6fa0d0bbe6604fae698732d3bcaa",
+  "sourceDiffSha256": "afe10b6f914fec0ded75e61d4bac6dafa8ddbc0b43dc3594765a2f2d39f1468f",
+  "generatedAt": "2026-09-19T11:52:54.582Z",
   "fixture": "isolated profile; fresh saves for each viewport; help already read; start base difficulty / first level",
   "images": [
     {
@@ -755,5 +755,5 @@
       "dpr": 2
     }
   ],
-  "entrySha256": "b102267549a26dacf4d87922a92976d69bca43e5c76f6b84256707589aef54eb"
+  "entrySha256": "f1bc3adac24e17c8b1bfa1edb118b0d3b2e934f723d4a49c297203ea3ab180d1"
 }
