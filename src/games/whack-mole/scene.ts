@@ -26,8 +26,9 @@ export class WhackMoleScene extends ActionScene {
       // 等比缩放铺满画布（cover）：超出 768×900 的部分被画布裁掉，绝不压扁。
       const src = this.textures.get(WHACK_BG_KEY).source[0]
       if (src) {
-        const scale = Math.max(768 / src.width, 900 / src.height)
-        this.add.image(384, 450, WHACK_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+        const height = this.scale.height
+        const scale = Math.max(768 / src.width, height / src.height)
+        this.add.image(384, height / 2, WHACK_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
       }
       // 画布外留白延伸草地主题底色，避免重复背景。
       setHostBackdrop('art/whack-bg.png')
@@ -62,8 +63,9 @@ export class WhackMoleScene extends ActionScene {
     this.buildBoard()
     this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
-      this.hammerFlash(pointer.x, pointer.y)
-      const hole = this.holeAt(pointer.x, pointer.y)
+      const point = this.legacyPoint(pointer)
+      this.hammerFlash(point.x, point.y)
+      const hole = this.holeAt(point.x, point.y)
       if (hole < 0) return
       const before = this.state.score
       const result = whack(this.state, hole)
@@ -74,13 +76,13 @@ export class WhackMoleScene extends ActionScene {
         if (view) this.hitThenRetract(view, this.useArtMoles ? 1 : undefined)
         this.audio.playPlace(1)
         this.audio.playPop(2.4)
-        this.spray('mole-star', pointer.x, pointer.y - 20, 10, 200)
-        this.floatText(pointer.x, pointer.y - 50, `+${this.state.score - before}`, '#2f6f8f')
+        this.spray('mole-star', point.x, point.y - 20, 10, 200)
+        this.floatText(point.x, point.y - 50, `+${this.state.score - before}`, '#2f6f8f')
       } else if (result.kind === 'sleeper') {
         const view = this.holes.find(entry => entry.holeIndex === hole)
         if (view) this.hitThenRetract(view, this.useArtMoles ? 3 : undefined)
         this.audio.playBurst()
-        this.floatText(pointer.x, pointer.y - 50, '鼠宝宝在睡觉…', '#c0392b', 20)
+        this.floatText(point.x, point.y - 50, '鼠宝宝在睡觉…', '#c0392b', 20)
       } else {
         this.audio.playMove()
       }

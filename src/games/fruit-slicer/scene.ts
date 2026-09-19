@@ -183,16 +183,18 @@ export class FruitSlicerScene extends ActionScene {
     this.blade = this.add.graphics()
     this.entities.add(this.blade)
     this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (!this.running || pointer.y < FIELD.top || pointer.y > 890) return
+      const point = this.legacyPoint(pointer)
+      if (!this.running || point.y < FIELD.top || point.y > 890) return
       this.state = endSwipe(this.state)
-      this.lastPointer = { x: pointer.x, y: pointer.y, t: performance.now() }
+      this.lastPointer = { x: point.x, y: point.y, t: performance.now() }
       this.trail = [this.lastPointer]
     })
     this.onRoundInput('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (!this.running || !pointer.isDown || !this.lastPointer) return
-      if (pointer.y < FIELD.top || pointer.y > 900 || pointer.x < 0 || pointer.x > 768) { this.finishSwipe(); return }
+      const point = this.legacyPoint(pointer)
+      if (point.y < FIELD.top || point.y > 900 || point.x < 0 || point.x > 768) { this.finishSwipe(); return }
       const previous = this.lastPointer
-      const current = { x: pointer.x, y: pointer.y, t: performance.now() }
+      const current = { x: point.x, y: point.y, t: performance.now() }
       if (Math.hypot(current.x - previous.x, current.y - previous.y) < 3) return
       this.trySlice(previous, current)
       if (current.t - this.lastWhoosh > 160 && Math.hypot(current.x - previous.x, current.y - previous.y) > 18) {

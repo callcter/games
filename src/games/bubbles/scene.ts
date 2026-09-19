@@ -20,7 +20,8 @@ export class BubblesScene extends PuzzleScene {
   private restart(): void { this.state = newGame(Math.random, this.colors, this.startRows); this.history = []; this.draw() }
   protected start(): void {
     this.input.on('pointerdown',(pointer: Phaser.Input.Pointer)=>{
-      if(pointer.y<225||pointer.y>785||pointer.x<LEFT-24||pointer.x>RIGHT+24||this.shooting||this.state.status!=='playing')return
+      const point=this.legacyPoint(pointer)
+      if(point.y<225||point.y>785||point.x<LEFT-24||point.x>RIGHT+24||this.shooting||this.state.status!=='playing')return
       this.aiming=true;this.aim(pointer)
     })
     this.input.on('pointermove',(pointer: Phaser.Input.Pointer)=>{if(this.aiming)this.aim(pointer)})
@@ -37,7 +38,8 @@ export class BubblesScene extends PuzzleScene {
     this.draw()
   }
   private aim(pointer: Phaser.Input.Pointer): void {
-    this.angle=Phaser.Math.Clamp(Math.atan2(pointer.x-SHOOTER.x,Math.max(35,SHOOTER.y-pointer.y)),-1.2,1.2)
+    const point=this.legacyPoint(pointer)
+    this.angle=Phaser.Math.Clamp(Math.atan2(point.x-SHOOTER.x,Math.max(35,SHOOTER.y-point.y)),-1.2,1.2)
     this.drawGuide()
   }
   private bubble(x: number,y: number,color: number,parent=this.content): Phaser.GameObjects.Container {

@@ -18,8 +18,9 @@ export class RedRainScene extends ActionScene {
     if (this.textures.exists(RAIN_BG_KEY)) {
       const src = this.textures.get(RAIN_BG_KEY).source[0]
       if (src) {
-        const scale = Math.max(768 / src.width, 900 / src.height)
-        this.add.image(384, 450, RAIN_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+        const height = this.scale.height
+        const scale = Math.max(768 / src.width, height / src.height)
+        this.add.image(384, height / 2, RAIN_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
       }
       setHostBackdrop('art/red-rain-bg.png')
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
@@ -52,7 +53,8 @@ export class RedRainScene extends ActionScene {
     this.makeDotTexture('gold-coin', 0xe6b84d, 6)
     this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
-      const index = this.nearestDrop(pointer.x, pointer.y)
+      const point = this.legacyPoint(pointer)
+      const index = this.nearestDrop(point.x, point.y)
       if (index < 0) return
       const drop = this.state.drops[index]!
       const before = this.state.score

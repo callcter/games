@@ -126,7 +126,8 @@ export class NonogramScene extends PuzzleScene {
   }
   private cellAt(p: Phaser.Input.Pointer): number {
     const size = patternSize(this.state.level), cell = size === 5 ? 84 : 52
-    const x = Math.floor((p.x - (size === 5 ? 225 : 200))/cell), y = Math.floor((p.y - (size === 5 ? 310 : 230))/cell)
+    const point = this.legacyPoint(p)
+    const x = Math.floor((point.x - (size === 5 ? 225 : 200))/cell), y = Math.floor((point.y - (size === 5 ? 310 : 230))/cell)
     return x >= 0 && y >= 0 && x < size && y < size ? y*size+x : -1
   }
   private paint(p: Phaser.Input.Pointer): void {

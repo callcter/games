@@ -17,7 +17,10 @@ export class MazeScene extends PuzzleScene {
   constructor(audio: GameAudio, exit: () => void) { super('maze', '迷宫探险', audio, exit) }
   preload(): void { preloadMazeBatch2(this) }
   protected start(): void {
-    const gridPoint = (p: Phaser.Input.Pointer) => ({ x: (p.x-134)/(500/this.size), y: (p.y-230)/(500/this.size) })
+    const gridPoint = (p: Phaser.Input.Pointer) => {
+      const point=this.legacyPoint(p)
+      return { x: (point.x-134)/(500/this.size), y: (point.y-230)/(500/this.size) }
+    }
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.dragPoint = null
       const point=gridPoint(p)

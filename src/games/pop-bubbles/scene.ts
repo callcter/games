@@ -20,8 +20,9 @@ export class PopBubblesScene extends ActionScene {
     if (this.textures.exists(POP_BG_KEY)) {
       const src = this.textures.get(POP_BG_KEY).source[0]
       if (src) {
-        const scale = Math.max(768 / src.width, 900 / src.height)
-        this.add.image(384, 450, POP_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
+        const height = this.scale.height
+        const scale = Math.max(768 / src.width, height / src.height)
+        this.add.image(384, height / 2, POP_BG_KEY).setDisplaySize(src.width * scale, src.height * scale).setDepth(-10)
       }
       setHostBackdrop('art/pop-bubbles-bg.png')
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseHostBackdrop)
@@ -53,7 +54,8 @@ export class PopBubblesScene extends ActionScene {
     this.makeDotTexture('pop-gold', 0xe6b84d, 5)
     this.onRoundInput('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.running) return
-      const index = hitTest(this.state, pointer.x, pointer.y)
+      const point = this.legacyPoint(pointer)
+      const index = hitTest(this.state, point.x, point.y)
       if (index < 0) return
       const bubble = this.state.bubbles[index]!
       const before = this.state.score
