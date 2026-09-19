@@ -1,6 +1,7 @@
 // 无额外依赖。先运行 pnpm dev，再运行 pnpm test:browser。
 // 独立临时 Chrome 配置，不读取或修改平时浏览器的存档。
 import assert from 'node:assert/strict'
+import { allHelpTitles } from '../src/ui/help-content.ts'
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, writeFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -37,6 +38,9 @@ try {
   ws.onmessage = event => {
     const message = JSON.parse(event.data)
     if (message.method === 'Runtime.exceptionThrown') errors.push(message.params.exceptionDetails)
+    if (process.env.PRODUCTION_ONLY && message.method === 'Network.requestWillBeSent') {
+      if (new URL(message.params.request.url).pathname.startsWith('/src/')) errors.push('生产验收禁止请求 /src/: '+message.params.request.url)
+    }
     const callback = waiting.get(message.id)
     if (callback) { clearTimeout(callback.timer); waiting.delete(message.id); message.error ? callback.reject(message.error) : callback.resolve(message.result) }
   }
@@ -83,12 +87,15 @@ try {
   const home = async () => { await click(90,45); await until("!!document.querySelector('.game-grid')") }
   const resumeOrFresh = async () => { const m = await evaluate("__scene.message ?? ''"); if(String(m).includes('找到')) await click(510,480) }
   await send('Runtime.enable')
+  if(process.env.PRODUCTION_ONLY) await send('Network.enable')
   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await send('Page.navigate',{url:base})
   await until("!!document.querySelector('.game-grid')")
-  // 预置全部玩法说明为"已看过"：首弹面板会吞掉棋盘输入，回归专注原有链路
-  // （帮助面板本身由 help-verify 类脚本单独验收）。
-  await evaluate(`(async()=>{const m = await import('/src/ui/help-content.ts');try{localStorage.setItem('family-game-room-help-seen-v1',JSON.stringify(m.allHelpTitles))}catch(e){}return 1})()`)
+  // 老用户回归的独立 fixture；新用户见 browser-ui-regression.mjs。
+  // 在 Node 侧读清单，生产浏览器绝不请求开发源码；生产分支实际操作首次帮助。
+  if (!process.env.PRODUCTION_ONLY) {
+    await evaluate(`localStorage.setItem('family-game-room-help-seen-v1',${JSON.stringify(JSON.stringify(allHelpTitles))})`)
+  }
   if (process.env.AUDIT_ONLY) {
     await until("document.querySelectorAll('.game-grid [data-game]').length >= 24")
     const ids = await evaluate("Array.from(document.querySelectorAll('.game-grid [data-game]'), e => e.dataset.game)")
@@ -122,22 +129,53 @@ try {
     await until("(async()=>{const r=await navigator.serviceWorker.getRegistration();return r?.active?.state==='activated'})()")
     // prompt 模式首次安装不会强行接管当前页面；下一次导航才受新 SW 控制。
     await send('Page.reload');await until("!!document.querySelector('.game-grid') && !!navigator.serviceWorker.controller")
+    const visited = new Set()
+    const closeHelp = async () => {
+      await until("!!document.querySelector('.game-help-dialog[open]')")
+      const p = await evaluate("(()=>{const r=document.querySelector('.game-help-close').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()")
+      await send('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1})
+      await send('Input.dispatchMouseEvent',{type:'mouseReleased',...p,button:'left',clickCount:1})
+      await until("!document.querySelector('.game-help-dialog')")
+      // 场景恢复排在关闭后的下一个 POST_STEP；等两帧确保随后的画布点击不被暂停态丢弃
+      await evaluate("(async()=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return 1})()")
+    }
+    // 清除续玩草稿的公共清理：内存 cache 位于模块状态、清存储无法重置，
+    // 必须重载页面让模块归零，否则二次进入会弹「继续上次」遮罩挡住顶栏。
+    const clearDrafts = async () => {
+      await evaluate("(async()=>{Object.keys(localStorage).filter(k=>k.startsWith('game-puzzle-draft-')).forEach(k=>localStorage.removeItem(k));try{await new Promise(r=>{const q=indexedDB.deleteDatabase('family-game-room');q.onsuccess=q.onerror=q.onblocked=r})}catch(e){}return 1})()")
+      await send('Page.reload')
+      await until("!!document.querySelector('.game-grid') && !!navigator.serviceWorker.controller")
+    }
     for (const [width,height] of [[768,1024],[1024,768]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:false})
       for (const id of ['water-sort','parking','tile-match']) {
+        await clearDrafts()
         await evaluate(`document.querySelector('.game-grid [data-game="${id}"]').click()`)
         await until("!!document.querySelector('canvas')");await pause(800)
-        await click(608,165);await pause(500)
-        await click(680,45);await click(680,45)
+        if(!visited.has(id)) { await closeHelp(); visited.add(id) }
+        // 按真实画布比例换算：两款独立场景逻辑高度随宿主变化，不能硬编码 /900。
+        const top = await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();const h=768*r.height/r.width;return {h,y:'${id}'==='parking'?45:Math.max(58,Math.min(82,h*0.055))}})()`)
+        const helpX = id==='parking'?560:128
+        const raw=await evaluate(`(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+${helpX}*r.width/768,y:r.y+${top.y}*r.height/${top.h}}})()`)
+        // 无头环境没有真实指针移动；先 move 再 press，Phaser 才能按最新位置做命中测试
+        await send('Input.dispatchMouseEvent',{type:'mouseMoved',...raw})
+        await send('Input.dispatchMouseEvent',{type:'mousePressed',...raw,button:'left',clickCount:1})
+        await send('Input.dispatchMouseEvent',{type:'mouseReleased',...raw,button:'left',clickCount:1})
+        await closeHelp()
         await screenshot(`production-${id}-${width}`)
-        await home()
+        await evaluate('history.back()');await until("!!document.querySelector('.game-grid')")
       }
     }
     await send('Network.enable')
     await send('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0})
     await send('Page.reload');await until("!!document.querySelector('.game-grid')")
+    await clearDrafts()
     await evaluate(`document.querySelector('.game-grid [data-game="water-sort"]').click()`)
     await until("!!document.querySelector('canvas')");await pause(700)
+    // 清除帮助已读后在离线环境操作真实弹窗，验证新 UI 的 CSS/JS 也已缓存。
+    await evaluate("localStorage.removeItem('family-game-room-help-seen-v1')")
+    await send('Page.reload');await until("!!document.querySelector('canvas')")
+    await closeHelp()
     await screenshot('production-offline')
     await send('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1})
   } else if (process.env.RENDER_ONLY) {
@@ -151,7 +189,7 @@ try {
         await until("!!document.querySelector('canvas')"); await pause(600)
         assert.ok(await evaluate("(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect();return c.width/r.width>=1.9 && c.height/r.height>=1.9})()"),`${id}: Retina backing buffer`)
         if (!['minesweeper','maze'].includes(id)) {
-          const tap = await evaluate(`(()=>{const s=window.__legacy, method=['freecell','spider'].includes('${id}')?'restartDeal':'restart';window.__restarts=0;const original=s[method];s[method]=function(...args){window.__restarts++;return original.apply(this,args)};const t=s.children.list.find(o=>o.type==='Text'&&['重新开始','重开本局'].includes(o.text));const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+t.x*r.width/s.scale.width,y:r.y+t.y*r.height/s.scale.height}})()`)
+          const tap = await evaluate(`(()=>{const s=window.__legacy, method=['freecell','spider'].includes('${id}')?'restartDeal':'restart';window.__restarts=0;const original=s[method];s[method]=function(...args){window.__restarts++;return original.apply(this,args)};const flatten=xs=>xs.flatMap(o=>[o,...(o.list?flatten(o.list):[])]);const t=flatten(s.children.list).find(o=>o.type==='Text'&&['重新开始','重开本局','重开'].includes(o.text));if(!t)throw new Error('Missing restart control');const b=t.getBounds(),r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x+b.centerX*r.width/s.scale.width,y:r.y+b.centerY*r.height/s.scale.height}})()`)
           await send('Input.dispatchMouseEvent',{type:'mouseMoved',...tap})
           await send('Input.dispatchMouseEvent',{type:'mousePressed',...tap,button:'left',clickCount:1})
           await send('Input.dispatchMouseEvent',{type:'mouseReleased',...tap,button:'left',clickCount:1})
