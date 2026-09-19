@@ -4,6 +4,7 @@ import { flushDraft, loadDraft, saveDraft } from './draft-storage'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createPuzzleChrome, GAME_UI, type PuzzleChrome } from '../../ui'
 import { legacyVerticalOffset, measurePlayArea, type PlayAreaMetrics, type PlayAreaOptions } from './play-area'
+import { measurePhysicalMetrics, type PhysicalMetrics } from './physical-metrics'
 
 export const INK = '#173f35'
 export const COLORS = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x87b65e, 0x58b4d1]
@@ -87,6 +88,25 @@ export abstract class PuzzleScene extends Phaser.Scene {
 
   protected playArea(options?: PlayAreaOptions): PlayAreaMetrics {
     return measurePlayArea(768, this.scale.height, options)
+  }
+
+  protected physicalMetrics(): PhysicalMetrics {
+    const cssWidth = this.game.canvas.getBoundingClientRect().width
+    return measurePhysicalMetrics(768, cssWidth || 768)
+  }
+
+  /**
+   * 只对已 opt-in 的长手机内容层补偿字号。
+   * iPad / 横屏继续保持原 logical size。
+   */
+  protected contentFont(logicalPx: number, minCssPx = 15): number {
+    if (!this.useResponsivePlayArea || !this.playArea().phoneLike) return logicalPx
+    return this.physicalMetrics().atLeastCss(logicalPx, minCssPx)
+  }
+
+  protected touchTarget(logicalPx = 60, minCssPx = 44): number {
+    if (!this.useResponsivePlayArea || !this.playArea().phoneLike) return logicalPx
+    return this.physicalMetrics().atLeastCss(logicalPx, minCssPx)
   }
 
   /**
@@ -237,12 +257,37 @@ export abstract class PuzzleScene extends Phaser.Scene {
     const selected = label.startsWith('✓')
     const primary = /^(开\s*始|继续上次|再来一次)/.test(label)
     const filled = selected || primary
+    const responsivePhone = this.useResponsivePlayArea && this.playArea().phoneLike
+    const metrics = responsivePhone ? this.physicalMetrics() : null
+    const height = responsivePhone ? metrics!.atLeastCss(60, 44) : 60
+    const actualWidth = responsivePhone
+      ? Math.max(width, metrics!.logicalForCss(44))
+      : width
+    const radius = Math.min(22, height * 0.30)
+    const shadowPush = Math.max(3, height * 0.06)
     const background = this.add.graphics({ x, y })
+    const labelFont = responsivePhone ? metrics!.atLeastCss(21, 15) : 21
+    const labelText = this.text(x, y, label, labelFont)
+
+    if (responsivePhone) {
+      const horizontalPadding = metrics!.logicalForCss(12)
+      const maxTextWidth = Math.max(1, actualWidth - horizontalPadding)
+      if (labelText.width > maxTextWidth) {
+        const desired = labelFont * maxTextWidth / labelText.width
+        labelText.setFontSize(Math.max(metrics!.logicalForCss(13), desired))
+      }
+    }
 
     const paint = (down = false): void => {
       background.clear()
       background.fillStyle(GAME_UI.colors.cocoa, 0.15)
-      background.fillRoundedRect(-width / 2, -27, width, 60, 18)
+      background.fillRoundedRect(
+        -actualWidth / 2,
+        -height / 2 + shadowPush,
+        actualWidth,
+        height,
+        radius
+      )
       background.fillStyle(
         down
           ? 0xf0e4c3
@@ -250,46 +295,62 @@ export abstract class PuzzleScene extends Phaser.Scene {
             ? GAME_UI.colors.forest
             : GAME_UI.colors.creamLight
       )
-      background.fillRoundedRect(-width / 2, -30, width, 60, 18)
+      background.fillRoundedRect(
+        -actualWidth / 2,
+        -height / 2,
+        actualWidth,
+        height,
+        radius
+      )
       background.lineStyle(
         2,
         filled ? GAME_UI.colors.forest : GAME_UI.colors.honey,
         filled ? 0.72 : 0.52
       )
-      background.strokeRoundedRect(-width / 2 + 1, -29, width - 2, 58, 17)
+      background.strokeRoundedRect(
+        -actualWidth / 2 + 1,
+        -height / 2 + 1,
+        actualWidth - 2,
+        height - 2,
+        Math.max(1, radius - 1)
+      )
     }
 
     paint()
     parent?.add(background)
-
-    const text = this.text(x, y, label, 21, parent)
-    if (filled) text.setColor('#fffdf6')
+    parent?.add(labelText)
+    if (filled) labelText.setColor('#fffdf6')
 
     let pressed = false
     background
       .setInteractive(
-        new Phaser.Geom.Rectangle(-width / 2, -30, width, 60),
+        new Phaser.Geom.Rectangle(
+          -actualWidth / 2,
+          -height / 2,
+          actualWidth,
+          height
+        ),
         Phaser.Geom.Rectangle.Contains
       )
       .on('pointerdown', () => {
         pressed = true
         paint(true)
-        text.setColor(INK)
+        labelText.setColor(INK)
       })
       .on('pointerout', () => {
         pressed = false
         paint()
-        text.setColor(filled ? '#fffdf6' : INK)
+        labelText.setColor(filled ? '#fffdf6' : INK)
       })
       .on('pointerup', () => {
         if (!pressed) return
         pressed = false
         paint()
-        text.setColor(filled ? '#fffdf6' : INK)
+        labelText.setColor(filled ? '#fffdf6' : INK)
         action()
       })
 
-    return text
+    return labelText
   }
 
   protected celebrate(label = '完成啦！'): void {
