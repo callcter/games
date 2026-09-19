@@ -86,11 +86,9 @@ export class TetrisScene extends Phaser.Scene {
   }
 
   create(): void {
-    // 方块开局即下落：首弹说明期间暂停，关闭后继续。
-    attachFirstRunHelp(this, '俄罗斯方块', 700, {
-      onOpen: () => { if (!this.paused) this.togglePause() },
-      onClose: () => { if (this.paused) this.togglePause() }
-    })
+    // 帮助通过共享模态暂停场景，保留玩家自己设置的 paused 状态。
+    attachFirstRunHelp(this, '俄罗斯方块')
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => this.stopControlRepeat())
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.on('pointerup', () => this.stopControlRepeat())
     this.input.on('gameout', () => this.stopControlRepeat())
