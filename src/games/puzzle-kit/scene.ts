@@ -3,6 +3,7 @@ import { GameAudio } from '../../platform/audio/game-audio'
 import { flushDraft, loadDraft, saveDraft } from './draft-storage'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createPuzzleChrome, GAME_UI, type PuzzleChrome } from '../../ui'
+import { legacyVerticalOffset, measurePlayArea, type PlayAreaMetrics, type PlayAreaOptions } from './play-area'
 
 export const INK = '#173f35'
 export const COLORS = [0xe88065, 0x58a897, 0xe6b84d, 0x7e8dcd, 0xc47faf, 0x87b65e, 0x58b4d1]
@@ -18,10 +19,17 @@ export abstract class PuzzleScene extends Phaser.Scene {
   /** 旧 768×900 游戏内容在高屏手机中的纵向平移。 */
   protected contentOffsetY = 0
 
+  /**
+   * v5 开始逐游戏迁移到真正的动态内容区。
+   * 默认 false：尚未迁移的 Puzzle/Action 完全保持 v4 行为。
+   */
+  protected useResponsivePlayArea = false
+
   private draftId?: string
   private shellBackdrop!: Phaser.GameObjects.Graphics
   private chrome!: PuzzleChrome
   private readonly shellResize = (): void => this.layoutShell()
+  private playLayoutReady = false
 
   /** 首次进入自动弹玩法说明；动作游戏有自己的开场说明，覆写为 false。 */
   protected showFirstRunHelp = true
@@ -72,9 +80,22 @@ export abstract class PuzzleScene extends Phaser.Scene {
 
     if (this.showFirstRunHelp) attachFirstRunHelp(this, this.heading)
     this.start()
+    this.playLayoutReady = true
   }
 
   protected abstract start(): void
+
+  protected playArea(options?: PlayAreaOptions): PlayAreaMetrics {
+    return measurePlayArea(768, this.scale.height, options)
+  }
+
+  /**
+   * 只给 opt-in 的响应式游戏使用。
+   * 横竖屏切换时重排 View；state/core 不应在这里变化。
+   */
+  protected onPlayAreaResize(): void {
+    // subclasses opt in
+  }
 
   /**
    * 将 Scene 级 Pointer 坐标转换回旧 768×900 内容坐标。
@@ -93,13 +114,15 @@ export abstract class PuzzleScene extends Phaser.Scene {
     const width = 768
     const height = this.scale.height
 
-    // 900 高以上只移动“游戏内容”，应用级 chrome 永远贴近屏幕顶部。
-    // 0.47 接近视觉居中，但 360 上限避免超长手机把底部工具推得过低。
-    this.contentOffsetY = Phaser.Math.Clamp(
-      Math.round((height - 900) * 0.47),
-      0,
-      360
-    )
+    // v4 游戏继续保持 legacy 900 内容坐标；
+    // v5 opt-in 游戏直接拿到完整动态逻辑高度。
+    this.contentOffsetY = this.useResponsivePlayArea
+      ? 0
+      : Phaser.Math.Clamp(
+          Math.round((height - 900) * 0.47),
+          0,
+          360
+        )
     this.content?.setPosition(0, this.contentOffsetY)
     this.chrome?.layout(width, height)
 
@@ -116,12 +139,21 @@ export abstract class PuzzleScene extends Phaser.Scene {
     this.shellBackdrop.fillStyle(GAME_UI.colors.honey, 0.10)
     this.shellBackdrop.fillCircle(40, height - 52, 210)
 
-    const stageY = this.contentOffsetY + 150
-    const stageH = 700
+    const responsivePhone = this.useResponsivePlayArea && this.playArea().phoneLike
+    const stageY = responsivePhone
+      ? 188
+      : (this.useResponsivePlayArea ? legacyVerticalOffset(height) : this.contentOffsetY) + 150
+    const stageH = responsivePhone
+      ? Math.max(700, height - stageY - 34)
+      : 700
     this.shellBackdrop.fillStyle(0xfffff4, 0.20)
     this.shellBackdrop.fillRoundedRect(28, stageY, 712, stageH, 44)
     this.shellBackdrop.lineStyle(2, GAME_UI.colors.honey, 0.10)
     this.shellBackdrop.strokeRoundedRect(30, stageY + 2, 708, stageH - 4, 42)
+
+    if (this.playLayoutReady && this.useResponsivePlayArea) {
+      this.onPlayAreaResize()
+    }
   }
 
   protected async offerResume<T extends { state: { won: boolean } }>(
@@ -263,7 +295,11 @@ export abstract class PuzzleScene extends Phaser.Scene {
   protected celebrate(label = '完成啦！'): void {
     this.say(label)
     this.audio.playWin()
-    const badge = this.text(384, 780, '✦ 太棒啦 ✦', 30, this.content)
+    const area = this.useResponsivePlayArea ? this.playArea({ bottom: 120 }) : null
+    const badgeY = area?.phoneLike
+      ? area.bottom - 150
+      : 780 + (this.useResponsivePlayArea ? legacyVerticalOffset(this.scale.height) : 0)
+    const badge = this.text(384, badgeY, '✦ 太棒啦 ✦', 30, this.content)
     badge.setScale(0.7)
     this.tweens.add({
       targets: badge,
