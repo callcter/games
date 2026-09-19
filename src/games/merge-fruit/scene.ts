@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { releaseHostBackdrop, setHostBackdropImage } from '../../platform/display/host-backdrop'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createHeaderButton } from '../../platform/display/header-button'
+import { createPuzzleChrome } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { ensureFruitArtFrames, fruitArtKey, preloadFruitSheets } from '../../platform/display/fruit-sprites'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
@@ -48,9 +48,8 @@ export class MergeFruitScene extends Phaser.Scene {
   private gameOver = false
   private preview: Phaser.GameObjects.Image | null = null
   private nextPreview: Phaser.GameObjects.Image | null = null
-  private scoreText: Phaser.GameObjects.Text | null = null
+  private headerChrome: import('../../ui').PuzzleChrome | null = null
   private nextText: Phaser.GameObjects.Text | null = null
-  private soundText: Phaser.GameObjects.Text | null = null
   private dangerGraphics: Phaser.GameObjects.Graphics | null = null
   private dangerActive: boolean | null = null
   private nextDangerCheck = 0
@@ -360,45 +359,37 @@ export class MergeFruitScene extends Phaser.Scene {
 
   private drawInterface(): void {
     this.cameras.main.setBackgroundColor('#f8f1df')
-    // 顶栏文字叠在厨房背景上对比度不足；从上往下压一层米色渐变衬底，只提可读性不遮画面。
+    // 顶栏叠在厨房背景上对比度不足；从上往下压一层米色渐变衬底，只提可读性不遮画面。
     const shade = this.add.graphics().setDepth(-80)
     for (let index = 0; index < 7; index++) {
       shade.fillStyle(0xfff6dc, 0.52 - index * 0.07)
       shade.fillRect(0, index * 24, SCENE_WIDTH, 24)
     }
-    this.add.text(28, 34, '‹ 游戏屋', {
-      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '23px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-    this.add.text(SCENE_WIDTH / 2, 30, '合成水果', {
-      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '42px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-    const actionsW = createHeaderButton(this, {
-      x: SCENE_WIDTH - 28, y: 56, anchor: 'right', label: '重新开始', onTap: () => this.restart()
+    // 全站统一顶栏：得分/最高进状态胶囊；「下一个」预览区下移避让声音圆钮。
+    const chrome = createPuzzleChrome(this, {
+      title: '合成水果',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      onHelp: () => { showHelpPanel(this, '合成水果') },
+      tools: [
+        { icon: 'restart', label: '重新开始', action: () => this.restart() }
+      ]
     })
-    createHeaderButton(this, {
-      x: SCENE_WIDTH - 28 - actionsW - 8, y: 56, anchor: 'right', label: '?', onTap: () => { showHelpPanel(this, '合成水果') }
-    })
+    chrome.setStatus(this.scoreLabel())
+    chrome.layout(this.scale.width, this.scale.height)
+    this.headerChrome = chrome
 
-    this.scoreText = this.add.text(34, 102, this.scoreLabel(), {
-      color: '#173f35', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '21px', fontStyle: 'bold'
-    })
     const nextBubble = this.add.graphics()
     nextBubble.fillStyle(0xffffff, 0.52)
-    nextBubble.fillCircle(690, 165, 52)
+    nextBubble.fillCircle(690, 187, 52)
     nextBubble.lineStyle(3, 0xd8b276, 0.72)
-    nextBubble.strokeCircle(690, 165, 52)
-    this.add.text(690, 88, '下一个', {
+    nextBubble.strokeCircle(690, 187, 52)
+    this.add.text(690, 112, '下一个', {
       color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '17px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.nextText = this.add.text(690, 218, '', {
+    this.nextText = this.add.text(690, 242, '', {
       color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
     }).setOrigin(0.5, 0)
-    this.soundText = this.add.text(34, 142, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
-      color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
-      this.audio.toggleMuted()
-      this.soundText?.setText(this.audio.isMuted ? '♪ 声音关' : '♫ 声音开')
-    })
 
     const bowl = this.add.graphics()
     bowl.fillStyle(0xd8b276, 0.24)
@@ -557,7 +548,7 @@ export class MergeFruitScene extends Phaser.Scene {
       this.bestScore = this.score
       writeBestScore(this.bestScore)
     }
-    this.scoreText?.setText(this.scoreLabel())
+    this.headerChrome?.setStatus(this.scoreLabel())
     this.audio.playMerge()
     if (this.chainCount >= 2) this.audio.playPop(1 + Math.min(1.1, this.chainCount * 0.16))
   }
@@ -721,9 +712,7 @@ export class MergeFruitScene extends Phaser.Scene {
     this.gameOver = false
     this.preview = null
     this.nextPreview = null
-    this.scoreText = null
     this.nextText = null
-    this.soundText = null
     this.dangerGraphics = null
     this.dangerActive = null
     this.dangerTween = null

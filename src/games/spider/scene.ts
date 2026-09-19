@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createHeaderButton } from '../../platform/display/header-button'
+import { createPuzzleChrome } from '../../ui'
 import { PRODUCT_V3, preloadCardsV3 } from '../../platform/display/product-v3-art'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createCardSlot, createCardView } from '../cards/card-view'
@@ -132,29 +132,29 @@ export class SpiderScene extends Phaser.Scene {
   }
 
   private drawHeader(): void {
-    this.add.text(24, 16, '‹ 游戏屋', {
-      color: '#d7e7df', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-    this.add.text(512, 12, '蜘蛛纸牌', {
-      color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-    // 右对齐连续排布：新牌局 / 重开本局 / 撤销 / 提示（y28，与下方难度按钮拉开间隙）
-    let actionRight = 1000
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '新牌局', onTap: () => this.newDeal() }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '? 怎么玩', onTap: () => { showHelpPanel(this, '蜘蛛纸牌') } }) + 10
-    this.add.text(145, 20, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
-      color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => { this.audio.toggleMuted(); this.draw() })
-    this.add.text(300, 57, `得分 ${this.state.score} · 移动 ${this.state.moves} 次${this.hintMessage ? ` · ${this.hintMessage}` : ''}`, {
+    // 全站统一顶栏（紧凑档）：工具药丸/帮助/声音同一行；难度收进完成槽行右侧空白。
+    const chrome = createPuzzleChrome(this, {
+      title: '蜘蛛纸牌',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      onHelp: () => { showHelpPanel(this, '蜘蛛纸牌') },
+      compactContent: true,
+      tools: [
+        { icon: 'hint', label: '提示', action: () => this.showHint() },
+        { icon: 'undo', label: '撤销', action: () => this.undo() },
+        { icon: 'restart', label: '重开本局', action: () => this.restartDeal() },
+        { icon: 'new', label: '新牌局', action: () => this.newDeal() }
+      ]
+    })
+    chrome.setStatus('')
+    chrome.layout(1024, 768)
+    this.add.text(512, 80, `得分 ${this.state.score} · 移动 ${this.state.moves} 次${this.hintMessage ? ` · ${this.hintMessage}` : ''}`, {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5, 0)
-    // y74：避开上方药丸（底边 50）与下方完成牌组槽（y96）
-    this.createDifficultyButton(635, 74, 1, '一花色')
-    this.createDifficultyButton(760, 74, 2, '两花色')
-    this.createDifficultyButton(885, 74, 4, '四花色')
+    // 完成槽（x38-616、y96-160）右侧留白正好放难度；y128 与槽垂直居中。
+    this.createDifficultyButton(660, 128, 1, '一花色')
+    this.createDifficultyButton(770, 128, 2, '两花色')
+    this.createDifficultyButton(880, 128, 4, '四花色')
   }
 
   private createDifficultyButton(x: number, y: number, suitCount: SpiderSuitCount, label: string): void {

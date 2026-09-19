@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createHeaderButton } from '../../platform/display/header-button'
+import { createPuzzleChrome } from '../../ui'
 import { PRODUCT_V3, preloadCardsV3 } from '../../platform/display/product-v3-art'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { createCardSlot, createCardView } from '../cards/card-view'
@@ -164,27 +164,24 @@ export class FreeCellScene extends Phaser.Scene {
   }
 
   private drawHeader(): void {
-    this.add.text(24, 18, '‹ 游戏屋', {
-      color: '#d7e7df', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '22px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', this.callbacks.onExit)
-    this.add.text(512, 14, '空当接龙', {
-      color: '#fffdf6', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '38px', fontStyle: 'bold'
-    }).setOrigin(0.5, 0)
-    // 右对齐连续排布：新牌局 / 重开本局 / 撤销 / 提示（y28，与信息行拉开间隙）
-    let actionRight = 1000
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '新牌局', onTap: () => this.newDeal() }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '重开本局', onTap: () => this.restartDeal() }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '撤销', onTap: () => this.undo(), enabled: this.history.length > 0 }) + 10
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '提示', onTap: () => this.showHint() })
-    actionRight -= createHeaderButton(this, { x: actionRight, y: 28, anchor: 'right', tone: 'dark', label: '? 怎么玩', onTap: () => { showHelpPanel(this, '空当接龙') } }) + 10
-    this.add.text(145, 22, this.audio.isMuted ? '♪ 声音关' : '♫ 声音开', {
-      color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px', fontStyle: 'bold'
-    }).setInteractive({ useHandCursor: true }).on('pointerup', () => {
-      this.audio.toggleMuted()
-      this.draw()
+    // 全站统一顶栏（紧凑档贴牌桌）：药丸工具/帮助/声音在同一行，信息行留作牌桌 HUD。
+    const chrome = createPuzzleChrome(this, {
+      title: '空当接龙',
+      audio: this.audio,
+      onBack: this.callbacks.onExit,
+      onHelp: () => { showHelpPanel(this, '空当接龙') },
+      compactContent: true,
+      tools: [
+        { icon: 'hint', label: '提示', action: () => this.showHint() },
+        { icon: 'undo', label: '撤销', action: () => this.undo() },
+        { icon: 'restart', label: '重开本局', action: () => this.restartDeal() },
+        { icon: 'new', label: '新牌局', action: () => this.newDeal() }
+      ]
     })
+    chrome.setStatus('')
+    chrome.layout(1024, 768)
     const gameLabel = this.state.gameNumber > 0 ? `第 ${this.state.gameNumber} 局 · ` : ''
-    this.add.text(512, 60, `${gameLabel}移动 ${this.state.moves} 次 · ${this.hintMessage}`, {
+    this.add.text(512, 80, `${gameLabel}移动 ${this.state.moves} 次 · ${this.hintMessage}`, {
       color: '#b9d5c9', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5, 0)
   }
