@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { showFloatingText } from '../../experience/feedback/floating-text'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createLegacyChrome, preloadGameUi } from '../../ui'
+import { createPuzzleChrome, preloadGameUi } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import {
   BOARD_SIZE,
@@ -137,34 +137,28 @@ export class Game2048Scene extends Phaser.Scene {
     const height = this.scale.height
     const compact = height < 650
     const margin = Math.max(16, Math.min(32, width * 0.04))
-    const top = compact ? 72 : 124
+    // 共享顶栏（topY 70 + 状态胶囊）占位约 170px，棋盘从其下开始。
+    const top = compact ? 176 : 190
     const availableHeight = height - top - margin
     const boardSize = Math.min(width - margin * 2, availableHeight, 650)
     const boardX = (width - boardSize) / 2
     const boardY = top + Math.max(0, (availableHeight - boardSize) / 2)
 
     this.cameras.main.setBackgroundColor('#f8f1df')
-    createLegacyChrome(this, {
-      width,
+    const chrome = createPuzzleChrome(this, {
       title: '2048',
       audio: this.audio,
       onBack: this.callbacks.onExit,
-      y: compact ? 36 : 48,
+      onHelp: () => showHelpPanel(this, '2048'),
       tools: [
-        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '2048') },
         { icon: 'restart', label: '重开', action: () => this.restart() }
       ]
     })
-
-    if (!compact) {
-      this.add.text(width / 2, 92, `得分 ${this.state.score}　最高 ${this.state.bestScore}`, {
-        color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-        fontSize: '19px', fontStyle: 'bold'
-      }).setOrigin(0.5, 0)
-    }
+    chrome.setStatus(compact ? '' : `得分 ${this.state.score}　最高 ${this.state.bestScore}`)
+    chrome.layout(width, height)
 
     if (this.state.won && !this.state.gameOver) {
-      this.add.text(width / 2, compact ? 61 : 119, '太棒了，你已经合成 2048！', {
+      this.add.text(width / 2, compact ? 176 : 200, '太棒了，你已经合成 2048！', {
         color: '#cb6544', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
         fontSize: compact ? '14px' : '16px', fontStyle: 'bold'
       }).setOrigin(0.5, 0)

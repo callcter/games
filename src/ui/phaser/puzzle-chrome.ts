@@ -2,6 +2,14 @@ import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { GAME_UI, GAME_UI_FONT } from '../tokens'
 import { createIconButton } from './icon-button'
+import { createToolButton } from './tool-button'
+import type { GameUiIconName } from '../icons'
+
+export interface PuzzleChromeTool {
+  icon: GameUiIconName
+  label: string
+  action: () => void
+}
 
 export interface PuzzleChrome {
   container: Phaser.GameObjects.Container
@@ -15,16 +23,18 @@ export interface PuzzleChromeOptions {
   audio: GameAudio
   onBack: () => void
   onHelp: () => void
+  /** 额外顶栏工具（如重开），排在帮助钮左侧；宽屏为图标药丸、窄屏退化为纯图标圆钮。 */
+  tools?: readonly PuzzleChromeTool[]
 }
 
 /**
- * Puzzle / Action 公共应用层顶栏。
+ * 全站统一的应用级顶栏（Puzzle/Action/独立场景共用）。
  *
- * 和 Tile Match / Water Sort 使用同一组 token 与 Phosphor 图标：
- * [返回]      [标题胶囊]      [帮助][声音]
+ * [返回]      [标题胶囊]      [工具…][帮助][声音]
  *                 [状态胶囊]
  *
  * 游戏自己的棋盘、牌面、工具按钮仍属于内容层，不塞进这里。
+ * 场景需已通过 PuzzleUiBootScene/preloadGameUi 加载 Phosphor 图标。
  */
 export function createPuzzleChrome(
   scene: Phaser.Scene,
@@ -58,6 +68,26 @@ export function createPuzzleChrome(
       depth: GAME_UI.depth.chrome
     }
   )
+
+  // 宽屏用“图标+文字”药丸；窄屏（<560）只留图标圆钮，不与标题胶囊争空间。
+  const narrow = scene.scale.width < 560
+  const tools = (options.tools ?? []).map(tool => {
+    if (narrow) {
+      const button = createIconButton(scene, tool.icon, tool.action, {
+        radius: iconRadius,
+        glyphSize,
+        depth: GAME_UI.depth.chrome
+      })
+      root.add(button.container)
+      return { place(x: number, y: number): void { button.setPosition(x, y) }, span: iconRadius * 2 + 20 }
+    }
+    const button = createToolButton(scene, tool.icon, tool.label, tool.action, {
+      width: 108,
+      height: tallPhone ? 60 : 50
+    })
+    root.add(button.container)
+    return { place(x: number, y: number): void { button.setPosition(x, y) }, span: 124 }
+  })
 
   const titleRoot = scene.add.container(0, 0)
   const titleShadow = scene.add.graphics()
@@ -169,6 +199,13 @@ export function createPuzzleChrome(
       back.setPosition(edge, topY)
       sound.setPosition(width - edge, topY)
       help.setPosition(width - edge - gap, topY)
+      // 工具从帮助钮继续向左排；返回钮在窄屏贴左，中间标题胶囊保持居中。
+      let cursor = width - edge - gap
+      for (const tool of tools) {
+        cursor -= tool.span / 2 + 10
+        tool.place(cursor, topY)
+        cursor -= tool.span / 2
+      }
       titleRoot.setPosition(width / 2, topY)
       statusRoot.setPosition(width / 2, topY + 72)
     }

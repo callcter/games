@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
-import { createLegacyChrome, createSegmentControl, preloadGameUi } from '../../ui'
+import { createPuzzleChrome, createSegmentControl, preloadGameUi, type PuzzleChrome } from '../../ui'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
   chordCell,
@@ -27,7 +27,7 @@ export class MinesweeperScene extends Phaser.Scene {
   private mode: PlayMode = 'reveal'
   private elapsedSeconds = 0
   private timer?: Phaser.Time.TimerEvent
-  private timerText: Phaser.GameObjects.Text | null = null
+  private chrome: PuzzleChrome | null = null
   private readonly audio: GameAudio
   private readonly callbacks: SceneCallbacks
 
@@ -62,7 +62,7 @@ export class MinesweeperScene extends Phaser.Scene {
 
   private draw(): void {
     this.children.removeAll(true)
-    this.timerText = null
+    this.chrome = null
     this.cameras.main.setBackgroundColor('#e9dfca')
     this.drawHeader()
     this.drawStatus()
@@ -79,17 +79,17 @@ export class MinesweeperScene extends Phaser.Scene {
   }
 
   private drawHeader(): void {
-    createLegacyChrome(this, {
-      width: this.scale.width,
+    const chrome = createPuzzleChrome(this, {
       title: '扫雷',
       audio: this.audio,
       onBack: this.callbacks.onExit,
-      y: 46,
+      onHelp: () => showHelpPanel(this, '扫雷'),
       tools: [
-        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '扫雷') },
         { icon: 'restart', label: '重开', action: () => this.restart() }
       ]
     })
+    chrome.layout(this.scale.width, this.scale.height)
+    this.chrome = chrome
     const difficulty = createSegmentControl(this, {
       items: [
         { value: 'beginner' as const, label: '初级 9×9' },
@@ -101,25 +101,17 @@ export class MinesweeperScene extends Phaser.Scene {
       height: 42,
       onChange: value => this.changeDifficulty(value)
     })
-    difficulty.setPosition(384, 100)
+    difficulty.setPosition(384, 200)
   }
 
   private drawStatus(): void {
-    this.add.text(36, 158, `⚑ ${remainingMines(this.state)}`, {
-      color: '#fffaf0', backgroundColor: '#c65f4b', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: '28px', fontStyle: 'bold', padding: { x: 16, y: 8 }
-    })
-    this.add.text(384, 158, this.state.status === 'lost' ? '😵' : this.state.status === 'won' ? '😎' : '🙂', {
-      color: '#344b43', fontSize: '38px'
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.restart())
-    this.timerText = this.add.text(732, 158, this.timerLabel(), {
-      color: '#fffaf0', backgroundColor: '#506b61', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: '28px', fontStyle: 'bold', padding: { x: 16, y: 8 }
-    }).setOrigin(1, 0)
+    // 旗数/表情/计时并入共享状态胶囊；重开交互由顶栏工具承担，不再单设笑脸。
+    const face = this.state.status === 'lost' ? '😵' : this.state.status === 'won' ? '😎' : '🙂'
+    this.chrome?.setStatus(`⚑ ${remainingMines(this.state)}  ${face}  ${this.timerLabel()}`)
   }
 
   private refreshTimerText(): void {
-    this.timerText?.setText(this.timerLabel())
+    this.drawStatus()
   }
 
   private timerLabel(): string {

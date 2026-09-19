@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createLegacyChrome, createSegmentControl, preloadGameUi } from '../../ui'
+import { createPuzzleChrome, createSegmentControl, preloadGameUi } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import {
   BOARD_SIZE,
@@ -237,7 +237,8 @@ export class GomokuScene extends Phaser.Scene {
     const height = this.scale.height
     const compact = height < 650
     const margin = Math.max(14, Math.min(28, width * 0.035))
-    const headerHeight = width < 560 ? 180 : compact ? 88 : 142
+    // 共享顶栏（topY 70 + 状态胶囊 142 + 模式分段 200）的统一头部高度。
+    const headerHeight = 240
     const boardSize = Math.min(width - margin * 2, height - headerHeight - margin, 760)
     const boardX = (width - boardSize) / 2
     const boardY = headerHeight + Math.max(0, (height - headerHeight - boardSize) / 2)
@@ -261,25 +262,19 @@ export class GomokuScene extends Phaser.Scene {
   }
 
   private drawHeader(width: number, compact: boolean, margin: number): void {
-    createLegacyChrome(this, {
-      width,
+    const chrome = createPuzzleChrome(this, {
       title: '五子棋',
       audio: this.audio,
       onBack: this.callbacks.onExit,
-      y: compact ? 34 : 46,
+      onHelp: () => showHelpPanel(this, '五子棋'),
       tools: [
-        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '五子棋') },
         { icon: 'restart', label: '重开', action: () => this.restart() }
       ]
     })
+    chrome.setStatus(`${this.scoreLabel()} · ${this.statusText()}`)
+    chrome.layout(width, this.scale.height)
 
-    const status = `${this.scoreLabel()} · ${this.statusText()}`
     const narrow = width < 560
-    this.add.text(narrow ? width / 2 : width - Math.max(margin, 90), narrow ? 136 : compact ? 62 : 90, status, {
-      color: '#527267', fontFamily: 'Avenir Next, PingFang SC, sans-serif',
-      fontSize: compact ? '14px' : '18px', fontStyle: 'bold'
-    }).setOrigin(narrow ? 0.5 : 1, 0)
-
     const mode = createSegmentControl(this, {
       items: [
         { value: 'computer' as const, label: '和电脑玩' },
@@ -290,9 +285,7 @@ export class GomokuScene extends Phaser.Scene {
       height: compact ? 40 : 44,
       onChange: value => this.setMode(value)
     })
-    mode.setPosition(narrow ? width / 2 : margin + 112, narrow ? 100 : compact ? 72 : 98)
-
-
+    mode.setPosition(narrow ? width / 2 : margin + 112, narrow ? 200 : compact ? 190 : 200)
   }
 
   private scoreLabel(): string {

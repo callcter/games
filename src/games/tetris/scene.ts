@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameAudio } from '../../platform/audio/game-audio'
-import { createLegacyChrome, preloadGameUi } from '../../ui'
+import { createPuzzleChrome, preloadGameUi } from '../../ui'
 import { attachFirstRunHelp, showHelpPanel } from '../../ui/phaser/help'
 import { hasPrecisePointer } from '../../platform/input/pointer-capability'
 import {
@@ -252,7 +252,8 @@ export class TetrisScene extends Phaser.Scene {
     const height = this.scale.height
     const compact = height < 850
     const margin = Math.max(12, Math.min(26, width * 0.03))
-    const headerHeight = compact ? 74 : 112
+    // 共享顶栏（topY 70 + 状态胶囊）约占 170；紧凑视口藏状态胶囊省高度。
+    const headerHeight = compact ? 150 : 180
     const controlsHeight = compact ? 132 : 150
     // 底部至少留 34px：避开 iPad 底部上滑 Home 手势区
     const bottomSafe = Math.max(34, margin)
@@ -284,27 +285,23 @@ export class TetrisScene extends Phaser.Scene {
   }
 
   private drawHeader(width: number, compact: boolean): void {
-    createLegacyChrome(this, {
-      width,
+    const chrome = createPuzzleChrome(this, {
       title: '俄罗斯方块',
       audio: this.audio,
       onBack: this.callbacks.onExit,
-      y: compact ? 34 : 46,
+      onHelp: () => showHelpPanel(this, '俄罗斯方块'),
       tools: [
-        { icon: 'hint', label: '规则', action: () => showHelpPanel(this, '俄罗斯方块') },
         { icon: 'restart', label: '重开', action: () => this.restart() }
       ]
     })
-
     if (!compact) {
-      // 触屏环境不展示键盘快捷键，改为说明屏幕按钮
+      // 触屏环境不展示键盘快捷键，改为说明屏幕按钮；提示进状态胶囊
       const hint = hasPrecisePointer()
         ? '方向键移动 · ↑/Z 旋转 · C 暂存 · 空格直落 · P 暂停'
         : '点按钮移动、旋转 · 按住方向可连续移动'
-      this.add.text(width / 2, 76, hint, {
-        color: '#698379', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '15px'
-      }).setOrigin(0.5, 0)
+      chrome.setStatus(hint)
     }
+    chrome.layout(width, this.scale.height)
   }
 
   private drawBoard(geometry: BoardGeometry): void {
