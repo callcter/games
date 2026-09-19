@@ -160,6 +160,18 @@ export function showGameDialog(scene: Phaser.Scene, options: DialogOptions): Gam
     card.add(button)
   })
 
+  const layout = (): void => {
+    const { width: sceneWidth, height: sceneHeight } = scene.scale
+    shade.setPosition(sceneWidth / 2, sceneHeight / 2).setSize(sceneWidth, sceneHeight)
+    card.setPosition(sceneWidth / 2, sceneHeight / 2)
+  }
+  scene.scale.on(Phaser.Scale.Events.RESIZE, layout)
+  root.once(Phaser.GameObjects.Events.DESTROY, () => {
+    scene.scale.off(Phaser.Scale.Events.RESIZE, layout)
+    scene.tweens.killTweensOf([root, card])
+  })
+  layout()
+
   root.add([shade, card])
   root.setAlpha(0)
   card.setScale(0.92)

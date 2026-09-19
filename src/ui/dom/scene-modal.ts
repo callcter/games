@@ -38,7 +38,7 @@ export function showSceneModal(
     scene.events.off(Phaser.Scenes.Events.SHUTDOWN, dispose)
     scene.events.off(Phaser.Scenes.Events.DESTROY, dispose)
     gameEvents.off(Phaser.Core.Events.POST_STEP, restore)
-    openModals.delete(scene)
+    if (openModals.get(scene) === modal) openModals.delete(scene)
   }
   const restore = (): void => {
     detach()
@@ -68,7 +68,7 @@ export function showSceneModal(
     if (closed) return
     closed = true
     state.open = Math.max(0, state.open - 1)
-    openModals.delete(scene)
+    if (openModals.get(scene) === modal) openModals.delete(scene)
     removeElement()
     // 关闭手势/键盘事件处理完、输入队列清空后才恢复，不能把同一事件交给棋盘。
     gameEvents.once(Phaser.Core.Events.POST_STEP, restore)
@@ -83,7 +83,7 @@ export function showSceneModal(
   state.open += 1
   openModals.set(scene, modal)
   document.body.appendChild(element)
-  if (wasActive && state.open === 1) scene.sys.pause()
+  if (wasActive && state.open === 1 && scene.sys.isActive()) scene.sys.pause()
   try { element.showModal() }
   catch (error) { dispose(); if (wasActive && scene.sys.isPaused()) scene.sys.resume(); throw error }
   return modal

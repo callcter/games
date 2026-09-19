@@ -54,7 +54,7 @@ export const mount = (container: HTMLElement, exit: () => void): { destroy(): vo
       const next = logicalHeight(container)
       if (Math.abs(next - lastHeight) < 2) return
       lastHeight = next
-      game.scale.resize(DESIGN_WIDTH, next)
+      game.scale.setGameSize(DESIGN_WIDTH, next)
     })
   }
 

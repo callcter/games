@@ -101,7 +101,7 @@ export class MinesweeperScene extends Phaser.Scene {
       height: 42,
       onChange: value => this.changeDifficulty(value)
     })
-    difficulty.setPosition(384, 200)
+    difficulty.setPosition(384, 190)
   }
 
   private drawStatus(): void {
@@ -179,7 +179,7 @@ export class MinesweeperScene extends Phaser.Scene {
     })
     // 触屏环境不提示右键操作
     const hint = hasPrecisePointer() ? '点数字可展开周围 · 也可右键插旗' : '点数字可展开周围'
-    this.add.text(384, 212, hint, {
+    this.add.text(384, 224, hint, {
       color: '#766f63', fontFamily: 'Avenir Next, PingFang SC, sans-serif', fontSize: '16px'
     }).setOrigin(0.5)
   }

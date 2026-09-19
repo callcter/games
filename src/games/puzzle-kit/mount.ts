@@ -67,7 +67,7 @@ export function mountPuzzle(
       const nextHeight = logicalHeightFor(container)
       if (nextHeight === currentHeight) return
       currentHeight = nextHeight
-      game.scale.resize(DESIGN_WIDTH, currentHeight)
+      game.scale.setGameSize(DESIGN_WIDTH, currentHeight)
     })
   }
 

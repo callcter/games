@@ -61,6 +61,7 @@ export abstract class PuzzleScene extends Phaser.Scene {
 
     this.chrome = createPuzzleChrome(this, {
       title: this.heading,
+      compactContent: true,
       audio: this.audio,
       onBack: this.exit,
       onHelp: () => showHelpPanel(this, this.heading)
