@@ -3,42 +3,75 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { COLORS, PuzzleScene } from '../puzzle-kit/scene'
 import { recordFlag } from '../puzzle-kit/progress'
 import { LEVEL_NAMES, newGame, place, vertices, type TangramState } from './core/game'
+import { tangramLayout, tangramToCore, tangramToDisplay } from './layout'
 export class TangramScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private state = newGame()
   private selected = 0
   private silhouette = true
   private history: TangramState[] = []
   private beforeDrag: TangramState | null = null
+  private dragOffset: { x: number; y: number } | null = null
   constructor(audio: GameAudio, exit: () => void) { super('tangram', '七巧板', audio, exit) }
+  protected override onPlayAreaResize(): void { this.draw() }
+  private currentLayout() {
+    return tangramLayout(this.playArea({ bottom: 78, horizontalPadding: 40 }))
+  }
   protected start(): void {
-    this.input.on('dragstart', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
-      this.beforeDrag = this.state; this.selected = Number(object.getData('piece'))
-      object.setScale(1); this.content.bringToTop(object)
+    this.input.on('dragstart', (p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
+      this.beforeDrag = this.state
+      this.selected = Number(object.getData('piece'))
+      const layout = this.currentLayout()
+      const pointerCore = tangramToCore(layout, this.legacyPoint(p))
+      const piece = this.state.pieces[this.selected]!
+      this.dragOffset = { x: piece.x - pointerCore.x, y: piece.y - pointerCore.y }
+      object.setScale(layout.scale)
+      this.content.bringToTop(object)
       // 拿起时轻微弹一下，拼块像被手指捏起来。
-      this.tweens.add({ targets: object, scale: 1.05, duration: 90, yoyo: true, ease: 'Sine.Out' })
+      this.tweens.add({ targets: object, scale: layout.scale * 1.05, duration: 90, yoyo: true, ease: 'Sine.Out' })
     })
-    this.input.on('drag', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container, x: number, y: number) => object.setPosition(Phaser.Math.Clamp(x,80,688),Phaser.Math.Clamp(y,225,760)))
+    this.input.on('drag', (p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
+      if (!this.beforeDrag || !this.dragOffset) return
+      const layout = this.currentLayout()
+      const pointerCore = tangramToCore(layout, this.legacyPoint(p))
+      const core = {
+        x: Phaser.Math.Clamp(pointerCore.x + this.dragOffset.x, 80, 688),
+        y: Phaser.Math.Clamp(pointerCore.y + this.dragOffset.y, 225, 760)
+      }
+      const display = tangramToDisplay(layout, core)
+      object.setPosition(display.x, display.y)
+    })
     this.input.on('dragend', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
       if (!this.beforeDrag) return
       const index = Number(object.getData('piece'))
-      this.history.push(this.beforeDrag); this.beforeDrag = null
-      this.state = place(this.state,index,{...this.state.pieces[index]!,x:object.x,y:object.y},this.silhouette)
+      const layout = this.currentLayout()
+      const core = tangramToCore(layout, { x: object.x, y: object.y })
+      this.history.push(this.beforeDrag)
+      this.beforeDrag = null
+      this.dragOffset = null
+      this.state = place(this.state,index,{...this.state.pieces[index]!,x:core.x,y:core.y},this.silhouette)
       this.audio.playMove(); this.draw()
       if(this.state.won) this.complete()
     })
     this.draw()
   }
   private draw(): void {
+    this.beforeDrag = null
+    this.dragOffset = null
     this.resetView(this.state.won ? '七块都拼好啦！' : `拖图形到${this.silhouette ? '剪影' : '同色轮廓'} · 已拼 ${this.state.pieces.filter(p=>p.placed).length} / 7 块`)
-    this.text(384,153,`${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,20,this.content)
-    this.button(135,210,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},190,this.content)
+    const layout = this.currentLayout()
+    this.text(384,layout.actionY - 57,`${LEVEL_NAMES[this.state.level]} · 点选图形后可旋转、翻面`,20,this.content)
+    this.button(135,layout.actionY,this.silhouette ? '✓ 剪影挑战' : '剪影挑战',()=>{this.silhouette=!this.silhouette;this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},190,this.content)
     const board=this.add.graphics();this.content.add(board)
-    board.fillStyle(0x684a34,0.10);board.fillRoundedRect(82,254,604,424,30)
-    board.fillStyle(0xfffff4,0.92);board.fillRoundedRect(82,246,604,424,30)
-    board.lineStyle(2,0xe7b45e,0.42);board.strokeRoundedRect(84,248,600,420,28)
+    board.fillStyle(0x684a34,0.10);board.fillRoundedRect(layout.boardX,layout.boardY + 8 * layout.scale,layout.boardWidth,layout.boardHeight,30 * layout.scale)
+    board.fillStyle(0xfffff4,0.92);board.fillRoundedRect(layout.boardX,layout.boardY,layout.boardWidth,layout.boardHeight,30 * layout.scale)
+    board.lineStyle(2 * layout.scale,0xe7b45e,0.42);board.strokeRoundedRect(layout.boardX + 2 * layout.scale,layout.boardY + 2 * layout.scale,layout.boardWidth - 4 * layout.scale,layout.boardHeight - 4 * layout.scale,28 * layout.scale)
     this.state.targets.forEach((target,i)=>{
       const g=this.add.graphics();this.content.add(g)
-      const points=vertices(i,target).map(p=>new Phaser.Math.Vector2(p.x,p.y))
+      const points=vertices(i,target).map(p=>{
+        const q=tangramToDisplay(layout,p)
+        return new Phaser.Math.Vector2(q.x,q.y)
+      })
       if(this.silhouette){
         // 剪影挑战：整幅图案同色半透明，不给分块提示
         g.fillStyle(0x527267,0.16)
@@ -49,7 +82,8 @@ export class TangramScene extends PuzzleScene {
       }
     })
     this.state.pieces.forEach((piece,i)=>{
-      const node=this.add.container(piece.x,piece.y);this.content.add(node)
+      const display=tangramToDisplay(layout,piece)
+      const node=this.add.container(display.x,display.y);this.content.add(node)
       const points=vertices(i,{x:0,y:0,rotation:piece.rotation,flipped:piece.flipped}).map(p=>new Phaser.Math.Vector2(p.x,p.y))
       const shadow=this.add.graphics();node.add(shadow)
       shadow.fillStyle(0x684a34,0.16)
@@ -57,16 +91,18 @@ export class TangramScene extends PuzzleScene {
       const g=this.add.graphics();node.add(g);g.fillStyle(COLORS[i]!);g.lineStyle(i===this.selected?5:2,0xffffff,i===this.selected?1:0.72)
       g.fillPoints(points,true);g.strokePoints(points,true)
       if(!piece.placed){
-        if(piece.y>=600)node.setScale(0.72)
+        node.setScale(layout.scale * (piece.y>=600 ? 0.72 : 1))
         node.setData('piece',i).setInteractive(new Phaser.Geom.Polygon(points),
           (shape: Phaser.Geom.Polygon, x: number, y: number) => Phaser.Geom.Polygon.Contains(shape,x,y) || Math.hypot(x,y)<54)
         node.on('pointerdown',()=>{this.selected=i;this.say(`已选第 ${i+1} 块 · 可拖动、旋转或翻面`)})
         this.input.setDraggable(node)
+      } else {
+        node.setScale(layout.scale)
       }
     })
-    this.button(327,210,'↻ 旋转',()=>this.transform(false),160,this.content)
-    this.button(491,210,'翻面',()=>this.transform(true),136,this.content)
-    this.button(656,210,'提示一块',()=>{
+    this.button(327,layout.actionY,'↻ 旋转',()=>this.transform(false),160,this.content)
+    this.button(491,layout.actionY,'翻面',()=>this.transform(true),136,this.content)
+    this.button(656,layout.actionY,'提示一块',()=>{
       const i=this.state.pieces.findIndex(p=>!p.placed);if(i<0)return
       this.assisted=true
       // 剪影可有不同拼法：提示回到标准拼法，保留撤销入口。
@@ -77,9 +113,9 @@ export class TangramScene extends PuzzleScene {
       this.draw();this.say('提示采用参考拼法；可以撤销恢复刚才的摆法')
       if(this.state.won)this.complete()
     },160,this.content)
-    this.button(160,850,'撤销',()=>{this.state=this.history.pop()??this.state;this.draw()},180,this.content)
-    this.button(384,850,'重开',()=>{this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},180,this.content)
-    this.button(608,850,'下一幅',()=>{this.state=newGame((this.state.level+1)%LEVEL_NAMES.length);this.history=[];this.assisted=false;this.draw()},180,this.content)
+    this.button(160,layout.footerY,'撤销',()=>{this.state=this.history.pop()??this.state;this.draw()},180,this.content)
+    this.button(384,layout.footerY,'重开',()=>{this.state=newGame(this.state.level);this.history=[];this.assisted=false;this.draw()},180,this.content)
+    this.button(608,layout.footerY,'下一幅',()=>{this.state=newGame((this.state.level+1)%LEVEL_NAMES.length);this.history=[];this.assisted=false;this.draw()},180,this.content)
   }
   private transform(reflect: boolean): void {
     const piece=this.state.pieces[this.selected]!

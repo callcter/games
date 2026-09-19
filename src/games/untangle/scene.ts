@@ -3,30 +3,52 @@ import type { GameAudio } from '../../platform/audio/game-audio'
 import { PuzzleScene } from '../puzzle-kit/scene'
 import { recordRun } from '../puzzle-kit/progress'
 import { crossedEdges, move, newGame, won, type UntangleState } from './core/game'
+import { untangleLayout, untangleToCore, untangleToDisplay } from './layout'
 export class UntangleScene extends PuzzleScene {
+  protected override useResponsivePlayArea = true
   private count = 6
   private state = newGame(6)
   private history: UntangleState[] = []
   private lines!: Phaser.GameObjects.Graphics
   private dragStart: UntangleState | null = null
+  private dragOffset: { x: number; y: number } | null = null
   private assisted = false
   constructor(audio: GameAudio, exit: () => void) { super('untangle', '解绳结', audio, exit) }
+  protected override onPlayAreaResize(): void { this.draw() }
+  private currentLayout() {
+    return untangleLayout(this.playArea({ bottom: 78, horizontalPadding: 40 }))
+  }
   protected start(): void {
-    this.input.on('dragstart', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
+    this.input.on('dragstart', (p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
       if (won(this.state)) return
-      this.dragStart = this.state; object.setScale(1.1)
-    })
-    this.input.on('drag', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container, x: number, y: number) => {
-      if (!this.dragStart) return
+      this.dragStart = this.state
       const index = Number(object.getData('node'))
-      this.state = { ...move(this.state, index, {x,y}), moves: this.dragStart.moves + 1 }
+      const layout = this.currentLayout()
+      const pointerCore = untangleToCore(layout, this.legacyPoint(p))
       const point = this.state.points[index]!
-      object.setPosition(point.x, point.y); this.renderLines()
+      this.dragOffset = { x: point.x - pointerCore.x, y: point.y - pointerCore.y }
+      object.setScale(layout.scale * 1.1)
+    })
+    this.input.on('drag', (p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
+      if (!this.dragStart || !this.dragOffset) return
+      const index = Number(object.getData('node'))
+      const layout = this.currentLayout()
+      const pointerCore = untangleToCore(layout, this.legacyPoint(p))
+      this.state = {
+        ...move(this.state, index, {
+          x: pointerCore.x + this.dragOffset.x,
+          y: pointerCore.y + this.dragOffset.y
+        }),
+        moves: this.dragStart.moves + 1
+      }
+      const point = this.state.points[index]!
+      const display = untangleToDisplay(layout, point)
+      object.setPosition(display.x, display.y); this.renderLines()
     })
     this.input.on('dragend', (_p: Phaser.Input.Pointer, object: Phaser.GameObjects.Container) => {
-      object.setScale(1)
+      object.setScale(this.currentLayout().scale)
       if (!this.dragStart) return
-      this.history.push(this.dragStart); this.dragStart = null
+      this.history.push(this.dragStart); this.dragStart = null; this.dragOffset = null
       this.audio.playMove()
       if (won(this.state)) this.complete()
     })
@@ -34,10 +56,14 @@ export class UntangleScene extends PuzzleScene {
   }
   private draw(): void {
     this.resetView('拖动圆点，把红色交叉线分开')
-    ;[6,7,8,9].forEach((count,i) => this.button(129 + i*170,165,`${this.count === count ? '✓ ' : ''}${count} 个点`, () => { this.count = count; this.restart() },155,this.content))
+    this.dragStart = null
+    this.dragOffset = null
+    const layout = this.currentLayout()
+    ;[6,7,8,9].forEach((count,i) => this.button(129 + i*170,layout.modeY,`${this.count === count ? '✓ ' : ''}${count} 个点`, () => { this.count = count; this.restart() },155,this.content))
     this.lines = this.add.graphics(); this.content.add(this.lines)
     this.state.points.forEach((point,index) => {
-      const node = this.add.container(point.x,point.y); this.content.add(node)
+      const display = untangleToDisplay(layout, point)
+      const node = this.add.container(display.x,display.y).setScale(layout.scale); this.content.add(node)
       const shadow = this.add.circle(0,6,33,0x684a34,0.16)
       const rim = this.add.circle(0,2,32,0xe7b45e,1)
       const circle = this.add.circle(0,-1,28,0xfffff4).setStrokeStyle(2,0xffffff,0.74)
@@ -47,8 +73,8 @@ export class UntangleScene extends PuzzleScene {
       this.input.setDraggable(node)
     })
     this.renderLines()
-    this.button(160,850,'撤销',() => { this.state = this.history.pop() ?? this.state; this.draw() },180,this.content)
-    this.button(384,850,'提示位置',() => {
+    this.button(160,layout.footerY,'撤销',() => { this.state = this.history.pop() ?? this.state; this.draw() },180,this.content)
+    this.button(384,layout.footerY,'提示位置',() => {
       const i = this.state.points.findIndex((p,i) => Math.hypot(p.x-this.state.target[i]!.x,p.y-this.state.target[i]!.y) > 2)
       if (i < 0) return
       this.assisted = true
@@ -56,23 +82,27 @@ export class UntangleScene extends PuzzleScene {
       this.say(`已把 ${i+1} 号点放到一个参考位置`)
       if (won(this.state)) this.complete()
     },180,this.content)
-    this.button(608,850,'新绳结',() => this.restart(),180,this.content)
+    this.button(608,layout.footerY,'新绳结',() => this.restart(),180,this.content)
   }
   private renderLines(): void {
     const crossed = crossedEdges(this.state)
+    const layout = this.currentLayout()
+    const point = (index: number) => untangleToDisplay(layout, this.state.points[index]!)
     this.lines.clear()
     this.state.edges.forEach(([a,b]) => {
-      this.lines.lineStyle(9,0x684a34,0.11)
+      const pa = point(a), pb = point(b)
+      this.lines.lineStyle(9*layout.scale,0x684a34,0.11)
       this.lines.lineBetween(
-        this.state.points[a]!.x+2,this.state.points[a]!.y+4,
-        this.state.points[b]!.x+2,this.state.points[b]!.y+4
+        pa.x+2*layout.scale,pa.y+4*layout.scale,
+        pb.x+2*layout.scale,pb.y+4*layout.scale
       )
     })
     this.state.edges.forEach(([a,b],index) => {
-      this.lines.lineStyle(6,crossed.has(index)?0xe8755f:0x58a897)
-      this.lines.lineBetween(this.state.points[a]!.x,this.state.points[a]!.y,this.state.points[b]!.x,this.state.points[b]!.y)
-      this.lines.lineStyle(2,0xffffff,crossed.has(index)?0.18:0.28)
-      this.lines.lineBetween(this.state.points[a]!.x,this.state.points[a]!.y-1,this.state.points[b]!.x,this.state.points[b]!.y-1)
+      const pa = point(a), pb = point(b)
+      this.lines.lineStyle(6*layout.scale,crossed.has(index)?0xe8755f:0x58a897)
+      this.lines.lineBetween(pa.x,pa.y,pb.x,pb.y)
+      this.lines.lineStyle(2*layout.scale,0xffffff,crossed.has(index)?0.18:0.28)
+      this.lines.lineBetween(pa.x,pa.y-layout.scale,pb.x,pb.y-layout.scale)
     })
     this.say(`拖动圆点分开绳子 · ${crossed.size} 条交叉线 · ${this.state.moves} 次移动`)
   }
