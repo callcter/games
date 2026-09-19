@@ -1,7 +1,7 @@
 {
-  "sourceCommit": "2494b6dd1c0a6fa0d0bbe6604fae698732d3bcaa",
-  "sourceDiffSha256": "afe10b6f914fec0ded75e61d4bac6dafa8ddbc0b43dc3594765a2f2d39f1468f",
-  "generatedAt": "2026-09-19T11:52:54.582Z",
+  "sourceCommit": "e348a8c8c162ba2a50388133a832c6b69a48aecd",
+  "sourceDiffSha256": "9749b43e7f97420cc24c8147c1181a5839585de934f175d06db33ba51a21345b",
+  "generatedAt": "2026-09-19T17:40:01.335Z",
   "fixture": "isolated profile; fresh saves for each viewport; help already read; start base difficulty / first level",
   "images": [
     {
@@ -11,7 +11,7 @@
         "width": 390,
         "height": 844
       },
-      "state": "lobby: 24 cards",
+      "state": "lobby: continue + categories + library preview",
       "dpr": 2
     },
     {
@@ -261,7 +261,7 @@
         "width": 768,
         "height": 1024
       },
-      "state": "lobby: 24 cards",
+      "state": "lobby: continue + categories + library preview",
       "dpr": 2
     },
     {
@@ -511,7 +511,7 @@
         "width": 1024,
         "height": 768
       },
-      "state": "lobby: 24 cards",
+      "state": "lobby: continue + categories + library preview",
       "dpr": 2
     },
     {
@@ -755,5 +755,5 @@
       "dpr": 2
     }
   ],
-  "entrySha256": "f1bc3adac24e17c8b1bfa1edb118b0d3b2e934f723d4a49c297203ea3ab180d1"
+  "entrySha256": "70d1b187198e15e2a2a3a4d221d70b2b6092ac6b88371e915ffac1ef08ce342b"
 }
