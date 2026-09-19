@@ -129,6 +129,13 @@ Let's Encrypt 用全球多视角 DNS 验证，可能命中刚删除记录的负�
 
 ## 8. 变更记录
 
+- 2026-09-19 发布 `83483d7`（2 个提交）：修复 2048 越玩越卡——Phaser 4 的
+  `scene.children.removeAll(true)` 是 structs/List 的 skipCallback 语义（只摘
+  列表不销毁对象），七个全量重绘场景误用导致 Text canvas 纹理随每步重绘永久
+  累积（实测 300 步 138→6713 张、FPS 53→18）。新增 clearSceneChildren 逐对象
+  destroy 替换七处，复测纹理收敛 34 张；shell-regression 增加 2048 纹理收敛
+  断言。验证：shell/smoke/ui/modal/check 225/生产离线全部通过。已推送 GitHub。
+
 - 2026-09-19 发布 `89e52af`（4 个提交）：顶栏全站统一收口——纸牌三款与合成
   水果接入共享 createPuzzleChrome（紧凑档贴牌桌、蜘蛛难度收进完成槽行留白、
   合成水果得分进状态胶囊且「下一个」气泡避让声音钮）；水排序/叠叠消自绘圆
